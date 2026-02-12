@@ -1,0 +1,6 @@
+[workspace]
+members = [
+  "crates/ak-core",
+  "crates/ak-py", "crates/ak-vis",
+]
+resolver = "2"
