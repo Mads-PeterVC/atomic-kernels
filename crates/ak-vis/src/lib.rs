@@ -1,5 +1,5 @@
-pub mod atom_visual;
-pub use atom_visual::{AtomVisual, convert_structure};
+pub mod visuals;
+pub use visuals::{AtomVisual, CellVisual, convert_cell, convert_structure};
 
 pub mod color_palette;
 pub use color_palette::{ColorPalette, ColorScheme, JMOL};

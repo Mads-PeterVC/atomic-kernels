@@ -1,7 +1,11 @@
 //! A simple 3D scene with light shining over a cube sitting on a plane.
 
 use ak_core::Structure;
-use ak_vis::{JMOL, convert_structure, render_atoms};
+use ak_vis::{JMOL, convert_cell, convert_structure, render_atoms};
+
+use ak_vis::render::render_cell;
+use ak_vis::visuals::{CellVisual, cell_visual};
+
 use bevy::prelude::*;
 use bevy_panorbit_camera::{PanOrbitCamera, PanOrbitCameraPlugin};
 
@@ -21,19 +25,16 @@ fn setup(
 ) {
     // Load structure from disk
     let structure = Structure::from_xyz_file(
-        "/Users/au616397/Repositories/atomic-kernels/crates/ak-vis/examples/xyz/cluster_auag_ico_4_core_shell.xyz",
+        "/Users/au616397/Repositories/atomic-kernels/crates/ak-vis/examples/xyz/graphene_4x4.xyz",
     );
 
     // Create and render atoms
     let view = structure.view();
-    let visuals = convert_structure(view, &JMOL);
-    render_atoms(visuals, &mut commands, &mut materials, &mut meshes);
+    let atom_visuals = convert_structure(&view, &JMOL);
+    let cell_visuals = convert_cell(&view);
 
-    // let weird_color = Color::srgb_u8(0, 0, 0);
-    // commands.spawn((Mesh3d(meshes.add(Cylinder::new(0.1, 100.0))),
-    //         MeshMaterial3d(materials.add(weird_color)),
-    //         Transform::from_xyz(0.0, 0.0, 0.0)
-    //     ));
+    render_atoms(atom_visuals, &mut commands, &mut materials, &mut meshes);
+    render_cell(cell_visuals, &mut commands, &mut materials, &mut meshes);
 
     // Setup lights
     let cardinals = [Vec3::Y, -Vec3::Y, Vec3::X, -Vec3::X, Vec3::Z, -Vec3::Z];
@@ -49,9 +50,19 @@ fn setup(
     }
 
     // Setup camera
+
+    let cell_midpoint = Vec3::from_array([
+        0.5 * (view.cell.m[0][0] + view.cell.m[1][0] + view.cell.m[2][0]) as f32,
+        0.5 * (view.cell.m[0][1] + view.cell.m[1][1] + view.cell.m[2][1]) as f32,
+        0.5 * (view.cell.m[0][2] + view.cell.m[1][2] + view.cell.m[2][2]) as f32,
+    ]);
+
     commands.spawn((
         Transform::from_translation(Vec3::new(0.0, 1.5, 5.0)),
-        PanOrbitCamera::default(),
+        PanOrbitCamera {
+            focus: cell_midpoint,
+            ..default()
+        },
     ));
 }
 
