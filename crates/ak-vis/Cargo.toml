@@ -1,0 +1,9 @@
+[package]
+name = "ak-vis"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bevy = { version = "0.18", default-features = true }
+ak-core = { path = "../ak-core" }
+bevy_panorbit_camera = "0.34.0"
