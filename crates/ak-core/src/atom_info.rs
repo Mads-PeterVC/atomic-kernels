@@ -22,7 +22,6 @@ impl PeriodicTable {
 
         for (i, line) in DATA.lines().enumerate() {
             if i == 0 || line.trim().is_empty() {
-                println!("{}", line);
                 continue; // skip header/empty
             }
             let parts: Vec<&str> = line.split(',').collect();
