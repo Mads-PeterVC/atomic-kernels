@@ -1,5 +1,8 @@
 pub mod structure;
-pub use structure::{Structure, StructureView};
+pub use structure::Structure;
+
+pub mod structure_view;
+pub use structure_view::StructureView;
 
 pub mod cell;
 pub use cell::Cell;

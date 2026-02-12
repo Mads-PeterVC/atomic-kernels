@@ -1,15 +1,8 @@
-use crate::geometry::{AtomicNumber, Cell, Pbc};
+use crate::geometry::{AtomicNumber, Cell, Pbc, StructureView};
 
 pub struct Structure {
     pub positions: Vec<[f64; 3]>,
     pub numbers: Vec<AtomicNumber>,
-    pub cell: Cell,
-    pub pbc: Pbc,
-}
-
-pub struct StructureView<'a> {
-    pub positions: &'a [[f64; 3]],
-    pub numbers: &'a [AtomicNumber],
     pub cell: Cell,
     pub pbc: Pbc,
 }
@@ -43,6 +36,16 @@ impl Structure {
             cell: self.cell.clone(),
             pbc: self.pbc.clone(),
         }
+    }
+
+    pub fn from_xyz_reader<R: std::io::BufRead>(r: R) -> Self {
+        crate::io::read_xyz(r)
+    }
+
+    pub fn from_xyz_file<P: AsRef<std::path::Path>>(path: P) -> Self {
+        let f = std::fs::File::open(path).unwrap();
+        let r = std::io::BufReader::new(f);
+        Self::from_xyz_reader(r)
     }
 }
 
