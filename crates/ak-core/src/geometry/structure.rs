@@ -1,5 +1,6 @@
 use crate::geometry::{AtomicNumber, Cell, Pbc, StructureView};
 
+#[derive(Clone)]
 pub struct Structure {
     pub positions: Vec<[f64; 3]>,
     pub numbers: Vec<AtomicNumber>,
