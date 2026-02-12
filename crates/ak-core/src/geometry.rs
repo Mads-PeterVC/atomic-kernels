@@ -15,3 +15,6 @@ pub use neighbor_list::{NeighborList, build_neighborlist};
 
 pub mod atomic_number;
 pub use atomic_number::{AtomicNumber, AtomicNumberError};
+
+pub mod trajectory;
+pub use trajectory::Trajectory;
