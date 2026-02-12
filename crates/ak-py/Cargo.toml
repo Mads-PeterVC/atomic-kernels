@@ -1,0 +1,15 @@
+[package]
+name = "ak-py"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+name = "_atomic_kernels"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.27.0", features = ["extension-module"] }
+numpy = { version="0.27" }
+ak-core = { path = "../ak-core" }
