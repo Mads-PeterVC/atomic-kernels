@@ -1,4 +1,4 @@
-use ak_core::{Trajectory, Structure};
+use ak_core::{Structure, Trajectory};
 
 use crate::viewer::ViewerConfig;
 use crate::viewer::systems::*;
@@ -24,7 +24,12 @@ pub fn run(trajectory: Trajectory, config: ViewerConfig) {
         .add_plugins(PanOrbitCameraPlugin)
         .add_systems(
             Startup,
-            (setup_lighting, setup_camera, render_current_frame, setup_camera_light),
+            (
+                setup_lighting,
+                setup_camera,
+                render_current_frame,
+                setup_camera_light,
+            ),
         )
         .add_systems(Update, update_camera_light)
         .run();

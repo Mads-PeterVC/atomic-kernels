@@ -5,7 +5,7 @@ pub struct ViewerConfig {
     // Colors
     pub background: Color,
     pub cell_color: Color,
-    // Lightning 
+    // Lightning
     pub ambient_brightness: f32,
     pub key_illuminance: f32,
     pub fill_illuminance: f32,

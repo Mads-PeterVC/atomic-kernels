@@ -31,7 +31,6 @@ pub fn render_current_frame(
     }
 }
 
-
 pub fn setup_lighting(
     mut commands: Commands,
     mut ambient_light: ResMut<GlobalAmbientLight>,
@@ -49,8 +48,8 @@ pub fn setup_lighting(
         },
         Transform::from_rotation(Quat::from_euler(
             EulerRot::YXZ,
-            -0.8,  // yaw
-            -0.6,  // pitch
+            -0.8, // yaw
+            -0.6, // pitch
             0.0,
         )),
     ));
@@ -62,12 +61,7 @@ pub fn setup_lighting(
             shadows_enabled: false,
             ..default()
         },
-        Transform::from_rotation(Quat::from_euler(
-            EulerRot::YXZ,
-            1.6,
-            -0.2,
-            0.0,
-        )),
+        Transform::from_rotation(Quat::from_euler(EulerRot::YXZ, 1.6, -0.2, 0.0)),
     ));
 
     // RIM / BACK light: behind to pop silhouettes a bit
@@ -77,16 +71,14 @@ pub fn setup_lighting(
             shadows_enabled: false,
             ..default()
         },
-        Transform::from_rotation(Quat::from_euler(
-            EulerRot::YXZ,
-            -2.6,
-            -0.3,
-            0.0,
-        )),
+        Transform::from_rotation(Quat::from_euler(EulerRot::YXZ, -2.6, -0.3, 0.0)),
     ));
 }
 
-pub fn setup_camera(mut commands: Commands, viewer: Res<ViewerTrajectory>, config: Res<ViewerConfig>,
+pub fn setup_camera(
+    mut commands: Commands,
+    viewer: Res<ViewerTrajectory>,
+    config: Res<ViewerConfig>,
 ) {
     // Setup camera
 
@@ -102,15 +94,14 @@ pub fn setup_camera(mut commands: Commands, viewer: Res<ViewerTrajectory>, confi
         Transform::from_translation(Vec3::new(-10.0, -10.0, cell_midpoint.z)),
         PanOrbitCamera {
             focus: cell_midpoint,
-            ..default()            
+            ..default()
         },
-        DistanceFog {            
+        DistanceFog {
             color: config.background,
             directional_light_color: Color::WHITE,
             directional_light_exponent: 5.0,
-            falloff: FogFalloff::Exponential {
-                density: 0.0015,
-        }},
+            falloff: FogFalloff::Exponential { density: 0.0015 },
+        },
     ));
 }
 
@@ -139,6 +130,5 @@ pub fn update_camera_light(
     let to_focus = (orbit.focus - cam_pos).normalize_or_zero();
 
     // Directional light shines along its -Z axis
-    light_transform.rotation =
-        Quat::from_rotation_arc(Vec3::NEG_Z, to_focus);
+    light_transform.rotation = Quat::from_rotation_arc(Vec3::NEG_Z, to_focus);
 }

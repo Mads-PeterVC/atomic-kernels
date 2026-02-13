@@ -53,7 +53,7 @@ pub fn convert_cell(view: &StructureView, cell_color: Color) -> Vec<CellVisual> 
         let visual = CellVisual {
             corner_1: edge.0,
             corner_2: edge.1,
-            color: cell_color
+            color: cell_color,
         };
         visuals.push(visual);
     }
