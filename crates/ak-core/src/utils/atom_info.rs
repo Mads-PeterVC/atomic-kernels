@@ -75,9 +75,8 @@ pub static PERIODIC_TABLE: Lazy<PeriodicTable> =
 #[cfg(test)]
 mod test {
 
-    use crate::{AtomicNumber};
+    use crate::AtomicNumber;
     use crate::utils::atom_info::PERIODIC_TABLE;
-
 
     #[test]
     fn get_from_table() {
