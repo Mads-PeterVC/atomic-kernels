@@ -24,8 +24,9 @@ pub fn run(trajectory: Trajectory, config: ViewerConfig) {
         .add_plugins(PanOrbitCameraPlugin)
         .add_systems(
             Startup,
-            (setup_lighting, setup_camera, render_current_frame),
+            (setup_lighting, setup_camera, render_current_frame, setup_camera_light),
         )
+        .add_systems(Update, update_camera_light)
         .run();
 }
 

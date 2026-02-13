@@ -10,7 +10,12 @@ pub fn render_atoms(
     for atom in visuals.iter() {
         commands.spawn((
             Mesh3d(meshes.add(Sphere::new(atom.radius))),
-            MeshMaterial3d(materials.add(atom.color)),
+            MeshMaterial3d(materials.add(StandardMaterial {
+                base_color: atom.color,
+                metallic: 0.0,
+                perceptual_roughness: 0.5,
+                ..default()
+            })),
             Transform::from_xyz(atom.x(), atom.y(), atom.z()),
         ));
     }

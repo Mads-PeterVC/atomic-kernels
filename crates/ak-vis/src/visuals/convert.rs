@@ -14,7 +14,7 @@ pub fn convert_structure<C: ColorScheme>(view: &StructureView, scheme: &C) -> Ve
     visuals
 }
 
-pub fn convert_cell(view: &StructureView) -> Vec<CellVisual> {
+pub fn convert_cell(view: &StructureView, cell_color: Color) -> Vec<CellVisual> {
     let mut visuals: Vec<CellVisual> = Vec::new();
 
     let a = Vec3::new(
@@ -49,13 +49,11 @@ pub fn convert_cell(view: &StructureView) -> Vec<CellVisual> {
         (c + a, a),
     ];
 
-    let black = Color::srgb_u8(0, 0, 0);
-
     for edge in edges {
         let visual = CellVisual {
             corner_1: edge.0,
             corner_2: edge.1,
-            color: black,
+            color: cell_color
         };
         visuals.push(visual);
     }
