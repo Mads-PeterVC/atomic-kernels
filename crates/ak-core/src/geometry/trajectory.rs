@@ -21,7 +21,6 @@ impl Trajectory {
     pub fn len(&self) -> usize {
         self.frames.len()
     }
-
 }
 
 #[cfg(test)]
@@ -59,5 +58,4 @@ mod test {
 
         assert_eq!(trajectory.len(), 3);
     }
-
 }
