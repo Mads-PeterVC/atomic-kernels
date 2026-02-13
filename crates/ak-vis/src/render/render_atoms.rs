@@ -13,7 +13,7 @@ pub fn render_atoms(
             MeshMaterial3d(materials.add(StandardMaterial {
                 base_color: atom.color,
                 metallic: 0.0,
-                perceptual_roughness: 0.5,
+                perceptual_roughness: 0.4,
                 ..default()
             })),
             Transform::from_xyz(atom.x(), atom.y(), atom.z()),

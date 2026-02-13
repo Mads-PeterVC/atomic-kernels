@@ -86,7 +86,8 @@ pub fn setup_lighting(
     ));
 }
 
-pub fn setup_camera(mut commands: Commands, viewer: Res<ViewerTrajectory>) {
+pub fn setup_camera(mut commands: Commands, viewer: Res<ViewerTrajectory>, config: Res<ViewerConfig>,
+) {
     // Setup camera
 
     let view = viewer.traj.view(viewer.current);
@@ -101,8 +102,15 @@ pub fn setup_camera(mut commands: Commands, viewer: Res<ViewerTrajectory>) {
         Transform::from_translation(Vec3::new(-10.0, -10.0, cell_midpoint.z)),
         PanOrbitCamera {
             focus: cell_midpoint,
-            ..default()
+            ..default()            
         },
+        DistanceFog {            
+            color: config.background,
+            directional_light_color: Color::WHITE,
+            directional_light_exponent: 5.0,
+            falloff: FogFalloff::Exponential {
+                density: 0.0015,
+        }},
     ));
 }
 

@@ -5,7 +5,7 @@ use bevy::color::Color;
 
 fn main() {
     let structure = Structure::from_xyz_file(
-        "/Users/au616397/Repositories/atomic-kernels/crates/ak-vis/examples/xyz/cluster_nicupd_octa_4_random.xyz",
+        "/Users/au616397/Repositories/atomic-kernels/crates/ak-vis/examples/xyz/optimized_structure.xyz",
     );
 
     let config = ViewerConfig { 
