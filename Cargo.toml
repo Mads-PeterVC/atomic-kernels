@@ -1,5 +1,5 @@
 [workspace]
-members = [
+members = ["crates/ak-cli",
   "crates/ak-core",
   "crates/ak-py", "crates/ak-vis",
 ]
