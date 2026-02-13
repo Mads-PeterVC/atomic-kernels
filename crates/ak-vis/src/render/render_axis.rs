@@ -7,7 +7,6 @@ pub fn render_axis(
     materials: &mut ResMut<Assets<StandardMaterial>>,
     meshes: &mut ResMut<Assets<Mesh>>,
 ) {
-
     for visual in visuals {
         let dir = visual.direction.normalize_or_zero();
         let rot = if dir.length_squared() > 0.0 {
@@ -23,7 +22,5 @@ pub fn render_axis(
             MeshMaterial3d(materials.add(visual.color)),
             Transform::from_rotation(rot).with_translation(dir * (visual.length * 0.5)),
         ));
-
     }
-
 }

@@ -1,9 +1,9 @@
 //! A simple 3D scene with light shining over a cube sitting on a plane.
 
 use ak_core::Structure;
-use ak_vis::{JMOL, convert_cell, convert_structure, convert_axis};
+use ak_vis::{JMOL, convert_axis, convert_cell, convert_structure};
 
-use ak_vis::render::{render_cell, render_atoms, render_axis};
+use ak_vis::render::{render_atoms, render_axis, render_cell};
 
 use bevy::prelude::*;
 use bevy_panorbit_camera::{PanOrbitCamera, PanOrbitCameraPlugin};
@@ -32,8 +32,6 @@ fn setup(
     let atom_visuals = convert_structure(&view, &JMOL);
     let cell_visuals = convert_cell(&view);
     let axis_visuals = convert_axis(&view);
-
-
 
     render_atoms(atom_visuals, &mut commands, &mut materials, &mut meshes);
     render_cell(cell_visuals, &mut commands, &mut materials, &mut meshes);
