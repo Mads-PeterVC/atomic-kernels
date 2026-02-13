@@ -1,4 +1,4 @@
-use crate::{AtomVisual, CellVisual, ColorScheme};
+use crate::{AtomVisual, AxisVisual, CellVisual, ColorScheme};
 use ak_core::{PERIODIC_TABLE, StructureView};
 use bevy::math::Vec3;
 use bevy::prelude::*;
@@ -60,5 +60,34 @@ pub fn convert_cell(view: &StructureView) -> Vec<CellVisual> {
         visuals.push(visual);
     }
 
+    visuals
+}
+
+pub fn convert_axis(view: &StructureView) -> Vec<AxisVisual> {
+    let mut visuals: Vec<AxisVisual> = Vec::new();
+
+    let a = Vec3::from_slice(&view.cell.m[0].map(|f| f as f32));
+    let b = Vec3::from_slice(&view.cell.m[1].map(|f| f as f32));
+    let c = Vec3::from_slice(&view.cell.m[2].map(|f| f as f32));
+
+    let a_unit = a / a.length();
+    let b_unit = b / b.length();
+    let c_unit = c / c.length();
+
+    visuals.push(AxisVisual {
+        direction: a_unit,
+        color: Color::srgb_u8(255, 0, 0),
+        length: 1.0,
+    });
+    visuals.push(AxisVisual {
+        direction: b_unit,
+        color: Color::srgb_u8(0, 255, 0),
+        length: 1.0,
+    });
+    visuals.push(AxisVisual {
+        direction: c_unit,
+        color: Color::srgb_u8(0, 0, 255),
+        length: 1.0,
+    });
     visuals
 }

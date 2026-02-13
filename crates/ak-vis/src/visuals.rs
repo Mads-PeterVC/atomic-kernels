@@ -6,3 +6,6 @@ pub use convert::*;
 
 pub mod cell_visual;
 pub use cell_visual::CellVisual;
+
+pub mod axis_visual;
+pub use axis_visual::AxisVisual;
