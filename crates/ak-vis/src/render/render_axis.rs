@@ -1,6 +1,8 @@
 use crate::components::FrameAxis;
 use crate::visuals::AxisVisual;
-use bevy::prelude::*;
+use bevy::{prelude::*,
+    light::{NotShadowCaster, NotShadowReceiver},
+};
 
 pub fn render_axis(
     visuals: Vec<AxisVisual>,
@@ -23,6 +25,8 @@ pub fn render_axis(
             MeshMaterial3d(materials.add(visual.color)),
             Transform::from_rotation(rot).with_translation(dir * (visual.length * 0.5)),
             FrameAxis,
+            NotShadowCaster,
+            NotShadowReceiver,
         ));
     }
 }

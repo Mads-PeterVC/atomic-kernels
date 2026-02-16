@@ -1,7 +1,9 @@
 use crate::components::FrameCell;
 use crate::visuals::CellVisual;
 
-use bevy::prelude::*;
+use bevy::{prelude::*,
+    light::{NotShadowCaster, NotShadowReceiver},
+};
 
 pub fn render_cell(
     visuals: Vec<CellVisual>,
@@ -17,6 +19,8 @@ pub fn render_cell(
             MeshMaterial3d(materials.add(visual.color)),
             transform_cylinder_between(visual.corner_1, visual.corner_2, 0.025),
             FrameCell,
+            NotShadowCaster,
+            NotShadowReceiver,
         ));
     }
 }
