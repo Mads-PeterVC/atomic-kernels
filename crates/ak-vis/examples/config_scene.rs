@@ -4,9 +4,12 @@ use ak_vis::viewer::{ColorConfig, RenderConfig, ViewerConfig, run_structure};
 use bevy::color::Color;
 
 fn main() {
+
+    let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let structure = Structure::from_xyz_file(
-        "/Users/au616397/Repositories/atomic-kernels/crates/ak-vis/examples/xyz/CH3CH2OCH3.xyz",
+        format!("{manifest_dir}/examples/xyz/CH3CH2OCH3.xyz")
     );
+
 
     let config = ViewerConfig {
         color: ColorConfig {
