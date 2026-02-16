@@ -1,11 +1,11 @@
 use crate::render::{render_atoms, render_axis, render_cell};
 use crate::{JMOL, convert_axis, convert_cell, convert_structure};
+use std::f32::consts::FRAC_PI_2;
 
 use crate::viewer::ViewerConfig;
 use crate::viewer::app::ViewerTrajectory;
 use bevy::prelude::*;
 use bevy_panorbit_camera::PanOrbitCamera;
-
 
 pub fn render_current_frame(
     mut commands: Commands,
@@ -83,15 +83,19 @@ pub fn setup_camera(
 
     let view = viewer.traj.view(viewer.current);
 
-    let cell_midpoint = Vec3::from_array([
-        0.5 * (view.cell.m[0][0] + view.cell.m[1][0] + view.cell.m[2][0]) as f32,
-        0.5 * (view.cell.m[0][1] + view.cell.m[1][1] + view.cell.m[2][1]) as f32,
-        0.5 * (view.cell.m[0][2] + view.cell.m[1][2] + view.cell.m[2][2]) as f32,
-    ]);
+    let cell_midpoint = Vec3::from_array(view.cell.reduced(0.5, 0.5, 0.5).map(|f| f as f32));
+
+    let max_cell_length = [view.cell.a(), view.cell.b(), view.cell.c()]
+        .iter()
+        .map(|vec| vec.iter().map(|&x| x.powi(2)).sum::<f64>().sqrt())
+        .max_by(|a, b| a.partial_cmp(b).unwrap())
+        .unwrap() as f32;
 
     commands.spawn((
-        Transform::from_translation(Vec3::new(-10.0, -10.0, cell_midpoint.z)),
         PanOrbitCamera {
+            pitch: Some(-FRAC_PI_2),
+            yaw: Some(0.0),
+            radius: Some(2.5 * max_cell_length),
             focus: cell_midpoint,
             axis: [Vec3::X, Vec3::Y, Vec3::Z],
             ..default()
