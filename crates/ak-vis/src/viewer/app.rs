@@ -3,6 +3,8 @@ use ak_core::{Structure, Trajectory};
 use crate::viewer::ViewerConfig;
 use crate::viewer::systems::*;
 
+use crate::ui::setup_ui;
+
 use bevy::prelude::*;
 use bevy_panorbit_camera::PanOrbitCameraPlugin;
 
@@ -13,8 +15,9 @@ pub struct ViewerTrajectory {
 }
 
 pub fn run(trajectory: Trajectory, config: ViewerConfig) {
-    App::new()
-        .insert_resource(ClearColor(config.background))
+    let mut app = App::new();
+    app
+        .insert_resource(ClearColor(config.color.background))
         .insert_resource(ViewerTrajectory {
             traj: trajectory,
             current: config.initial_frame,
@@ -31,8 +34,11 @@ pub fn run(trajectory: Trajectory, config: ViewerConfig) {
                 setup_camera_light,
             ),
         )
-        .add_systems(Update, update_camera_light)
-        .run();
+        .add_systems(Update, update_camera_light);
+    if app.world().resource::<ViewerConfig>().render.show_ui {
+        app.add_systems(Startup, setup_ui);
+    }
+    app.run();
 }
 
 pub fn run_default(trajectory: Trajectory) {

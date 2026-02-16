@@ -11,3 +11,5 @@ pub use render::render_atoms;
 
 pub mod viewer;
 pub use viewer::{run, run_default, run_structure, run_structure_default};
+
+pub mod ui;

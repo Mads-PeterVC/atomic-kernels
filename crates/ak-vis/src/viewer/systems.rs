@@ -20,12 +20,12 @@ pub fn render_current_frame(
     let atom_visuals = convert_structure(&view, &JMOL);
     render_atoms(atom_visuals, &mut commands, &mut materials, &mut meshes);
 
-    if config.show_cell {
-        let cell_visuals = convert_cell(&view, config.cell_color);
+    if config.render.show_cell {
+        let cell_visuals = convert_cell(&view, config.color.cell_color);
         render_cell(cell_visuals, &mut commands, &mut materials, &mut meshes);
     }
 
-    if config.show_axes {
+    if config.render.show_axes {
         let axis_visuals = convert_axis(&view);
         render_axis(axis_visuals, &mut commands, &mut materials, &mut meshes);
     }
@@ -36,13 +36,13 @@ pub fn setup_lighting(
     mut ambient_light: ResMut<GlobalAmbientLight>,
     config: Res<ViewerConfig>,
 ) {
-    // Ambient: keep low so shading does work
-    ambient_light.brightness = config.ambient_brightness;
+
+    ambient_light.brightness = config.lighting.ambient_brightness;
 
     // KEY light (main): above + to the side + from front
     commands.spawn((
         DirectionalLight {
-            illuminance: config.key_illuminance,
+            illuminance: config.lighting.key_illuminance,
             shadows_enabled: true,
             ..default()
         },
@@ -57,7 +57,7 @@ pub fn setup_lighting(
     // FILL light (soft): opposite side, weaker, no shadows
     commands.spawn((
         DirectionalLight {
-            illuminance: config.fill_illuminance,
+            illuminance: config.lighting.fill_illuminance,
             shadows_enabled: false,
             ..default()
         },
@@ -67,7 +67,7 @@ pub fn setup_lighting(
     // RIM / BACK light: behind to pop silhouettes a bit
     commands.spawn((
         DirectionalLight {
-            illuminance: config.back_illuminance,
+            illuminance: config.lighting.back_illuminance,
             shadows_enabled: false,
             ..default()
         },
@@ -97,7 +97,7 @@ pub fn setup_camera(
             ..default()
         },
         DistanceFog {
-            color: config.background,
+            color: config.color.background,
             directional_light_color: Color::WHITE,
             directional_light_exponent: 5.0,
             falloff: FogFalloff::Exponential { density: 0.0015 },
@@ -111,7 +111,7 @@ pub struct CameraLight;
 pub fn setup_camera_light(mut commands: Commands, config: Res<ViewerConfig>) {
     commands.spawn((
         DirectionalLight {
-            illuminance: config.camera_illuminance,
+            illuminance: config.lighting.camera_illuminance,
             shadows_enabled: true,
             ..default()
         },

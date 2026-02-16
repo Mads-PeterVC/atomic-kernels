@@ -1,5 +1,5 @@
 use ak_core::Structure;
-use ak_vis::viewer::{ViewerConfig, run_structure};
+use ak_vis::viewer::{run_structure, ColorConfig, ViewerConfig, RenderConfig};
 
 use bevy::color::Color;
 
@@ -9,8 +9,14 @@ fn main() {
     );
 
     let config = ViewerConfig {
-        background: Color::srgb(0.0, 0.0, 0.0),
-        cell_color: Color::srgb(0.9, 0.0, 0.0),
+        color: ColorConfig {
+            background: Color::srgb(0.0, 0.0, 0.0),
+            cell_color: Color::srgb(0.9, 0.0, 0.0),
+        },
+        render: RenderConfig {
+            show_ui: true, 
+            ..Default::default()
+        },
         ..Default::default()
     };
 

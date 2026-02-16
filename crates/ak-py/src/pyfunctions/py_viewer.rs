@@ -10,6 +10,7 @@ pub fn viewer(
     cell: numpy::PyReadonlyArray2<f64>,
     pbc: numpy::PyReadonlyArray1<bool>,
 ) {
-    let structure = create_structure(&positions, &numbers, &cell, &pbc).expect("Failed to load structure");
+    let structure =
+        create_structure(&positions, &numbers, &cell, &pbc).expect("Failed to load structure");
     run_structure_default(structure);
 }
