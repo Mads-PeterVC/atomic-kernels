@@ -1,10 +1,8 @@
 use bevy::{
-    ecs::bundle::BundleFromComponents,
     prelude::*,
-    text::{FontFeatureTag, FontFeatures, Underline},
 };
 
-pub fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
+pub fn setup_ui(mut commands: Commands, _asset_server: Res<AssetServer>) {
     commands
         .spawn((
             Node {
