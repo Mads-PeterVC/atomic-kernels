@@ -7,6 +7,7 @@ pub struct LightingConfig {
     pub fill_illuminance: f32,
     pub back_illuminance: f32,
     pub camera_illuminance: f32,
+    pub enable_fog: bool,
 }
 
 impl Default for LightingConfig {
@@ -17,6 +18,7 @@ impl Default for LightingConfig {
             fill_illuminance: 1_000.0,
             back_illuminance: 800.0,
             camera_illuminance: 2_000.0,
+            enable_fog: false,
         }
     }
 }

@@ -91,7 +91,7 @@ pub fn setup_camera(
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap() as f32;
 
-    commands.spawn((
+    let mut camera = commands.spawn(
         PanOrbitCamera {
             pitch: Some(-FRAC_PI_2),
             yaw: Some(0.0),
@@ -99,14 +99,15 @@ pub fn setup_camera(
             focus: cell_midpoint,
             axis: [Vec3::X, Vec3::Y, Vec3::Z],
             ..default()
-        },
-        DistanceFog {
+        });
+    if config.lighting.enable_fog {
+        camera.insert(DistanceFog {
             color: config.color.background,
             directional_light_color: Color::WHITE,
             directional_light_exponent: 5.0,
             falloff: FogFalloff::Exponential { density: 0.0015 },
-        },
-    ));
+        });
+    }
 }
 
 #[derive(Component)]
