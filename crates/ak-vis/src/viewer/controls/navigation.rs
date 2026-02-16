@@ -27,8 +27,10 @@ pub fn despawn_current_frame(
 
 pub fn navigate_frames(
     keys: Res<ButtonInput<KeyCode>>,
+    time: Res<Time>,
     mut viewer: ResMut<ViewerTrajectory>,
     mut commands: Commands,
+    mut timer: Local<Timer>,
     // Queries for despawning
     atoms: Query<Entity, With<FrameAtom>>,
     cells: Query<Entity, With<FrameCell>>,
@@ -40,16 +42,28 @@ pub fn navigate_frames(
     // Resources for camera setting:
     cam_query: Query<&mut PanOrbitCamera>,
 ) {
+    // Initialize timer on first run (0.1 seconds = 10 frames per second)
+    if timer.duration().is_zero() {
+        *timer = Timer::from_seconds(0.1, TimerMode::Repeating);
+    }
+    
+    timer.tick(time.delta());
+    
+    // Only advance frame when timer finishes
+    if !timer.just_finished() {
+        return;
+    }
+    
     let mut changed = false;
 
-    if keys.just_pressed(KeyCode::KeyD) {
+    if keys.pressed(KeyCode::KeyD) {
         if viewer.current < viewer.traj.len() - 1 {
             viewer.current += 1;
             changed = true;
         }
     }
 
-    if keys.just_pressed(KeyCode::KeyA) {
+    if keys.pressed(KeyCode::KeyA) {
         if viewer.current > 0 {
             viewer.current -= 1;
             changed = true;
@@ -75,6 +89,11 @@ pub fn navigate_frames(
             render_axis(axis_visuals, &mut commands, &mut materials, &mut meshes);
         }
 
-        default_radius_focus(viewer.into(), cam_query);
+        let previous_cell = viewer.traj.view(viewer.current-1).cell;
+        let current_cell = viewer.traj.view(viewer.current).cell;
+
+        if !current_cell.eq(&previous_cell) {
+            default_radius_focus(viewer.into(), cam_query);
+        }
     }
 }

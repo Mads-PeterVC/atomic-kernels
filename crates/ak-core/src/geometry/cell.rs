@@ -1,4 +1,4 @@
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Cell {
     // Row-major 3x3
     pub m: [[f64; 3]; 3],
