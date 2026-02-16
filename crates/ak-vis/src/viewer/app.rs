@@ -3,6 +3,8 @@ use ak_core::{Structure, Trajectory};
 use crate::viewer::ViewerConfig;
 use crate::viewer::systems::*;
 
+use crate::viewer::controls::{keyboard_controls, toggle_view};
+
 use crate::ui::setup_ui;
 
 use bevy::prelude::*;
@@ -16,8 +18,7 @@ pub struct ViewerTrajectory {
 
 pub fn run(trajectory: Trajectory, config: ViewerConfig) {
     let mut app = App::new();
-    app
-        .insert_resource(ClearColor(config.color.background))
+    app.insert_resource(ClearColor(config.color.background))
         .insert_resource(ViewerTrajectory {
             traj: trajectory,
             current: config.initial_frame,
@@ -34,7 +35,10 @@ pub fn run(trajectory: Trajectory, config: ViewerConfig) {
                 setup_camera_light,
             ),
         )
-        .add_systems(Update, update_camera_light);
+        .add_systems(
+            Update,
+            (toggle_view, keyboard_controls, update_camera_light),
+        );
     if app.world().resource::<ViewerConfig>().render.show_ui {
         app.add_systems(Startup, setup_ui);
     }

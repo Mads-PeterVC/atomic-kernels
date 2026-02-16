@@ -36,7 +36,6 @@ pub fn setup_lighting(
     mut ambient_light: ResMut<GlobalAmbientLight>,
     config: Res<ViewerConfig>,
 ) {
-
     ambient_light.brightness = config.lighting.ambient_brightness;
 
     // KEY light (main): above + to the side + from front
@@ -94,6 +93,7 @@ pub fn setup_camera(
         Transform::from_translation(Vec3::new(-10.0, -10.0, cell_midpoint.z)),
         PanOrbitCamera {
             focus: cell_midpoint,
+            axis: [Vec3::X, Vec3::Y, Vec3::Z],
             ..default()
         },
         DistanceFog {

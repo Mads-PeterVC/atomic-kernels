@@ -1,6 +1,4 @@
-use bevy::{
-    prelude::*,
-};
+use bevy::prelude::*;
 
 pub fn setup_ui(mut commands: Commands, _asset_server: Res<AssetServer>) {
     commands
