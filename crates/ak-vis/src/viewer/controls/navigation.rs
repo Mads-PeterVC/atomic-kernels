@@ -5,8 +5,8 @@ use crate::components::{FrameAtom, FrameAxis, FrameCell};
 use crate::render::{render_atoms, render_axis, render_cell};
 use crate::viewer::ViewerConfig;
 use crate::viewer::app::ViewerTrajectory;
-use crate::{JMOL, convert_axis, convert_cell, convert_structure};
 use crate::viewer::controls::utils::default_radius_focus;
+use crate::{JMOL, convert_axis, convert_cell, convert_structure};
 
 pub fn despawn_current_frame(
     commands: &mut Commands,
@@ -39,7 +39,6 @@ pub fn navigate_frames(
     config: Res<ViewerConfig>,
     // Resources for camera setting:
     cam_query: Query<&mut PanOrbitCamera>,
-
 ) {
     let mut changed = false;
 
@@ -77,6 +76,5 @@ pub fn navigate_frames(
         }
 
         default_radius_focus(viewer.into(), cam_query);
-
     }
 }

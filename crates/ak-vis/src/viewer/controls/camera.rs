@@ -24,12 +24,11 @@ pub fn toggle_view(
     let Ok(mut orbit) = cam_query.single_mut() else {
         return;
     };
-    
+
     orbit.target_yaw = target_yaw;
     orbit.target_pitch = target_pitch;
     orbit.force_update = true;
     default_radius_focus(viewer, cam_query);
-
 }
 
 pub fn keyboard_controls(

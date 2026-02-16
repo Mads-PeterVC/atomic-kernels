@@ -1,5 +1,5 @@
-use crate::visuals::AxisVisual;
 use crate::components::FrameAxis;
+use crate::visuals::AxisVisual;
 use bevy::prelude::*;
 
 pub fn render_axis(

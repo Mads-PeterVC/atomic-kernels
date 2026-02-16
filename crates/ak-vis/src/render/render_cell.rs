@@ -1,5 +1,5 @@
-use crate::visuals::CellVisual;
 use crate::components::FrameCell;
+use crate::visuals::CellVisual;
 
 use bevy::prelude::*;
 

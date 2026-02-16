@@ -8,4 +8,3 @@ pub struct FrameCell;
 
 #[derive(Component)]
 pub struct FrameAxis;
-

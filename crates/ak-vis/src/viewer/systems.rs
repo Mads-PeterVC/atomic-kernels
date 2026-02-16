@@ -91,15 +91,14 @@ pub fn setup_camera(
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap() as f32;
 
-    let mut camera = commands.spawn(
-        PanOrbitCamera {
-            pitch: Some(-FRAC_PI_2),
-            yaw: Some(0.0),
-            radius: Some(2.5 * max_cell_length),
-            focus: cell_midpoint,
-            axis: [Vec3::X, Vec3::Y, Vec3::Z],
-            ..default()
-        });
+    let mut camera = commands.spawn(PanOrbitCamera {
+        yaw: Some(-FRAC_PI_2),
+        pitch: Some(0.0),
+        radius: Some(2.5 * max_cell_length),
+        focus: cell_midpoint,
+        axis: [Vec3::X, Vec3::Y, Vec3::Z],
+        ..default()
+    });
     if config.lighting.enable_fog {
         camera.insert(DistanceFog {
             color: config.color.background,

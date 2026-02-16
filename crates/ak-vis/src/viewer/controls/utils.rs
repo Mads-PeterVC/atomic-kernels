@@ -2,7 +2,10 @@ use crate::viewer::app::ViewerTrajectory;
 use bevy::prelude::*;
 use bevy_panorbit_camera::PanOrbitCamera;
 
-pub fn default_radius_focus(viewer: Res<ViewerTrajectory>, mut cam_query: Query<&mut PanOrbitCamera>) {
+pub fn default_radius_focus(
+    viewer: Res<ViewerTrajectory>,
+    mut cam_query: Query<&mut PanOrbitCamera>,
+) {
     let view = viewer.traj.view(viewer.current);
     let cell_midpoint = Vec3::from_array(view.cell.reduced(0.5, 0.5, 0.5).map(|f| f as f32));
 

@@ -43,13 +43,12 @@ impl Cell {
     }
 
     pub fn reduced(&self, a: f64, b: f64, c: f64) -> [f64; 3] {
-       [
-           a * self.m[0][0] + b * self.m[1][0] + c * self.m[2][0],
-           a * self.m[0][1] + b * self.m[1][1] + c * self.m[2][1],
-           a * self.m[0][2] + b * self.m[1][2] + c * self.m[2][2],
-       ]
+        [
+            a * self.m[0][0] + b * self.m[1][0] + c * self.m[2][0],
+            a * self.m[0][1] + b * self.m[1][1] + c * self.m[2][1],
+            a * self.m[0][2] + b * self.m[1][2] + c * self.m[2][2],
+        ]
     }
-
 }
 
 #[cfg(test)]
