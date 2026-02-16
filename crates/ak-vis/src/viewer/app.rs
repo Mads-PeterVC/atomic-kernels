@@ -3,7 +3,9 @@ use ak_core::{Structure, Trajectory};
 use crate::viewer::ViewerConfig;
 use crate::viewer::systems::*;
 
-use crate::viewer::controls::{keyboard_controls, toggle_view};
+use crate::viewer::controls::{
+    keyboard_controls, screenshot_on_spacebar, screenshot_saving, toggle_view, navigate_frames
+};
 
 use crate::ui::setup_ui;
 
@@ -37,7 +39,14 @@ pub fn run(trajectory: Trajectory, config: ViewerConfig) {
         )
         .add_systems(
             Update,
-            (toggle_view, keyboard_controls, update_camera_light),
+            (
+                toggle_view,
+                keyboard_controls,
+                update_camera_light,
+                screenshot_on_spacebar,
+                screenshot_saving,
+                navigate_frames,
+            ),
         );
     if app.world().resource::<ViewerConfig>().render.show_ui {
         app.add_systems(Startup, setup_ui);

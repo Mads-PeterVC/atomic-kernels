@@ -1,4 +1,6 @@
 use crate::visuals::CellVisual;
+use crate::components::FrameCell;
+
 use bevy::prelude::*;
 
 pub fn render_cell(
@@ -14,6 +16,7 @@ pub fn render_cell(
             Mesh3d(meshes.add(cyl_mesh.clone())),
             MeshMaterial3d(materials.add(visual.color)),
             transform_cylinder_between(visual.corner_1, visual.corner_2, 0.025),
+            FrameCell,
         ));
     }
 }

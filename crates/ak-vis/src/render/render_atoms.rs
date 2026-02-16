@@ -1,4 +1,5 @@
 use crate::AtomVisual;
+use crate::components::FrameAtom;
 use bevy::prelude::*;
 
 pub fn render_atoms(
@@ -17,6 +18,7 @@ pub fn render_atoms(
                 ..default()
             })),
             Transform::from_xyz(atom.x(), atom.y(), atom.z()),
+            FrameAtom
         ));
     }
 }

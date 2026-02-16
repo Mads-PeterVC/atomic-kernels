@@ -1,4 +1,5 @@
 use crate::visuals::AxisVisual;
+use crate::components::FrameAxis;
 use bevy::prelude::*;
 
 pub fn render_axis(
@@ -21,6 +22,7 @@ pub fn render_axis(
             Mesh3d(meshes.add(cyl_mesh)),
             MeshMaterial3d(materials.add(visual.color)),
             Transform::from_rotation(rot).with_translation(dir * (visual.length * 0.5)),
+            FrameAxis,
         ));
     }
 }

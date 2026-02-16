@@ -3,9 +3,9 @@ use crate::{JMOL, convert_axis, convert_cell, convert_structure};
 
 use crate::viewer::ViewerConfig;
 use crate::viewer::app::ViewerTrajectory;
-
 use bevy::prelude::*;
 use bevy_panorbit_camera::PanOrbitCamera;
+
 
 pub fn render_current_frame(
     mut commands: Commands,

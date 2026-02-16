@@ -13,3 +13,5 @@ pub mod viewer;
 pub use viewer::{run, run_default, run_structure, run_structure_default};
 
 pub mod ui;
+
+mod components;
