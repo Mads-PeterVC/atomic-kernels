@@ -6,7 +6,7 @@ use crate::viewer::ViewerConfig;
 use crate::viewer::app::ViewerTrajectory;
 use bevy::prelude::*;
 use bevy_panorbit_camera::PanOrbitCamera;
-
+use bevy::core_pipeline::tonemapping::Tonemapping;
 pub fn render_current_frame(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -107,6 +107,9 @@ pub fn setup_camera(
             falloff: FogFalloff::Exponential { density: 0.0015 },
         });
     }
+
+    camera.insert((Msaa::Sample4, Tonemapping::TonyMcMapface));
+
 }
 
 #[derive(Component)]

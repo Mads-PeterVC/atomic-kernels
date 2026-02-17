@@ -4,7 +4,7 @@ use crate::viewer::ViewerConfig;
 use crate::viewer::systems::*;
 
 use crate::viewer::controls::{
-    keyboard_controls, navigate_frames, screenshot_on_spacebar, screenshot_saving, toggle_view,
+    keyboard_controls, navigate_frames, screenshot_on_spacebar, screenshot_saving, toggle_view, toggle_ui_visibility
 };
 
 use crate::ui::setup_ui;
@@ -26,7 +26,7 @@ pub fn run(trajectory: Trajectory, config: ViewerConfig) {
             current: config.initial_frame,
         })
         .insert_resource(config)
-        .add_plugins(DefaultPlugins)
+        .add_plugins((DefaultPlugins, MeshPickingPlugin))
         .add_plugins(PanOrbitCameraPlugin)
         .add_systems(
             Startup,
@@ -50,6 +50,7 @@ pub fn run(trajectory: Trajectory, config: ViewerConfig) {
         );
     if app.world().resource::<ViewerConfig>().render.show_ui {
         app.add_systems(Startup, setup_ui);
+        app.add_systems(Update, toggle_ui_visibility);
     }
     app.run();
 }

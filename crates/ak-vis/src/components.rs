@@ -8,3 +8,6 @@ pub struct FrameCell;
 
 #[derive(Component)]
 pub struct FrameAxis;
+
+#[derive(Component)]
+pub struct ToggleableUI;

@@ -7,3 +7,5 @@ pub use config::{ColorConfig, LightingConfig, RenderConfig, ViewerConfig};
 mod systems;
 
 mod controls;
+
+pub mod picking;
