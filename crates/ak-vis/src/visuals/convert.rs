@@ -17,21 +17,9 @@ pub fn convert_structure<C: ColorScheme>(view: &StructureView, scheme: &C) -> Ve
 pub fn convert_cell(view: &StructureView, cell_color: Color) -> Vec<CellVisual> {
     let mut visuals: Vec<CellVisual> = Vec::new();
 
-    let a = Vec3::new(
-        view.cell.m[0][0] as f32,
-        view.cell.m[0][1] as f32,
-        view.cell.m[0][2] as f32,
-    );
-    let b = Vec3::new(
-        view.cell.m[1][0] as f32,
-        view.cell.m[1][1] as f32,
-        view.cell.m[1][2] as f32,
-    );
-    let c = Vec3::new(
-        view.cell.m[2][0] as f32,
-        view.cell.m[2][1] as f32,
-        view.cell.m[2][2] as f32,
-    );
+    let a = Vec3::from_array(view.cell.a().map(|f| f as f32));
+    let b = Vec3::from_array(view.cell.b().map(|f| f as f32));
+    let c = Vec3::from_array(view.cell.c().map(|f| f as f32));
     let origin = Vec3::ZERO;
 
     let edges = [
@@ -64,9 +52,9 @@ pub fn convert_cell(view: &StructureView, cell_color: Color) -> Vec<CellVisual> 
 pub fn convert_axis(view: &StructureView) -> Vec<AxisVisual> {
     let mut visuals: Vec<AxisVisual> = Vec::new();
 
-    let a = Vec3::from_slice(&view.cell.m[0].map(|f| f as f32));
-    let b = Vec3::from_slice(&view.cell.m[1].map(|f| f as f32));
-    let c = Vec3::from_slice(&view.cell.m[2].map(|f| f as f32));
+    let a = Vec3::from_slice(&view.cell.a().map(|f| f as f32));
+    let b = Vec3::from_slice(&view.cell.b().map(|f| f as f32));
+    let c = Vec3::from_slice(&view.cell.c().map(|f| f as f32));
 
     let a_unit = a / a.length();
     let b_unit = b / b.length();
