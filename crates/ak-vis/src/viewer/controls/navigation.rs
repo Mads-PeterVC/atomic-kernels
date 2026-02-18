@@ -56,19 +56,17 @@ pub fn navigate_frames(
     
     let mut changed = false;
 
-    if keys.pressed(KeyCode::KeyD) {
-        if viewer.current < viewer.traj.len() - 1 {
+    if keys.pressed(KeyCode::KeyD)
+        && viewer.current < viewer.traj.len() - 1 {
             viewer.current += 1;
             changed = true;
         }
-    }
 
-    if keys.pressed(KeyCode::KeyA) {
-        if viewer.current > 0 {
+    if keys.pressed(KeyCode::KeyA)
+        && viewer.current > 0 {
             viewer.current -= 1;
             changed = true;
         }
-    }
 
     if changed {
         // Despawn old frame

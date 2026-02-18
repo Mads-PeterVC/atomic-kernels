@@ -11,8 +11,8 @@ impl AtomVisual {
         let position_f32: [f32; 3] = [position[0] as f32, position[1] as f32, position[2] as f32];
         AtomVisual {
             position: position_f32,
-            color: color,
-            radius: radius,
+            color,
+            radius,
         }
     }
 

@@ -37,7 +37,8 @@ pub fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
 }
 
 fn text_bundle(text: &str, font: &Handle<Font>) -> impl Bundle {
-    let bundle = (
+    
+    (
         Text::new(text),
         // Set the justification of the Text
         Underline,
@@ -52,6 +53,5 @@ fn text_bundle(text: &str, font: &Handle<Font>) -> impl Bundle {
            //     left: px(10),
            //     ..default()
            // },
-    );
-    bundle
+    )
 }

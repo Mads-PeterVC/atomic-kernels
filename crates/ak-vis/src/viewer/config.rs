@@ -55,6 +55,7 @@ impl Default for RenderConfig {
 }
 
 #[derive(Clone, Resource)]
+#[derive(Default)]
 pub struct ViewerConfig {
     pub color: ColorConfig,
     pub lighting: LightingConfig,
@@ -62,13 +63,3 @@ pub struct ViewerConfig {
     pub initial_frame: usize,
 }
 
-impl Default for ViewerConfig {
-    fn default() -> Self {
-        Self {
-            color: Default::default(),
-            lighting: Default::default(),
-            render: Default::default(),
-            initial_frame: 0,
-        }
-    }
-}
