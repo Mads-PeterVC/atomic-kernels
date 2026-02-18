@@ -23,7 +23,7 @@ impl Structure {
             .collect();
 
         Self {
-            positions: positions,
+            positions,
             numbers: atomic_numbers,
             cell: { Cell::new(cell) },
             pbc: { Pbc::new(pbc) },
@@ -34,8 +34,8 @@ impl Structure {
         StructureView {
             positions: &self.positions,
             numbers: &self.numbers,
-            cell: self.cell.clone(),
-            pbc: self.pbc.clone(),
+            cell: self.cell,
+            pbc: self.pbc,
         }
     }
 

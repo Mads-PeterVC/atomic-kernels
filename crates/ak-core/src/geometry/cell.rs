@@ -20,10 +20,8 @@ impl Cell {
                     if v <= eps {
                         return false;
                     }
-                } else {
-                    if v > eps {
-                        return false;
-                    }
+                } else if v > eps {
+                    return false;
                 }
             }
         }

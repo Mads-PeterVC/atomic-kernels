@@ -11,4 +11,8 @@ impl<'a> StructureView<'a> {
     pub fn len(&self) -> usize {
         self.positions.len()
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() > 0
+    }
 }

@@ -9,9 +9,9 @@ pub struct LennardJones {
 impl LennardJones {
     pub fn new(epsilon: f64, sigma: f64, cutoff: f64) -> Self {
         Self {
-            epsilon: epsilon,
-            sigma: sigma,
-            cutoff: cutoff,
+            epsilon,
+            sigma,
+            cutoff,
         }
     }
 }

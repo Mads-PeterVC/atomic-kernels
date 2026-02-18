@@ -19,8 +19,8 @@ pub trait Calculator {
 
     fn calculate(&self, view: &StructureView) -> Result<CalculatorResult, CalculatorError> {
         Ok(CalculatorResult {
-            energy: Some(self.calculate_energy(&view)?),
-            forces: Some(self.calculate_forces(&view)?),
+            energy: Some(self.calculate_energy(view)?),
+            forces: Some(self.calculate_forces(view)?),
         })
     }
 }

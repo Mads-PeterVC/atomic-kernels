@@ -12,7 +12,7 @@ pub trait PairPotential {
 
 impl<T: PairPotential> Calculator for T {
     fn calculate_energy(&self, view: &crate::StructureView) -> Result<f64, CalculatorError> {
-        let nl = build_neighborlist(&view, self.cutoff());
+        let nl = build_neighborlist(view, self.cutoff());
 
         let mut energy = 0.0;
         let distances = nl.distance.ok_or(CalculatorError::CalculationFailed)?;
@@ -27,10 +27,10 @@ impl<T: PairPotential> Calculator for T {
         &self,
         view: &crate::StructureView,
     ) -> Result<Vec<[f64; 3]>, CalculatorError> {
-        let nl = build_neighborlist(&view, self.cutoff());
+        let nl = build_neighborlist(view, self.cutoff());
         let distances = nl.distance.ok_or(CalculatorError::CalculationFailed)?;
 
-        let mut forces: Vec<[f64; 3]> = vec![[0.0 as f64; 3]; view.len()];
+        let mut forces: Vec<[f64; 3]> = vec![[0.0_f64; 3]; view.len()];
 
         for ((i, j), r) in zip(zip(nl.i, nl.j), distances) {
             let pos_i = view.positions[i];

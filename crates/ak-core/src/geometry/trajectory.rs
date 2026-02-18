@@ -10,8 +10,7 @@ impl Trajectory {
     }
 
     pub fn view<'a>(&'a self, index: usize) -> StructureView<'a> {
-        let view = self.frames[index].view();
-        view
+        self.frames[index].view()
     }
 
     pub fn append(&mut self, frame: Structure) {
@@ -20,6 +19,10 @@ impl Trajectory {
 
     pub fn len(&self) -> usize {
         self.frames.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() > 0
     }
 }
 
