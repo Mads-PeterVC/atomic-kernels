@@ -62,6 +62,9 @@ coverage.xml
 # Sphinx documentation
 docs/_build/
 
+# Copilot stuff
+.github/*.md
+
 # PyCharm
 .idea/
 
