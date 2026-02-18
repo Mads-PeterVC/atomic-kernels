@@ -13,7 +13,7 @@ pub fn create_structure(
     if shape.len() != 2 || shape[1] != 3 {
         return Err(PyValueError::new_err(format!(
             "positions must have shape (N, 3); got ({}, {})",
-            shape.get(0).copied().unwrap_or(0),
+            shape.first().copied().unwrap_or(0),
             shape.get(1).copied().unwrap_or(0),
         )));
     }
