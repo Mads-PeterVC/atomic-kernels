@@ -108,8 +108,6 @@ pub fn setup_camera(
         });
     }
 
-    camera.insert((Msaa::Sample4, Tonemapping::TonyMcMapface));
-
 }
 
 #[derive(Component)]
