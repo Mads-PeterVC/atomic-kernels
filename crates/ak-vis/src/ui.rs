@@ -3,7 +3,6 @@ use bevy::prelude::*;
 use crate::components::ToggleableUI;
 
 pub fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
-
     let font = asset_server.load("fonts/RobotoMono-VariableFont_wght.ttf");
 
     commands
@@ -25,18 +24,16 @@ pub fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
         ))
         .insert(children![text_bundle("Keybindings", &font)]);
 
-    commands
-        .spawn((
-            Text::new("Some text"),
-            ToggleableUI,
-            TextLayout::new_with_justify(Justify::Right),
-            TextFont {
-                font: font.clone(),
-                font_size: 12.0,
-                ..default()
-            }
-        ));
-
+    commands.spawn((
+        Text::new("Some text"),
+        ToggleableUI,
+        TextLayout::new_with_justify(Justify::Right),
+        TextFont {
+            font: font.clone(),
+            font_size: 12.0,
+            ..default()
+        },
+    ));
 }
 
 fn text_bundle(text: &str, font: &Handle<Font>) -> impl Bundle {
@@ -48,14 +45,13 @@ fn text_bundle(text: &str, font: &Handle<Font>) -> impl Bundle {
         TextFont {
             font: font.clone(),
             ..default()
-        }
-        // Set the style of the Node itself.
-        // Node {
-        //     position_type: PositionType::Absolute,
-        //     bottom: px(5),
-        //     left: px(10),
-        //     ..default()
-        // },
+        }, // Set the style of the Node itself.
+           // Node {
+           //     position_type: PositionType::Absolute,
+           //     bottom: px(5),
+           //     left: px(10),
+           //     ..default()
+           // },
     );
     bundle
 }
