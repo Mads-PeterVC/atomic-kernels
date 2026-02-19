@@ -1,20 +1,19 @@
-use crate::create_structure;
+use crate::PyStructure;
 use ak_core::build_neighborlist;
 use numpy::ndarray::{Array1, Array2};
 use numpy::{IntoPyArray, PyArray1, PyArray2};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
+type NeighborListResult = PyResult<(Py<PyArray1<usize>>, Py<PyArray1<usize>>, Py<PyArray2<i32>>)>;
+
 #[pyfunction]
 pub fn neighborlist(
     py: Python<'_>,
-    positions: numpy::PyReadonlyArray2<f64>,
-    numbers: numpy::PyReadonlyArray1<i32>,
-    cell: numpy::PyReadonlyArray2<f64>,
-    pbc: numpy::PyReadonlyArray1<bool>,
+    structure: PyStructure,
     cutoff: f64,
-) -> PyResult<(Py<PyArray1<usize>>, Py<PyArray1<usize>>, Py<PyArray2<i32>>)> {
-    let structure = create_structure(&positions, &numbers, &cell, &pbc)?;
+) -> NeighborListResult {
+    // Thanks to Deref, we can call .view() directly instead of structure.0.view()
     let view = structure.view();
 
     // Call ak-core implementation
