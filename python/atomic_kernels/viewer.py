@@ -1,8 +1,10 @@
 from ase import Atoms
 
-from atomic_kernels import viewer
-from atomic_kernels.atoms_to_arr import extract_arrays
+from atomic_kernels import trajectory_viewer
 
-def bevy_viewer(atoms: Atoms) -> None:
-    P, numbers, cell, pbc = extract_arrays(atoms)
-    viewer(P, numbers, cell, pbc)
+def bevy_viewer(atoms: Atoms | list[Atoms]) -> None:
+
+    if isinstance(atoms, Atoms):
+        atoms = [atoms]
+
+    trajectory_viewer(atoms)
