@@ -75,6 +75,15 @@ def build() -> Atoms:
     return atoms
 
 atoms = build()
-print(len(atoms))
 
-bevy_viewer(atoms)
+trajectory = [atoms]
+for mol_name in g2.names:
+    mol = molecule(mol_name)
+    # mol.center(vacuum=5.0)
+    mol.cell = (10.0, 10.0, 10.0)
+    mol.center()
+    trajectory.append(mol)
+
+
+
+bevy_viewer(trajectory)
