@@ -1,3 +1,4 @@
+use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 use bevy_panorbit_camera::PanOrbitCamera;
 
@@ -7,6 +8,24 @@ use crate::viewer::ViewerConfig;
 use crate::viewer::app::ViewerTrajectory;
 use crate::viewer::controls::utils::default_radius_focus;
 use crate::{JMOL, convert_axis, convert_cell, convert_structure};
+
+#[derive(SystemParam)]
+pub struct FrameQueries<'w, 's> {
+    atoms: Query<'w, 's, Entity, With<FrameAtom>>,
+    cells: Query<'w, 's, Entity, With<FrameCell>>,
+    axes: Query<'w, 's, Entity, With<FrameAxis>>,
+    camera: Query<'w, 's, &'static mut PanOrbitCamera>,
+}
+
+#[derive(SystemParam)]
+pub struct RenderResources<'w> {
+    keys: Res<'w, ButtonInput<KeyCode>>,
+    time: Res<'w, Time>,
+    viewer: ResMut<'w, ViewerTrajectory>,
+    meshes: ResMut<'w, Assets<Mesh>>,
+    materials: ResMut<'w, Assets<StandardMaterial>>,
+    config: Res<'w, ViewerConfig>,
+}
 
 pub fn despawn_current_frame(
     commands: &mut Commands,
@@ -26,72 +45,83 @@ pub fn despawn_current_frame(
 }
 
 pub fn navigate_frames(
-    keys: Res<ButtonInput<KeyCode>>,
-    time: Res<Time>,
-    mut viewer: ResMut<ViewerTrajectory>,
     mut commands: Commands,
     mut timer: Local<Timer>,
-    // Queries for despawning
-    atoms: Query<Entity, With<FrameAtom>>,
-    cells: Query<Entity, With<FrameCell>>,
-    axes: Query<Entity, With<FrameAxis>>,
-    // Resources for rendering
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-    config: Res<ViewerConfig>,
-    // Resources for camera setting:
-    cam_query: Query<&mut PanOrbitCamera>,
+    queries: FrameQueries,
+    mut resources: RenderResources,
 ) {
     // Initialize timer on first run (0.1 seconds = 10 frames per second)
     if timer.duration().is_zero() {
         *timer = Timer::from_seconds(0.1, TimerMode::Repeating);
     }
-    
-    timer.tick(time.delta());
-    
+
+    timer.tick(resources.time.delta());
+
     // Only advance frame when timer finishes
     if !timer.just_finished() {
         return;
     }
-    
+
     let mut changed = false;
 
-    if keys.pressed(KeyCode::KeyD)
-        && viewer.current < viewer.traj.len() - 1 {
-            viewer.current += 1;
-            changed = true;
-        }
+    if resources.keys.pressed(KeyCode::KeyD)
+        && resources.viewer.current < resources.viewer.traj.len() - 1
+    {
+        resources.viewer.current += 1;
+        changed = true;
+    }
 
-    if keys.pressed(KeyCode::KeyA)
-        && viewer.current > 0 {
-            viewer.current -= 1;
-            changed = true;
-        }
+    if resources.keys.pressed(KeyCode::KeyA) && resources.viewer.current > 0 {
+        resources.viewer.current -= 1;
+        changed = true;
+    }
 
     if changed {
         // Despawn old frame
-        despawn_current_frame(&mut commands, atoms, cells, axes);
+        despawn_current_frame(&mut commands, queries.atoms, queries.cells, queries.axes);
 
         // Render new frame (same logic as render_current_frame)
-        let view = viewer.traj.view(viewer.current);
+        let view = resources.viewer.traj.view(resources.viewer.current);
         let atom_visuals = convert_structure(&view, &JMOL);
-        render_atoms(atom_visuals, &mut commands, &mut materials, &mut meshes);
+        render_atoms(
+            atom_visuals,
+            &mut commands,
+            &mut resources.materials,
+            &mut resources.meshes,
+        );
 
-        if config.render.show_cell {
-            let cell_visuals = convert_cell(&view, config.color.cell_color);
-            render_cell(cell_visuals, &mut commands, &mut materials, &mut meshes);
+        if resources.config.render.show_cell {
+            let cell_visuals = convert_cell(&view, resources.config.color.cell_color);
+            render_cell(
+                cell_visuals,
+                &mut commands,
+                &mut resources.materials,
+                &mut resources.meshes,
+            );
         }
 
-        if config.render.show_axes {
+        if resources.config.render.show_axes {
             let axis_visuals = convert_axis(&view);
-            render_axis(axis_visuals, &mut commands, &mut materials, &mut meshes);
+            render_axis(
+                axis_visuals,
+                &mut commands,
+                &mut resources.materials,
+                &mut resources.meshes,
+            );
         }
 
-        let previous_cell = viewer.traj.view(viewer.current-1).cell;
-        let current_cell = viewer.traj.view(viewer.current).cell;
+        // Only check for cell changes if there's a previous frame
+        if resources.viewer.current > 0 {
+            let previous_cell = resources
+                .viewer
+                .traj
+                .view(resources.viewer.current - 1)
+                .cell;
+            let current_cell = resources.viewer.traj.view(resources.viewer.current).cell;
 
-        if !current_cell.eq(&previous_cell) {
-            default_radius_focus(viewer.into(), cam_query);
+            if !current_cell.eq(&previous_cell) {
+                default_radius_focus(resources.viewer.into(), queries.camera);
+            }
         }
     }
 }
