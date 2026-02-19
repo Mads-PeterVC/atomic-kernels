@@ -107,12 +107,9 @@ pub fn read_xyz<R: std::io::BufRead>(r: R) -> Structure {
     let (positions, numbers) =
         read_positions_and_numbers(&lines[2..], number_of_atoms).expect("Error");
 
-    let cell = {
-        read_cell(&lines[1]).unwrap_or([[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]])
-    };
-    let pbc = {
-        read_pbc(&lines[1]).unwrap_or_default()
-    };
+    let cell =
+        { read_cell(&lines[1]).unwrap_or([[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]) };
+    let pbc = { read_pbc(&lines[1]).unwrap_or_default() };
 
     Structure::new(positions, numbers, cell, pbc)
 }

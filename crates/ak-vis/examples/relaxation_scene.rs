@@ -11,15 +11,17 @@ fn main() {
     let mut structures: Vec<Structure> = Vec::new();
 
     // Read all entries in the directory
-    let entries: Vec<fs::DirEntry> = fs::read_dir(xyz_dir).expect("Failed to read xyz directory").map(|f| f.expect("Stuff")).collect();
+    let entries: Vec<fs::DirEntry> = fs::read_dir(xyz_dir)
+        .expect("Failed to read xyz directory")
+        .map(|f| f.expect("Stuff"))
+        .collect();
 
     for frame_index in 0..entries.len() {
-        
         let path = format!("{manifest_dir}/examples/xyz/relaxation/frame_{frame_index:03}.xyz");
 
         let structure = Structure::from_xyz_file(&path);
         structures.push(structure);
-        }
+    }
 
     let trajectory = Trajectory::new(structures);
     run_default(trajectory);

@@ -11,7 +11,7 @@ fn squared_distance(positions: &[[f64; 3]], i: usize, j: usize) -> f64 {
     let dx = positions[i][0] - positions[j][0];
     let dy = positions[i][1] - positions[j][1];
     let dz = positions[i][2] - positions[j][2];
-    
+
     dx * dx + dy * dy + dz * dz
 }
 
@@ -38,7 +38,6 @@ pub fn build_neighborlist(view: &StructureView, cutoff: f64) -> NeighborList {
         }
     }
 
-    
     NeighborList {
         i: i_indices,
         j: j_indices,

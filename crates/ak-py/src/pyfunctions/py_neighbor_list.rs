@@ -8,11 +8,7 @@ use pyo3::prelude::*;
 type NeighborListResult = PyResult<(Py<PyArray1<usize>>, Py<PyArray1<usize>>, Py<PyArray2<i32>>)>;
 
 #[pyfunction]
-pub fn neighborlist(
-    py: Python<'_>,
-    structure: PyStructure,
-    cutoff: f64,
-) -> NeighborListResult {
+pub fn neighborlist(py: Python<'_>, structure: PyStructure, cutoff: f64) -> NeighborListResult {
     // Thanks to Deref, we can call .view() directly instead of structure.0.view()
     let view = structure.view();
 

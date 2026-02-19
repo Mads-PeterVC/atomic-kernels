@@ -75,9 +75,10 @@ impl FromPyObject<'_, '_> for PyTrajectory {
 
     fn extract(obj: Borrowed<'_, '_, PyAny>) -> Result<Self, Self::Error> {
         // Try to extract as a sequence/list
-        let seq = obj.cast::<pyo3::types::PySequence>()
+        let seq = obj
+            .cast::<pyo3::types::PySequence>()
             .map_err(|_| PyValueError::new_err("Expected a list/sequence of Atoms objects"))?;
-        
+
         let length = seq.len()?;
         let mut structures = Vec::with_capacity(length);
 
@@ -85,14 +86,14 @@ impl FromPyObject<'_, '_> for PyTrajectory {
         for i in 0..length {
             let item = seq.get_item(i)?;
             let borrowed = item.as_borrowed();
-            
+
             // Classify and convert each item (could be Atoms object or tuple)
             let input_type = classify_input(&borrowed)?;
             let structure = match input_type {
                 InputType::Atoms => structure_from_atoms(borrowed)?,
                 InputType::ArrayTuple => structure_from_tuple(borrowed)?,
             };
-            
+
             structures.push(structure);
         }
 

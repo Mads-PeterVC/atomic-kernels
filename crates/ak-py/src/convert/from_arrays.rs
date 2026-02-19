@@ -4,7 +4,7 @@ use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
 /// Convert validated numpy arrays to a Structure
-/// 
+///
 /// This function validates array shapes and converts them to the types
 /// expected by ak_core::Structure. Used by structure_from_tuple.
 pub fn from_arrays(

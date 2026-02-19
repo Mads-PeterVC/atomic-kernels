@@ -4,7 +4,8 @@ use crate::viewer::ViewerConfig;
 use crate::viewer::systems::*;
 
 use crate::viewer::controls::{
-    keyboard_controls, navigate_frames, screenshot_on_spacebar, screenshot_saving, toggle_view, toggle_ui_visibility
+    keyboard_controls, navigate_frames, screenshot_on_spacebar, screenshot_saving,
+    toggle_ui_visibility, toggle_view,
 };
 
 use crate::ui::setup_ui;

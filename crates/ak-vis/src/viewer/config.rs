@@ -54,12 +54,10 @@ impl Default for RenderConfig {
     }
 }
 
-#[derive(Clone, Resource)]
-#[derive(Default)]
+#[derive(Clone, Resource, Default)]
 pub struct ViewerConfig {
     pub color: ColorConfig,
     pub lighting: LightingConfig,
     pub render: RenderConfig,
     pub initial_frame: usize,
 }
-

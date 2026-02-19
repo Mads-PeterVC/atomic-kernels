@@ -1,5 +1,5 @@
-use bevy::prelude::*;
 use crate::components::ToggleableUI;
+use bevy::prelude::*;
 
 // System to toggle visibility
 pub fn toggle_ui_visibility(

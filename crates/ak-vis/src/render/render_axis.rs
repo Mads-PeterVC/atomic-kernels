@@ -1,7 +1,8 @@
 use crate::components::FrameAxis;
 use crate::visuals::AxisVisual;
-use bevy::{prelude::*,
+use bevy::{
     light::{NotShadowCaster, NotShadowReceiver},
+    prelude::*,
 };
 
 pub fn render_axis(

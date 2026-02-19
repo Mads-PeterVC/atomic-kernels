@@ -37,7 +37,6 @@ pub fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
 }
 
 fn text_bundle(text: &str, font: &Handle<Font>) -> impl Bundle {
-    
     (
         Text::new(text),
         // Set the justification of the Text
