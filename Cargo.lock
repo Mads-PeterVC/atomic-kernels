@@ -120,6 +120,7 @@ version = "0.1.0"
 dependencies = [
  "ak-core",
  "ak-vis",
+ "bevy",
  "numpy",
  "pyo3",
 ]

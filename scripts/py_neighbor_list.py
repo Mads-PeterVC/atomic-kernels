@@ -14,14 +14,14 @@ def make_atoms(n: int = 3, box_size=10.0) -> Atoms:
     return atoms
 
 
-atoms = make_atoms(n=20000, box_size=100)
+atoms = make_atoms(n=20000, box_size=10)
 
 t0 = dt()
 P = np.ascontiguousarray(atoms.positions)
 numbers = np.ascontiguousarray(atoms.numbers, dtype=np.int32)
 cell = np.ascontiguousarray(atoms.cell)
 pbc = np.array(atoms.pbc)
-i, j, shifts = neighborlist(P, numbers, cell, pbc, cutoff=2.0)
+i, j, shifts = neighborlist((P, numbers, cell, pbc), cutoff=2.0)
 
 ## Symmetrize the neighbor list
 i_sym = np.concatenate([i, j])

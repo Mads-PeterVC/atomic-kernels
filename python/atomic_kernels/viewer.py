@@ -1,10 +1,11 @@
 from ase import Atoms
+from typing import Optional
 
-from atomic_kernels import trajectory_viewer
+from atomic_kernels import trajectory_viewer, ViewerConfig
 
-def bevy_viewer(atoms: Atoms | list[Atoms]) -> None:
+def bevy_viewer(atoms: Atoms | list[Atoms], config: Optional[ViewerConfig] = None) -> None:
 
     if isinstance(atoms, Atoms):
         atoms = [atoms]
 
-    trajectory_viewer(atoms)
+    trajectory_viewer(atoms, config)
