@@ -1,51 +1,47 @@
+use nalgebra::{Matrix3, Vector3};
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Cell {
-    // Row-major 3x3
-    pub m: [[f64; 3]; 3],
+    // Rows are lattice vectors a, b, c (stored column-major internally by nalgebra)
+    pub m: Matrix3<f64>,
 }
 
 impl Cell {
     pub fn new(cell: [[f64; 3]; 3]) -> Self {
-        Cell { m: cell }
+        Cell {
+            m: Matrix3::from_row_slice(cell.as_flattened()),
+        }
     }
 
     pub fn is_orthorhombic(&self) -> bool {
         let eps = 1e-12;
 
-        for i in 0..3 {
-            for j in 0..3 {
-                let v = self.m[i][j];
+        // Subtract the diagonal part — remainder should be ~zero
+        let off_diagonal = self.m - Matrix3::from_diagonal(&self.m.diagonal());
 
-                if i == j {
-                    if v <= eps {
-                        return false;
-                    }
-                } else if v > eps {
-                    return false;
-                }
-            }
-        }
-        true
+        // All off-diagonal elements are ~0
+        let is_diagonal = off_diagonal.abs().max() < eps;
+
+        // All diagonal elements are positive
+        let has_positive_diagonal = self.m.diagonal().iter().all(|&x| x > eps);
+
+        is_diagonal && has_positive_diagonal
     }
 
-    pub fn a(&self) -> [f64; 3] {
-        self.m[0]
+    pub fn a(&self) -> Vector3<f64> {
+        self.m.row(0).transpose()
     }
 
-    pub fn b(&self) -> [f64; 3] {
-        self.m[1]
+    pub fn b(&self) -> Vector3<f64> {
+        self.m.row(1).transpose()
     }
 
-    pub fn c(&self) -> [f64; 3] {
-        self.m[2]
+    pub fn c(&self) -> Vector3<f64> {
+        self.m.row(2).transpose()
     }
 
-    pub fn reduced(&self, a: f64, b: f64, c: f64) -> [f64; 3] {
-        [
-            a * self.m[0][0] + b * self.m[1][0] + c * self.m[2][0],
-            a * self.m[0][1] + b * self.m[1][1] + c * self.m[2][1],
-            a * self.m[0][2] + b * self.m[1][2] + c * self.m[2][2],
-        ]
+    pub fn reduced(&self, a: f64, b: f64, c: f64) -> Vector3<f64> {
+        self.m.transpose() * Vector3::new(a, b, c)
     }
 }
 

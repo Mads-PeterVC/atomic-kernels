@@ -7,11 +7,11 @@ pub fn default_radius_focus(
     mut cam_query: Query<&mut PanOrbitCamera>,
 ) {
     let view = viewer.traj.view(viewer.current);
-    let cell_midpoint = Vec3::from_array(view.cell.reduced(0.5, 0.5, 0.5).map(|f| f as f32));
+    let cell_midpoint = Vec3::from_slice(view.cell.reduced(0.5, 0.5, 0.5).cast::<f32>().as_slice());
 
     let radius = [view.cell.a(), view.cell.b(), view.cell.c()]
         .iter()
-        .map(|vec| vec.iter().map(|&x| x.powi(2)).sum::<f64>().sqrt())
+        .map(|v| v.norm())
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap() as f32;
 
