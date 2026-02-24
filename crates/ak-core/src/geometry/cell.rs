@@ -48,6 +48,8 @@ impl Cell {
 #[cfg(test)]
 mod tests {
 
+    use nalgebra::Vector3;
+
     use crate::Cell;
 
     #[test]
@@ -60,5 +62,54 @@ mod tests {
     fn test_not_ortho() {
         let cell = Cell::new([[10.0, 5.0, 0.0], [0.0, 10.0, 0.0], [0.0, 0.0, 10.0]]);
         assert_eq!(cell.is_orthorhombic(), false)
+    }
+
+    #[test]
+    fn test_reduced_1() {
+        let cell = Cell::new([[10.0, 0.0, 0.0], [0.0, 10.0, 0.0], [0.0, 0.0, 10.0]]);
+        let result = cell.reduced(1.0, 0.0, 0.0);
+        let expected = Vector3::new(10.0, 0.0, 0.0);
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_reduced_2() {
+        let cell = Cell::new([[10.0, 0.0, 0.0], [0.0, 10.0, 0.0], [0.0, 0.0, 10.0]]);
+        let result = cell.reduced(0.0, 1.0, 0.0);
+        let expected = Vector3::new(0.0, 10.0, 0.0);
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_reduced_3() {
+        let cell = Cell::new([[10.0, 0.0, 0.0], [0.0, 10.0, 0.0], [0.0, 0.0, 10.0]]);
+        let result = cell.reduced(0.0, 0.0, 1.0);
+        let expected = Vector3::new(0.0, 0.0, 10.0);
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_reduced_4() {
+        let cell = Cell::new([[10.0, 5.0, 0.0], [5.0, 10.0, 0.0], [0.0, 0.0, 10.0]]);
+        let result = cell.reduced(0.5, 0.0, 0.0);
+        let expected = Vector3::new(5.0, 2.5, 0.0);
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_reduced_5() {
+        let cell = Cell::new([[10.0, 5.0, 0.0], [5.0, 10.0, 0.0], [0.0, 0.0, 10.0]]);
+        let result = cell.reduced(0.5, 0.5, 0.0);
+        let expected = Vector3::new(7.5, 7.5, 0.0);
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_cell_vectors() {
+        let cell = Cell::new([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]]);
+
+        assert_eq!(cell.a(), Vector3::new(1.0, 2.0, 3.0));
+        assert_eq!(cell.b(), Vector3::new(4.0, 5.0, 6.0));
+        assert_eq!(cell.c(), Vector3::new(7.0, 8.0, 9.0));
     }
 }
