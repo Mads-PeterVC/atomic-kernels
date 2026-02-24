@@ -42,6 +42,7 @@ pub struct RenderConfig {
     pub show_cell: bool,
     pub show_axes: bool,
     pub show_ui: bool,
+    pub ico_subdiv: u32,
 }
 
 impl Default for RenderConfig {
@@ -50,6 +51,7 @@ impl Default for RenderConfig {
             show_cell: true,
             show_axes: true,
             show_ui: false,
+            ico_subdiv: 4,
         }
     }
 }

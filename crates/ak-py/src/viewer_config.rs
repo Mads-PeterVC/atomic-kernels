@@ -150,17 +150,20 @@ pub struct PyRenderConfig {
     pub show_axes: bool,
     #[pyo3(get, set)]
     pub show_ui: bool,
+    #[pyo3(get, set)]
+    pub ico_subdiv: u32,
 }
 
 #[pymethods]
 impl PyRenderConfig {
     #[new]
-    #[pyo3(signature = (show_cell=true, show_axes=true, show_ui=false))]
-    fn new(show_cell: bool, show_axes: bool, show_ui: bool) -> Self {
+    #[pyo3(signature = (show_cell=true, show_axes=true, show_ui=false, ico_subdiv=5))]
+    fn new(show_cell: bool, show_axes: bool, show_ui: bool, ico_subdiv: u32) -> Self {
         PyRenderConfig {
             show_cell,
             show_axes,
             show_ui,
+            ico_subdiv,
         }
     }
 }
@@ -171,6 +174,7 @@ impl From<&RenderConfig> for PyRenderConfig {
             show_cell: config.show_cell,
             show_axes: config.show_axes,
             show_ui: config.show_ui,
+            ico_subdiv: config.ico_subdiv,
         }
     }
 }
@@ -181,6 +185,7 @@ impl From<&PyRenderConfig> for RenderConfig {
             show_cell: py.show_cell,
             show_axes: py.show_axes,
             show_ui: py.show_ui,
+            ico_subdiv: py.ico_subdiv,
         }
     }
 }
@@ -214,7 +219,9 @@ impl PyViewerConfig {
         PyViewerConfig {
             inner: ViewerConfig {
                 color: color.map(|c| c.inner).unwrap_or(default_config.color),
-                lighting: lighting.map(|l| (&l).into()).unwrap_or(default_config.lighting),
+                lighting: lighting
+                    .map(|l| (&l).into())
+                    .unwrap_or(default_config.lighting),
                 render: render.map(|r| (&r).into()).unwrap_or(default_config.render),
                 initial_frame,
             },

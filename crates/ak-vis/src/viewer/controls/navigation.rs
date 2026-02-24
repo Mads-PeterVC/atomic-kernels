@@ -88,6 +88,7 @@ pub fn navigate_frames(
             &mut commands,
             &mut resources.materials,
             &mut resources.meshes,
+            resources.config.render.ico_subdiv,
         );
 
         if resources.config.render.show_cell {

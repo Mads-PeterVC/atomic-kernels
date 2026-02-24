@@ -17,7 +17,13 @@ pub fn render_current_frame(
 
     // Create and render atoms
     let atom_visuals = convert_structure(&view, &JMOL);
-    render_atoms(atom_visuals, &mut commands, &mut materials, &mut meshes);
+    render_atoms(
+        atom_visuals,
+        &mut commands,
+        &mut materials,
+        &mut meshes,
+        config.render.ico_subdiv,
+    );
 
     if config.render.show_cell {
         let cell_visuals = convert_cell(&view, config.color.cell_color);
