@@ -24,6 +24,17 @@ pub struct ViewerSessionHandle {
     sender: Sender<ViewerCommand>,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct ViewerSessionClosed;
+
+impl std::fmt::Display for ViewerSessionClosed {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "viewer session is no longer available")
+    }
+}
+
+impl std::error::Error for ViewerSessionClosed {}
+
 impl ViewerSessionHandle {
     pub fn new(sender: Sender<ViewerCommand>) -> Self {
         Self { sender }
@@ -33,36 +44,37 @@ impl ViewerSessionHandle {
         &self,
         frames: Vec<Structure>,
         initial_frame: usize,
-    ) -> Result<(), std::sync::mpsc::SendError<ViewerCommand>> {
-        self.sender.send(ViewerCommand::LoadTrajectory {
-            frames,
-            initial_frame,
-        })
+    ) -> Result<(), ViewerSessionClosed> {
+        self.sender
+            .send(ViewerCommand::LoadTrajectory {
+                frames,
+                initial_frame,
+            })
+            .map_err(|_| ViewerSessionClosed)
     }
 
-    pub fn append_frame(
-        &self,
-        frame: Structure,
-    ) -> Result<(), std::sync::mpsc::SendError<ViewerCommand>> {
-        self.sender.send(ViewerCommand::AppendFrame { frame })
+    pub fn append_frame(&self, frame: Structure) -> Result<(), ViewerSessionClosed> {
+        self.sender
+            .send(ViewerCommand::AppendFrame { frame })
+            .map_err(|_| ViewerSessionClosed)
     }
 
-    pub fn set_current_frame(
-        &self,
-        index: usize,
-    ) -> Result<(), std::sync::mpsc::SendError<ViewerCommand>> {
-        self.sender.send(ViewerCommand::SetCurrentFrame { index })
+    pub fn set_current_frame(&self, index: usize) -> Result<(), ViewerSessionClosed> {
+        self.sender
+            .send(ViewerCommand::SetCurrentFrame { index })
+            .map_err(|_| ViewerSessionClosed)
     }
 
-    pub fn set_follow_tail(
-        &self,
-        enabled: bool,
-    ) -> Result<(), std::sync::mpsc::SendError<ViewerCommand>> {
-        self.sender.send(ViewerCommand::SetFollowTail { enabled })
+    pub fn set_follow_tail(&self, enabled: bool) -> Result<(), ViewerSessionClosed> {
+        self.sender
+            .send(ViewerCommand::SetFollowTail { enabled })
+            .map_err(|_| ViewerSessionClosed)
     }
 
-    pub fn close(&self) -> Result<(), std::sync::mpsc::SendError<ViewerCommand>> {
-        self.sender.send(ViewerCommand::Close)
+    pub fn close(&self) -> Result<(), ViewerSessionClosed> {
+        self.sender
+            .send(ViewerCommand::Close)
+            .map_err(|_| ViewerSessionClosed)
     }
 }
 

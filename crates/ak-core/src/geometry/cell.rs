@@ -55,13 +55,13 @@ mod tests {
     #[test]
     fn test_ortho() {
         let cell = Cell::new([[10.0, 0.0, 0.0], [0.0, 10.0, 0.0], [0.0, 0.0, 10.0]]);
-        assert_eq!(cell.is_orthorhombic(), true)
+        assert!(cell.is_orthorhombic())
     }
 
     #[test]
     fn test_not_ortho() {
         let cell = Cell::new([[10.0, 5.0, 0.0], [0.0, 10.0, 0.0], [0.0, 0.0, 10.0]]);
-        assert_eq!(cell.is_orthorhombic(), false)
+        assert!(!cell.is_orthorhombic())
     }
 
     #[test]

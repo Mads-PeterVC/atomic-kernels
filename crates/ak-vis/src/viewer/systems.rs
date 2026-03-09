@@ -8,6 +8,7 @@ use crate::viewer::ViewerState;
 use crate::viewer::app::CommandReceiver;
 use crate::viewer::controls::default_radius_focus;
 use crate::viewer::controls::despawn_current_frame;
+use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 use bevy_panorbit_camera::PanOrbitCamera;
 
@@ -195,32 +196,42 @@ pub fn apply_viewer_commands(
     }
 }
 
+#[derive(SystemParam)]
+pub struct RenderFrameQueries<'w, 's> {
+    atoms: Query<'w, 's, Entity, With<FrameAtom>>,
+    cells: Query<'w, 's, Entity, With<FrameCell>>,
+    axes: Query<'w, 's, Entity, With<FrameAxis>>,
+    camera: Query<'w, 's, &'static mut PanOrbitCamera>,
+}
+
+#[derive(SystemParam)]
+pub struct RenderFrameAssets<'w> {
+    meshes: ResMut<'w, Assets<Mesh>>,
+    materials: ResMut<'w, Assets<StandardMaterial>>,
+}
+
 pub fn rerender_if_dirty(
     mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut assets: RenderFrameAssets,
     mut viewer: ResMut<ViewerState>,
     config: Res<ViewerConfig>,
-    atoms: Query<Entity, With<FrameAtom>>,
-    cells: Query<Entity, With<FrameCell>>,
-    axes: Query<Entity, With<FrameAxis>>,
-    camera: Query<&mut PanOrbitCamera>,
+    queries: RenderFrameQueries,
 ) {
     if !viewer.needs_render || !viewer.has_frames() {
         return;
     }
 
-    despawn_current_frame(&mut commands, atoms, cells, axes);
+    despawn_current_frame(&mut commands, queries.atoms, queries.cells, queries.axes);
     render_frame(
         &mut commands,
-        &mut meshes,
-        &mut materials,
+        &mut assets.meshes,
+        &mut assets.materials,
         viewer.as_mut(),
         config.as_ref(),
     );
 
     if viewer.needs_camera_reset {
-        default_radius_focus(viewer.as_ref(), camera);
+        default_radius_focus(viewer.as_ref(), queries.camera);
         viewer.needs_camera_reset = false;
     }
 }

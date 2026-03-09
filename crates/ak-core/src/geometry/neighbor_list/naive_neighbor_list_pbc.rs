@@ -22,11 +22,11 @@ pub fn naive_neighbor_list_pbc(view: &StructureView, cutoff: f64) -> NeighborLis
 
     let positions = view.positions;
 
-    for i in 0..n_atoms {
-        let pos_i = Vector3::new(positions[i][0], positions[i][1], positions[i][2]);
+    for (i, position_i) in positions.iter().enumerate().take(n_atoms) {
+        let pos_i = Vector3::new(position_i[0], position_i[1], position_i[2]);
 
-        for j in 0..n_atoms {
-            let pos_j = Vector3::new(positions[j][0], positions[j][1], positions[j][2]);
+        for (j, position_j) in positions.iter().enumerate().take(n_atoms) {
+            let pos_j = Vector3::new(position_j[0], position_j[1], position_j[2]);
 
             for shift_a in -repeat_counts[0]..=repeat_counts[0] {
                 for shift_b in -repeat_counts[1]..=repeat_counts[1] {

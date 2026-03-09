@@ -44,31 +44,29 @@ mod test {
     use crate::calculator::prelude::*;
 
     fn test_structure_2atoms(sigma: f64) -> Structure {
-        let rmin: f64 = (2.0 as f64).powf(1.0 / 6.0) * sigma;
+        let rmin: f64 = 2.0_f64.powf(1.0 / 6.0) * sigma;
 
         let positions = [[0.0, 0.0, 0.0], [rmin, 0.0, 0.0]].to_vec();
         let numbers = [1, 1].to_vec();
         let cell = [[10.0, 0.0, 0.0], [0.0, 10.0, 0.0], [0.0, 0.0, 10.0]];
         let pbc = [false, false, false];
-        let structure = Structure::new(positions.clone(), numbers.clone(), cell, pbc);
-        structure
+        Structure::new(positions.clone(), numbers.clone(), cell, pbc)
     }
 
     fn test_structure_3atoms(sigma: f64) -> Structure {
-        let rmin: f64 = (2.0 as f64).powf(1.0 / 6.0) * sigma;
+        let rmin: f64 = 2.0_f64.powf(1.0 / 6.0) * sigma;
 
         let positions = [[0.0, 0.0, 0.0], [rmin, 0.0, 0.0], [2.0 * rmin, 0.0, 0.0]].to_vec();
         let numbers = [1, 1, 1].to_vec();
         let cell = [[10.0, 0.0, 0.0], [0.0, 10.0, 0.0], [0.0, 0.0, 10.0]];
         let pbc = [false, false, false];
-        let structure = Structure::new(positions.clone(), numbers.clone(), cell, pbc);
-        structure
+        Structure::new(positions.clone(), numbers.clone(), cell, pbc)
     }
 
     #[test]
     fn pair_energy_test() {
         let lj = LennardJones::new(1.0, 1.0, 5.0);
-        let rmin: f64 = (2.0 as f64).powf(1.0 / 6.0) * lj.sigma;
+        let rmin: f64 = 2.0_f64.powf(1.0 / 6.0) * lj.sigma;
 
         let pair_energy = lj.pair_energy(rmin);
 
@@ -80,7 +78,7 @@ mod test {
         let lj = LennardJones::new(1.5, 1.0, 5.0);
         let structure = test_structure_2atoms(lj.sigma);
         let result = lj.calculate(&structure.view()).unwrap();
-        assert_eq!(result.energy, Some(-1.0 * lj.epsilon));
+        assert_eq!(result.energy, Some(-lj.epsilon));
         assert!(
             result
                 .forces

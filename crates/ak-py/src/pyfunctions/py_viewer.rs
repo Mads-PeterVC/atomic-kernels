@@ -18,8 +18,8 @@ impl PyViewerSession {
         Self { handle }
     }
 
-    fn send_error(err: std::sync::mpsc::SendError<ak_vis::ViewerCommand>) -> PyErr {
-        PyRuntimeError::new_err(format!("viewer session is no longer available: {err}"))
+    fn send_error(err: ak_vis::ViewerSessionClosed) -> PyErr {
+        PyRuntimeError::new_err(err.to_string())
     }
 }
 

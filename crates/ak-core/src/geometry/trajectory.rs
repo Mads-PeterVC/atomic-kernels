@@ -36,15 +36,13 @@ mod test {
         let numbers = [1, 1].to_vec();
         let cell = [[10.0, 0.0, 0.0], [0.0, 10.0, 0.0], [0.0, 0.0, 10.0]];
         let pbc = [false, false, false];
-        let structure = Structure::new(positions.clone(), numbers.clone(), cell, pbc);
-        structure
+        Structure::new(positions.clone(), numbers.clone(), cell, pbc)
     }
 
     fn test_trajectory() -> Trajectory {
         let structure = test_structure();
         let struc_vec = vec![structure.clone(), structure.clone()];
-        let trajectory = Trajectory::new(struc_vec);
-        trajectory
+        Trajectory::new(struc_vec)
     }
 
     #[test]

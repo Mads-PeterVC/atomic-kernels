@@ -59,8 +59,7 @@ mod test {
         let numbers = [1, 1].to_vec();
         let cell = [[10.0, 0.0, 0.0], [0.0, 10.0, 0.0], [0.0, 0.0, 10.0]];
         let pbc = [false, false, false];
-        let structure = Structure::new(positions.clone(), numbers.clone(), cell, pbc);
-        structure
+        Structure::new(positions.clone(), numbers.clone(), cell, pbc)
     }
 
     #[test]

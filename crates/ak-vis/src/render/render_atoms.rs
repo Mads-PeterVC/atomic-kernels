@@ -27,7 +27,7 @@ pub fn render_atoms(
         let key = (radius_bits, color_key);
         atom_groups
             .entry(key)
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(Vec3::new(atom.x(), atom.y(), atom.z()));
     }
 

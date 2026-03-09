@@ -7,7 +7,7 @@ pub mod config;
 pub use config::{ColorConfig, LightingConfig, RenderConfig, ViewerConfig};
 
 pub mod session;
-pub use session::{ViewerCommand, ViewerSessionHandle, ViewerState};
+pub use session::{ViewerCommand, ViewerSessionClosed, ViewerSessionHandle, ViewerState};
 
 mod systems;
 
