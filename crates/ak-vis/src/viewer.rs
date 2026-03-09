@@ -8,7 +8,8 @@ pub use config::{ColorConfig, LightingConfig, RenderConfig, ViewerConfig};
 
 pub mod session;
 pub use session::{
-    AtomColorRule, ViewerCommand, ViewerSessionClosed, ViewerSessionHandle, ViewerState,
+    AtomColorRule, CameraState, ViewerCommand, ViewerSessionClosed, ViewerSessionHandle,
+    ViewerState,
 };
 
 mod systems;

@@ -40,8 +40,11 @@ def atomic_energies(atoms) -> np.ndarray:
 if __name__ == "__main__":
     slab, top_layer = build_deformed_slab()
     session = viewer_session(slab)
+    camera = session.camera()
+    colors = session.colors()
     session.follow_tail(True)
-    energy_scale = session.scalar_range_tracker()
+    camera.frame_all()
+    energy_scale = colors.range_tracker()
 
     initial_energies = atomic_energies(slab)
     energy_min, energy_max = energy_scale.update(initial_energies[top_layer])

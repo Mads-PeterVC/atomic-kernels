@@ -10,10 +10,10 @@ use crate::viewer::controls::{
     keyboard_controls, navigate_frames, screenshot_on_spacebar, screenshot_saving,
     toggle_ui_visibility, toggle_view,
 };
-use crate::viewer::session::{ViewerSessionHandle, ViewerState};
+use crate::viewer::session::{CameraState, ViewerSessionHandle, ViewerState};
 use crate::viewer::systems::{
-    apply_viewer_commands, render_current_frame, rerender_if_dirty, setup_camera,
-    setup_camera_light, setup_lighting, update_camera_light,
+    advance_camera_motion, apply_camera_state, apply_viewer_commands, render_current_frame,
+    rerender_if_dirty, setup_camera, setup_camera_light, setup_lighting, update_camera_light,
 };
 
 #[derive(Resource)]
@@ -24,9 +24,12 @@ fn build_app(
     config: ViewerConfig,
     receiver: Option<mpsc::Receiver<crate::viewer::ViewerCommand>>,
 ) -> App {
+    let viewer_state = ViewerState::new(trajectory, config.initial_frame);
+    let camera_state = CameraState::new(&viewer_state);
     let mut app = App::new();
     app.insert_resource(ClearColor(config.color.background))
-        .insert_resource(ViewerState::new(trajectory, config.initial_frame))
+        .insert_resource(viewer_state)
+        .insert_resource(camera_state)
         .insert_resource(config)
         .insert_resource(CommandReceiver(receiver.map(Mutex::new)))
         .add_plugins((DefaultPlugins, MeshPickingPlugin))
@@ -44,6 +47,8 @@ fn build_app(
             Update,
             (
                 apply_viewer_commands,
+                advance_camera_motion,
+                apply_camera_state,
                 toggle_view,
                 keyboard_controls,
                 update_camera_light,

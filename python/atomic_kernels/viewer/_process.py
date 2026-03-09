@@ -45,6 +45,20 @@ def viewer_process_main(
                 session.color_by_scalar(*payload)
             elif command == "reset_atom_colors":
                 session.reset_atom_colors()
+            elif command == "set_camera_view":
+                session.set_camera_view(*payload)
+            elif command == "pan_camera":
+                session.pan_camera(payload)
+            elif command == "zoom_camera":
+                session.zoom_camera(*payload)
+            elif command == "orbit_camera":
+                session.orbit_camera(*payload)
+            elif command == "frame_all":
+                session.frame_all()
+            elif command == "start_orbit":
+                session.start_orbit(*payload)
+            elif command == "stop_camera_motion":
+                session.stop_camera_motion()
             elif command == "close":
                 try:
                     session.close()
@@ -97,6 +111,35 @@ class ViewerSessionProxy:
 
     def reset_atom_colors(self) -> None:
         self._send("reset_atom_colors")
+
+    def set_camera_view(
+        self,
+        focus=None,
+        radius: float | None = None,
+        yaw: float | None = None,
+        pitch: float | None = None,
+    ) -> None:
+        self._send("set_camera_view", (focus, radius, yaw, pitch))
+
+    def pan_camera(self, delta) -> None:
+        self._send("pan_camera", tuple(delta))
+
+    def zoom_camera(
+        self, factor: float | None = None, delta: float | None = None
+    ) -> None:
+        self._send("zoom_camera", (factor, delta))
+
+    def orbit_camera(self, yaw_delta: float = 0.0, pitch_delta: float = 0.0) -> None:
+        self._send("orbit_camera", (yaw_delta, pitch_delta))
+
+    def frame_all(self) -> None:
+        self._send("frame_all")
+
+    def start_orbit(self, yaw_rate: float = 0.5, pitch_rate: float = 0.0) -> None:
+        self._send("start_orbit", (yaw_rate, pitch_rate))
+
+    def stop_camera_motion(self) -> None:
+        self._send("stop_camera_motion")
 
     def close(self) -> None:
         if self._connection.closed:

@@ -1,5 +1,5 @@
 use ak_core::{Structure, Trajectory};
-use bevy::prelude::Resource;
+use bevy::prelude::{Resource, Vec3};
 use std::collections::HashMap;
 use std::sync::mpsc::Sender;
 
@@ -32,6 +32,29 @@ pub enum ViewerCommand {
         append: bool,
     },
     ResetAtomColors,
+    SetCameraView {
+        focus: Option<[f32; 3]>,
+        radius: Option<f32>,
+        yaw: Option<f32>,
+        pitch: Option<f32>,
+    },
+    PanCamera {
+        delta: [f32; 3],
+    },
+    ZoomCamera {
+        factor: Option<f32>,
+        delta: Option<f32>,
+    },
+    OrbitCamera {
+        yaw_delta: f32,
+        pitch_delta: f32,
+    },
+    FrameAll,
+    StartOrbit {
+        yaw_rate: f32,
+        pitch_rate: f32,
+    },
+    StopCameraMotion,
     Close,
 }
 
@@ -57,6 +80,30 @@ pub struct AtomColorRule {
     pub palette: ScalarColorMap,
     pub min: Option<f32>,
     pub max: Option<f32>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct OrbitMotion {
+    pub yaw_rate: f32,
+    pub pitch_rate: f32,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct CameraView {
+    pub focus: Vec3,
+    pub radius: f32,
+    pub yaw: f32,
+    pub pitch: f32,
+}
+
+#[derive(Resource, Clone, Debug, PartialEq)]
+pub struct CameraState {
+    pub focus: Vec3,
+    pub radius: f32,
+    pub yaw: f32,
+    pub pitch: f32,
+    pub needs_apply: bool,
+    pub motion: Option<OrbitMotion>,
 }
 
 impl ViewerSessionHandle {
@@ -132,6 +179,73 @@ impl ViewerSessionHandle {
     pub fn reset_atom_colors(&self) -> Result<(), ViewerSessionClosed> {
         self.sender
             .send(ViewerCommand::ResetAtomColors)
+            .map_err(|_| ViewerSessionClosed)
+    }
+
+    pub fn set_camera_view(
+        &self,
+        focus: Option<[f32; 3]>,
+        radius: Option<f32>,
+        yaw: Option<f32>,
+        pitch: Option<f32>,
+    ) -> Result<(), ViewerSessionClosed> {
+        self.sender
+            .send(ViewerCommand::SetCameraView {
+                focus,
+                radius,
+                yaw,
+                pitch,
+            })
+            .map_err(|_| ViewerSessionClosed)
+    }
+
+    pub fn pan_camera(&self, delta: [f32; 3]) -> Result<(), ViewerSessionClosed> {
+        self.sender
+            .send(ViewerCommand::PanCamera { delta })
+            .map_err(|_| ViewerSessionClosed)
+    }
+
+    pub fn zoom_camera(
+        &self,
+        factor: Option<f32>,
+        delta: Option<f32>,
+    ) -> Result<(), ViewerSessionClosed> {
+        self.sender
+            .send(ViewerCommand::ZoomCamera { factor, delta })
+            .map_err(|_| ViewerSessionClosed)
+    }
+
+    pub fn orbit_camera(
+        &self,
+        yaw_delta: f32,
+        pitch_delta: f32,
+    ) -> Result<(), ViewerSessionClosed> {
+        self.sender
+            .send(ViewerCommand::OrbitCamera {
+                yaw_delta,
+                pitch_delta,
+            })
+            .map_err(|_| ViewerSessionClosed)
+    }
+
+    pub fn frame_all(&self) -> Result<(), ViewerSessionClosed> {
+        self.sender
+            .send(ViewerCommand::FrameAll)
+            .map_err(|_| ViewerSessionClosed)
+    }
+
+    pub fn start_orbit(&self, yaw_rate: f32, pitch_rate: f32) -> Result<(), ViewerSessionClosed> {
+        self.sender
+            .send(ViewerCommand::StartOrbit {
+                yaw_rate,
+                pitch_rate,
+            })
+            .map_err(|_| ViewerSessionClosed)
+    }
+
+    pub fn stop_camera_motion(&self) -> Result<(), ViewerSessionClosed> {
+        self.sender
+            .send(ViewerCommand::StopCameraMotion)
             .map_err(|_| ViewerSessionClosed)
     }
 
@@ -226,10 +340,7 @@ impl ViewerState {
             } => {
                 let target_frame = frame_index.unwrap_or(self.current);
                 let should_refresh_active_mode = self.current == target_frame
-                    && self
-                        .atom_color_rules
-                        .iter()
-                        .any(|rule| rule.name == name);
+                    && self.atom_color_rules.iter().any(|rule| rule.name == name);
                 if self.validate_scalar_values(target_frame, &values) {
                     self.store_scalars(name, target_frame, values);
                     self.needs_render = should_refresh_active_mode;
@@ -263,6 +374,13 @@ impl ViewerState {
                 self.needs_render = true;
                 CommandOutcome::default()
             }
+            ViewerCommand::SetCameraView { .. }
+            | ViewerCommand::PanCamera { .. }
+            | ViewerCommand::ZoomCamera { .. }
+            | ViewerCommand::OrbitCamera { .. }
+            | ViewerCommand::FrameAll
+            | ViewerCommand::StartOrbit { .. }
+            | ViewerCommand::StopCameraMotion => CommandOutcome::default(),
             ViewerCommand::Close => CommandOutcome { should_close: true },
         }
     }
@@ -316,6 +434,110 @@ impl ViewerState {
     }
 }
 
+impl CameraState {
+    pub fn new(viewer: &ViewerState) -> Self {
+        Self::from_view(camera_view_for_frame(viewer).unwrap_or(CameraView {
+            focus: Vec3::ZERO,
+            radius: 1.0,
+            yaw: -std::f32::consts::FRAC_PI_2,
+            pitch: 0.0,
+        }))
+    }
+
+    pub fn from_view(view: CameraView) -> Self {
+        Self {
+            focus: view.focus,
+            radius: view.radius,
+            yaw: view.yaw,
+            pitch: view.pitch,
+            needs_apply: true,
+            motion: None,
+        }
+    }
+
+    pub fn apply_command(&mut self, viewer: &ViewerState, command: &ViewerCommand) {
+        match command {
+            ViewerCommand::SetCameraView {
+                focus,
+                radius,
+                yaw,
+                pitch,
+            } => {
+                self.motion = None;
+                if let Some(focus) = focus {
+                    self.focus = Vec3::from_array(*focus);
+                }
+                if let Some(radius) = radius {
+                    self.radius = (*radius).max(f32::EPSILON);
+                }
+                if let Some(yaw) = yaw {
+                    self.yaw = *yaw;
+                }
+                if let Some(pitch) = pitch {
+                    self.pitch = *pitch;
+                }
+                self.needs_apply = true;
+            }
+            ViewerCommand::PanCamera { delta } => {
+                self.motion = None;
+                self.focus += Vec3::from_array(*delta);
+                self.needs_apply = true;
+            }
+            ViewerCommand::ZoomCamera { factor, delta } => {
+                self.motion = None;
+                if let Some(factor) = factor {
+                    self.radius = (self.radius * *factor).max(f32::EPSILON);
+                }
+                if let Some(delta) = delta {
+                    self.radius = (self.radius + *delta).max(f32::EPSILON);
+                }
+                self.needs_apply = true;
+            }
+            ViewerCommand::OrbitCamera {
+                yaw_delta,
+                pitch_delta,
+            } => {
+                self.motion = None;
+                self.yaw += *yaw_delta;
+                self.pitch += *pitch_delta;
+                self.needs_apply = true;
+            }
+            ViewerCommand::FrameAll => {
+                if let Some(view) = camera_view_for_frame(viewer) {
+                    *self = Self::from_view(view);
+                }
+            }
+            ViewerCommand::StartOrbit {
+                yaw_rate,
+                pitch_rate,
+            } => {
+                self.motion = Some(OrbitMotion {
+                    yaw_rate: *yaw_rate,
+                    pitch_rate: *pitch_rate,
+                });
+            }
+            ViewerCommand::StopCameraMotion => {
+                self.motion = None;
+            }
+            _ => {}
+        }
+    }
+
+    pub fn reset_for_frame(&mut self, viewer: &ViewerState) {
+        if let Some(view) = camera_view_for_frame(viewer) {
+            *self = Self::from_view(view);
+        }
+    }
+
+    pub fn tick_motion(&mut self, delta_seconds: f32) {
+        if let Some(motion) = self.motion {
+            self.yaw += motion.yaw_rate * delta_seconds;
+            self.pitch += motion.pitch_rate * delta_seconds;
+            self.needs_apply = true;
+        }
+    }
+}
+
 #[derive(Default)]
 pub struct CommandOutcome {
     pub should_close: bool,
@@ -325,10 +547,33 @@ fn clamp_frame(index: usize, len: usize) -> usize {
     if len == 0 { 0 } else { index.min(len - 1) }
 }
 
+pub fn camera_view_for_frame(viewer: &ViewerState) -> Option<CameraView> {
+    if !viewer.has_frames() {
+        return None;
+    }
+
+    let view = viewer.traj.view(viewer.current);
+    let focus = Vec3::from_slice(view.cell.reduced(0.5, 0.5, 0.5).cast::<f32>().as_slice());
+    let radius = [view.cell.a(), view.cell.b(), view.cell.c()]
+        .iter()
+        .fold(0.0_f64, |acc, v| acc.max(v.norm())) as f32;
+
+    Some(CameraView {
+        focus,
+        radius: 2.5 * radius.max(f32::EPSILON),
+        yaw: -std::f32::consts::FRAC_PI_2,
+        pitch: 0.0,
+    })
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{AtomColorRule, ScalarColorMap, ViewerCommand, ViewerState};
+    use super::{
+        AtomColorRule, CameraState, ScalarColorMap, ViewerCommand, ViewerState,
+        camera_view_for_frame,
+    };
     use ak_core::{Structure, Trajectory};
+    use bevy::prelude::Vec3;
 
     fn test_structure(x: f64) -> Structure {
         Structure::new(
@@ -473,5 +718,91 @@ mod tests {
         assert_eq!(state.atom_color_rules.len(), 2);
         assert_eq!(state.atom_color_rules[0].name, "energy");
         assert_eq!(state.atom_color_rules[1].name, "charge");
+    }
+
+    #[test]
+    fn set_camera_view_updates_requested_fields() {
+        let viewer = ViewerState::new(Trajectory::new(vec![test_structure(0.0)]), 0);
+        let mut camera = CameraState::new(&viewer);
+
+        camera.apply_command(
+            &viewer,
+            &ViewerCommand::SetCameraView {
+                focus: Some([1.0, 2.0, 3.0]),
+                radius: Some(9.0),
+                yaw: Some(0.5),
+                pitch: Some(-0.25),
+            },
+        );
+
+        assert_eq!(camera.focus, Vec3::new(1.0, 2.0, 3.0));
+        assert_eq!(camera.radius, 9.0);
+        assert_eq!(camera.yaw, 0.5);
+        assert_eq!(camera.pitch, -0.25);
+    }
+
+    #[test]
+    fn orbit_and_zoom_camera_are_incremental() {
+        let viewer = ViewerState::new(Trajectory::new(vec![test_structure(0.0)]), 0);
+        let mut camera = CameraState::new(&viewer);
+        let initial = camera.clone();
+
+        camera.apply_command(
+            &viewer,
+            &ViewerCommand::OrbitCamera {
+                yaw_delta: 0.2,
+                pitch_delta: -0.1,
+            },
+        );
+        camera.apply_command(
+            &viewer,
+            &ViewerCommand::ZoomCamera {
+                factor: Some(0.5),
+                delta: None,
+            },
+        );
+
+        assert_eq!(camera.yaw, initial.yaw + 0.2);
+        assert_eq!(camera.pitch, initial.pitch - 0.1);
+        assert_eq!(camera.radius, initial.radius * 0.5);
+    }
+
+    #[test]
+    fn start_and_stop_orbit_motion_updates_camera() {
+        let viewer = ViewerState::new(Trajectory::new(vec![test_structure(0.0)]), 0);
+        let mut camera = CameraState::new(&viewer);
+        let initial_yaw = camera.yaw;
+
+        camera.apply_command(
+            &viewer,
+            &ViewerCommand::StartOrbit {
+                yaw_rate: 1.0,
+                pitch_rate: 0.0,
+            },
+        );
+        camera.tick_motion(0.5);
+        assert_eq!(camera.yaw, initial_yaw + 0.5);
+
+        camera.apply_command(&viewer, &ViewerCommand::StopCameraMotion);
+        camera.tick_motion(0.5);
+        assert_eq!(camera.yaw, initial_yaw + 0.5);
+    }
+
+    #[test]
+    fn frame_all_restores_default_camera_view() {
+        let viewer = ViewerState::new(Trajectory::new(vec![test_structure(0.0)]), 0);
+        let mut camera = CameraState::new(&viewer);
+        camera.focus = Vec3::splat(5.0);
+        camera.radius = 99.0;
+        camera.yaw = 2.0;
+        camera.pitch = 1.0;
+
+        camera.apply_command(&viewer, &ViewerCommand::FrameAll);
+
+        let expected = camera_view_for_frame(&viewer).unwrap();
+        assert_eq!(camera.focus, expected.focus);
+        assert_eq!(camera.radius, expected.radius);
+        assert_eq!(camera.yaw, expected.yaw);
+        assert_eq!(camera.pitch, expected.pitch);
     }
 }

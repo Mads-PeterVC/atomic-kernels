@@ -1,18 +1,20 @@
 use crate::render::{render_atoms, render_axis, render_cell};
 use crate::{JMOL, convert_axis, convert_cell, convert_structure};
-use std::f32::consts::FRAC_PI_2;
 
 use crate::components::{FrameAtom, FrameAxis, FrameCell};
 use crate::viewer::ViewerConfig;
 use crate::viewer::app::CommandReceiver;
-use crate::viewer::controls::default_radius_focus;
+use crate::viewer::controls::default_camera_state;
 use crate::viewer::controls::despawn_current_frame;
-use crate::viewer::{AtomColorRule, ViewerState};
+use crate::viewer::{AtomColorRule, CameraState, ViewerState};
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 use bevy_panorbit_camera::PanOrbitCamera;
 
-fn scalar_colors_for_rule(viewer: &ViewerState, rule: &AtomColorRule) -> Option<Vec<Option<Color>>> {
+fn scalar_colors_for_rule(
+    viewer: &ViewerState,
+    rule: &AtomColorRule,
+) -> Option<Vec<Option<Color>>> {
     let values = viewer
         .atom_scalars
         .get(&rule.name)
@@ -23,7 +25,11 @@ fn scalar_colors_for_rule(viewer: &ViewerState, rule: &AtomColorRule) -> Option<
         return None;
     }
 
-    let finite_values: Vec<f32> = values.iter().copied().filter(|value| value.is_finite()).collect();
+    let finite_values: Vec<f32> = values
+        .iter()
+        .copied()
+        .filter(|value| value.is_finite())
+        .collect();
     if finite_values.is_empty() {
         return None;
     }
@@ -180,24 +186,16 @@ pub fn setup_lighting(
     ));
 }
 
-pub fn setup_camera(mut commands: Commands, viewer: Res<ViewerState>, config: Res<ViewerConfig>) {
-    if !viewer.has_frames() {
+pub fn setup_camera(mut commands: Commands, camera: Res<CameraState>, config: Res<ViewerConfig>) {
+    if camera.radius <= 0.0 {
         return;
     }
 
-    let view = viewer.traj.view(viewer.current);
-
-    let cell_midpoint = Vec3::from_slice(view.cell.reduced(0.5, 0.5, 0.5).cast::<f32>().as_slice());
-
-    let max_cell_length = [view.cell.a(), view.cell.b(), view.cell.c()]
-        .iter()
-        .fold(0.0_f64, |acc, v| acc.max(v.norm())) as f32;
-
     let mut camera = commands.spawn(PanOrbitCamera {
-        yaw: Some(-FRAC_PI_2),
-        pitch: Some(0.0),
-        radius: Some(2.5 * max_cell_length),
-        focus: cell_midpoint,
+        yaw: Some(camera.yaw),
+        pitch: Some(camera.pitch),
+        radius: Some(camera.radius),
+        focus: camera.focus,
         axis: [Vec3::X, Vec3::Y, Vec3::Z],
         ..default()
     });
@@ -245,6 +243,7 @@ pub fn update_camera_light(
 
 pub fn apply_viewer_commands(
     mut viewer: ResMut<ViewerState>,
+    mut camera: ResMut<CameraState>,
     receiver: Res<CommandReceiver>,
     mut app_exit_events: MessageWriter<AppExit>,
 ) {
@@ -259,6 +258,7 @@ pub fn apply_viewer_commands(
     loop {
         match receiver.try_recv() {
             Ok(command) => {
+                camera.apply_command(viewer.as_ref(), &command);
                 let outcome = viewer.apply_command(command);
                 if outcome.should_close {
                     app_exit_events.write(AppExit::Success);
@@ -276,7 +276,6 @@ pub struct RenderFrameQueries<'w, 's> {
     atoms: Query<'w, 's, Entity, With<FrameAtom>>,
     cells: Query<'w, 's, Entity, With<FrameCell>>,
     axes: Query<'w, 's, Entity, With<FrameAxis>>,
-    camera: Query<'w, 's, &'static mut PanOrbitCamera>,
 }
 
 #[derive(SystemParam)]
@@ -289,6 +288,7 @@ pub fn rerender_if_dirty(
     mut commands: Commands,
     mut assets: RenderFrameAssets,
     mut viewer: ResMut<ViewerState>,
+    mut camera: ResMut<CameraState>,
     config: Res<ViewerConfig>,
     queries: RenderFrameQueries,
 ) {
@@ -306,7 +306,35 @@ pub fn rerender_if_dirty(
     );
 
     if viewer.needs_camera_reset {
-        default_radius_focus(viewer.as_ref(), queries.camera);
+        *camera = default_camera_state(viewer.as_ref());
         viewer.needs_camera_reset = false;
     }
+}
+
+pub fn advance_camera_motion(time: Res<Time>, mut camera: ResMut<CameraState>) {
+    camera.tick_motion(time.delta_secs());
+}
+
+pub fn apply_camera_state(
+    mut camera_state: ResMut<CameraState>,
+    mut camera_query: Query<&mut PanOrbitCamera>,
+) {
+    if !camera_state.needs_apply {
+        return;
+    }
+
+    let Ok(mut orbit) = camera_query.single_mut() else {
+        return;
+    };
+
+    orbit.target_focus = camera_state.focus;
+    orbit.focus = camera_state.focus;
+    orbit.target_radius = camera_state.radius;
+    orbit.radius = Some(camera_state.radius);
+    orbit.target_yaw = camera_state.yaw;
+    orbit.yaw = Some(camera_state.yaw);
+    orbit.target_pitch = camera_state.pitch;
+    orbit.pitch = Some(camera_state.pitch);
+    orbit.force_update = true;
+    camera_state.needs_apply = false;
 }

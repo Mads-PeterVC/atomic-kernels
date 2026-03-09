@@ -32,6 +32,8 @@ if __name__ == "__main__":
     atoms, copper_mask = build_random_alloy()
     nickel_mask = ~copper_mask
     session = viewer_session(atoms)
+    camera = session.camera()
+    camera.frame_all()
 
     energies = atomic_energies(atoms)
     copper_energies = energies[copper_mask]

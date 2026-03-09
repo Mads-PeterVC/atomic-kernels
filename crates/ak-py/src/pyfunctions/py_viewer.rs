@@ -102,6 +102,52 @@ impl PyViewerSession {
     fn reset_atom_colors(&self) -> PyResult<()> {
         self.handle.reset_atom_colors().map_err(Self::send_error)
     }
+
+    #[pyo3(signature = (focus=None, radius=None, yaw=None, pitch=None))]
+    fn set_camera_view(
+        &self,
+        focus: Option<[f32; 3]>,
+        radius: Option<f32>,
+        yaw: Option<f32>,
+        pitch: Option<f32>,
+    ) -> PyResult<()> {
+        self.handle
+            .set_camera_view(focus, radius, yaw, pitch)
+            .map_err(Self::send_error)
+    }
+
+    fn pan_camera(&self, delta: [f32; 3]) -> PyResult<()> {
+        self.handle.pan_camera(delta).map_err(Self::send_error)
+    }
+
+    #[pyo3(signature = (factor=None, delta=None))]
+    fn zoom_camera(&self, factor: Option<f32>, delta: Option<f32>) -> PyResult<()> {
+        self.handle
+            .zoom_camera(factor, delta)
+            .map_err(Self::send_error)
+    }
+
+    #[pyo3(signature = (yaw_delta=0.0, pitch_delta=0.0))]
+    fn orbit_camera(&self, yaw_delta: f32, pitch_delta: f32) -> PyResult<()> {
+        self.handle
+            .orbit_camera(yaw_delta, pitch_delta)
+            .map_err(Self::send_error)
+    }
+
+    fn frame_all(&self) -> PyResult<()> {
+        self.handle.frame_all().map_err(Self::send_error)
+    }
+
+    #[pyo3(signature = (yaw_rate=0.5, pitch_rate=0.0))]
+    fn start_orbit(&self, yaw_rate: f32, pitch_rate: f32) -> PyResult<()> {
+        self.handle
+            .start_orbit(yaw_rate, pitch_rate)
+            .map_err(Self::send_error)
+    }
+
+    fn stop_camera_motion(&self) -> PyResult<()> {
+        self.handle.stop_camera_motion().map_err(Self::send_error)
+    }
 }
 
 #[pyclass(name = "PreparedViewerSession", unsendable)]

@@ -27,16 +27,19 @@ def normalized_heights(atoms) -> np.ndarray:
 if __name__ == "__main__":
     atoms = build_structure()
     session = viewer_session(atoms)
+    colors = session.colors()
+    camera = session.camera()
+    camera.frame_all()
 
     heights = normalized_heights(atoms)
-    session.set_atom_scalars("height", heights)
-    session.color_by_scalar("height", palette="inferno")
+    colors.set_atom_scalars("height", heights)
+    colors.by_scalar("height", palette="inferno")
 
     time.sleep(2.0)
 
     # Switch to a matplotlib colormap by sampling it into RGBA values.
     magma = plt.get_cmap("magma")(np.linspace(0.0, 1.0, 256)).astype(np.float32)
-    session.color_by_scalar("height", colors=magma)
+    colors.by_scalar("height", colors=magma)
 
     time.sleep(2.0)
 
@@ -45,6 +48,6 @@ if __name__ == "__main__":
     session.append_frame(shifted)
 
     shifted_heights = normalized_heights(shifted)
-    session.set_atom_scalars("height", shifted_heights, frame_index=1)
-    session.color_by_scalar("height", palette="plasma")
+    colors.set_atom_scalars("height", shifted_heights, frame_index=1)
+    colors.by_scalar("height", palette="plasma")
     session.set_frame(1)
