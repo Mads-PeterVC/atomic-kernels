@@ -1,7 +1,7 @@
 use std::iter::zip;
 
 use crate::calculator::{Calculator, CalculatorError};
-use crate::geometry::build_neighborlist;
+use crate::geometry::naive_neighbor_list as build_neighborlist;
 
 pub trait PairPotential {
     fn cutoff(&self) -> f64;
@@ -13,13 +13,8 @@ pub trait PairPotential {
 impl<T: PairPotential> Calculator for T {
     fn calculate_energy(&self, view: &crate::StructureView) -> Result<f64, CalculatorError> {
         let nl = build_neighborlist(view, self.cutoff());
-
-        let mut energy = 0.0;
         let distances = nl.distance.ok_or(CalculatorError::CalculationFailed)?;
-
-        for r in distances {
-            energy += self.pair_energy(r);
-        }
+        let energy = distances.iter().map(|r| self.pair_energy(*r)).sum();
         Ok(energy)
     }
 

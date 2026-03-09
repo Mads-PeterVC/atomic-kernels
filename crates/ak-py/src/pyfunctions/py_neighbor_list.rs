@@ -1,5 +1,5 @@
 use crate::PyStructure;
-use ak_core::build_neighborlist;
+use ak_core::{naive_neighbor_list, naive_neighbor_list_pbc};
 use numpy::ndarray::{Array1, Array2};
 use numpy::{IntoPyArray, PyArray1, PyArray2};
 use pyo3::exceptions::PyValueError;
@@ -13,7 +13,19 @@ pub fn neighborlist(py: Python<'_>, structure: PyStructure, cutoff: f64) -> Neig
     let view = structure.view();
 
     // Call ak-core implementation
-    let nl = build_neighborlist(&view, cutoff);
+    let nl = if view.pbc.any() {
+        println!("Using periodic code");
+        naive_neighbor_list_pbc(&view, cutoff)
+    } else {
+        println!("Using non-periodic code");
+        naive_neighbor_list(&view, cutoff)
+    };
+
+    // if view.pbc.any() {
+    //     let nl = build_neighborlist(&view, cutoff);
+    // else {
+
+    // }
 
     let size = nl.i.len();
 

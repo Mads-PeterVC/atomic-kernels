@@ -1,7 +1,7 @@
 pub mod atomic_number;
 pub mod cell;
 pub mod neighbor_list;
-pub mod neighbor_list_v2;
+
 pub mod pbc;
 pub mod structure;
 pub mod structure_view;
@@ -15,7 +15,7 @@ pub use cell::Cell;
 
 pub use pbc::Pbc;
 
-pub use neighbor_list::{NeighborList, build_neighborlist};
+pub use neighbor_list::{NeighborList, naive_neighbor_list, naive_neighbor_list_pbc};
 
 pub use atomic_number::{AtomicNumber, AtomicNumberError};
 
