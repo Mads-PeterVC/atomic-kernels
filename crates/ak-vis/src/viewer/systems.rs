@@ -4,13 +4,76 @@ use std::f32::consts::FRAC_PI_2;
 
 use crate::components::{FrameAtom, FrameAxis, FrameCell};
 use crate::viewer::ViewerConfig;
-use crate::viewer::ViewerState;
 use crate::viewer::app::CommandReceiver;
 use crate::viewer::controls::default_radius_focus;
 use crate::viewer::controls::despawn_current_frame;
+use crate::viewer::{AtomColorRule, ViewerState};
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 use bevy_panorbit_camera::PanOrbitCamera;
+
+fn scalar_colors_for_rule(viewer: &ViewerState, rule: &AtomColorRule) -> Option<Vec<Option<Color>>> {
+    let values = viewer
+        .atom_scalars
+        .get(&rule.name)
+        .and_then(|frames| frames.get(viewer.current))
+        .and_then(|values| values.as_ref())?;
+
+    if values.len() != viewer.traj.view(viewer.current).positions.len() {
+        return None;
+    }
+
+    let finite_values: Vec<f32> = values.iter().copied().filter(|value| value.is_finite()).collect();
+    if finite_values.is_empty() {
+        return None;
+    }
+
+    let inferred_min = finite_values.iter().copied().fold(f32::INFINITY, f32::min);
+    let inferred_max = finite_values
+        .iter()
+        .copied()
+        .fold(f32::NEG_INFINITY, f32::max);
+    let min = rule.min.unwrap_or(inferred_min);
+    let max = rule.max.unwrap_or(inferred_max);
+    let span = (max - min).max(f32::EPSILON);
+
+    Some(
+        values
+            .iter()
+            .map(|value| {
+                if value.is_finite() {
+                    Some(rule.palette.color((value - min) / span))
+                } else {
+                    None
+                }
+            })
+            .collect(),
+    )
+}
+
+fn scalar_colors_for_current_frame(viewer: &ViewerState) -> Option<Vec<Option<Color>>> {
+    if viewer.atom_color_rules.is_empty() {
+        return None;
+    }
+
+    let atom_count = viewer.traj.view(viewer.current).positions.len();
+    let mut layered_colors = vec![None; atom_count];
+    let mut applied_any = false;
+
+    for rule in &viewer.atom_color_rules {
+        let Some(rule_colors) = scalar_colors_for_rule(viewer, rule) else {
+            continue;
+        };
+        for (slot, color) in layered_colors.iter_mut().zip(rule_colors) {
+            if color.is_some() {
+                *slot = color;
+                applied_any = true;
+            }
+        }
+    }
+
+    applied_any.then_some(layered_colors)
+}
 
 fn render_frame(
     commands: &mut Commands,
@@ -24,7 +87,19 @@ fn render_frame(
     }
 
     let view = viewer.traj.view(viewer.current);
-    let atom_visuals = convert_structure(&view, &JMOL);
+    let atom_visuals = match scalar_colors_for_current_frame(viewer) {
+        Some(colors) => convert_structure(&view, &JMOL)
+            .into_iter()
+            .zip(colors)
+            .map(|(mut visual, color)| {
+                if let Some(color) = color {
+                    visual.color = color;
+                }
+                visual
+            })
+            .collect(),
+        None => convert_structure(&view, &JMOL),
+    };
     render_atoms(
         atom_visuals,
         commands,

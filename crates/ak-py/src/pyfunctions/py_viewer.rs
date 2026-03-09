@@ -2,8 +2,8 @@ use crate::{PyStructure, PyTrajectory, PyViewerConfig};
 #[cfg(not(target_os = "macos"))]
 use ak_vis::launch;
 use ak_vis::{
-    ViewerSessionHandle, run, run_default, run_prepared, run_structure, run_structure_default,
-    run_with_session,
+    ScalarColorMap, ViewerSessionHandle, run, run_default, run_prepared, run_structure,
+    run_structure_default, run_with_session,
 };
 use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
@@ -44,6 +44,63 @@ impl PyViewerSession {
 
     fn close(&self) -> PyResult<()> {
         self.handle.close().map_err(Self::send_error)
+    }
+
+    #[pyo3(signature = (name, values, frame_index=None))]
+    fn set_atom_scalars(
+        &self,
+        name: String,
+        values: Vec<f32>,
+        frame_index: Option<usize>,
+    ) -> PyResult<()> {
+        self.handle
+            .set_atom_scalars(name, values, frame_index)
+            .map_err(Self::send_error)
+    }
+
+    #[pyo3(signature = (name, palette="viridis", colors=None, min=None, max=None, append=false))]
+    fn color_by_scalar(
+        &self,
+        name: String,
+        palette: &str,
+        colors: Option<Vec<(f32, f32, f32, f32)>>,
+        min: Option<f32>,
+        max: Option<f32>,
+        append: bool,
+    ) -> PyResult<()> {
+        let palette = match colors {
+            Some(colors) => {
+                if colors.len() < 2 {
+                    return Err(PyValueError::new_err(
+                        "custom colormap requires at least two RGBA samples",
+                    ));
+                }
+                ScalarColorMap::Sampled(
+                    colors
+                        .into_iter()
+                        .map(|(r, g, b, a)| [r, g, b, a])
+                        .collect(),
+                )
+            }
+            None => match palette {
+                "viridis" => ScalarColorMap::Viridis,
+                "inferno" => ScalarColorMap::Inferno,
+                "plasma" => ScalarColorMap::Plasma,
+                _ => {
+                    return Err(PyValueError::new_err(format!(
+                        "unsupported palette '{palette}', expected 'viridis', 'inferno', or 'plasma'"
+                    )));
+                }
+            },
+        };
+
+        self.handle
+            .color_by_scalar(name, palette, min, max, append)
+            .map_err(Self::send_error)
+    }
+
+    fn reset_atom_colors(&self) -> PyResult<()> {
+        self.handle.reset_atom_colors().map_err(Self::send_error)
     }
 }
 

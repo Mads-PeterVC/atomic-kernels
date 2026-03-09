@@ -4,15 +4,15 @@ pub use visuals::{
 };
 
 pub mod color_palette;
-pub use color_palette::{ColorPalette, ColorScheme, JMOL};
+pub use color_palette::{ColorPalette, ColorScheme, JMOL, ScalarColorMap};
 
 pub mod render;
 pub use render::render_atoms;
 
 pub mod viewer;
 pub use viewer::{
-    ViewerCommand, ViewerSessionClosed, ViewerSessionHandle, launch, run, run_default,
-    run_prepared, run_structure, run_structure_default, run_with_session,
+    AtomColorRule, ViewerCommand, ViewerSessionClosed, ViewerSessionHandle, launch, run,
+    run_default, run_prepared, run_structure, run_structure_default, run_with_session,
 };
 
 pub mod ui;

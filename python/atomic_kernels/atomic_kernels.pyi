@@ -80,7 +80,36 @@ class ViewerSession:
     def append_frame(self, frame: object) -> None: ...
     def set_frame(self, index: int) -> None: ...
     def follow_tail(self, enabled: bool = True) -> None: ...
+    def set_atom_scalars(
+        self, name: str, values: list[float], frame_index: int | None = None
+    ) -> None: ...
+    def color_by_scalar(
+        self,
+        name: str,
+        palette: str = "viridis",
+        colors: object | None = None,
+        min: float | None = None,
+        max: float | None = None,
+        append: bool = False,
+    ) -> None: ...
+    def reset_atom_colors(self) -> None: ...
     def close(self) -> None: ...
+
+
+class ViewerSelection:
+    def set_atom_scalars(
+        self, name: str, values: object, frame_index: int | None = None
+    ) -> ViewerSession: ...
+    def color_by_scalar(
+        self,
+        name: str,
+        values: object,
+        palette: str = "viridis",
+        colors: object | None = None,
+        min: float | None = None,
+        max: float | None = None,
+        frame_index: int | None = None,
+    ) -> ViewerSession: ...
 
 
 class PreparedViewerSession:

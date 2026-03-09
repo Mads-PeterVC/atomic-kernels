@@ -1,6 +1,9 @@
 use ak_core::{Structure, Trajectory};
 use bevy::prelude::Resource;
+use std::collections::HashMap;
 use std::sync::mpsc::Sender;
+
+use crate::ScalarColorMap;
 
 pub enum ViewerCommand {
     LoadTrajectory {
@@ -16,6 +19,19 @@ pub enum ViewerCommand {
     SetFollowTail {
         enabled: bool,
     },
+    SetAtomScalars {
+        name: String,
+        values: Vec<f32>,
+        frame_index: Option<usize>,
+    },
+    ColorByScalar {
+        name: String,
+        palette: ScalarColorMap,
+        min: Option<f32>,
+        max: Option<f32>,
+        append: bool,
+    },
+    ResetAtomColors,
     Close,
 }
 
@@ -34,6 +50,14 @@ impl std::fmt::Display for ViewerSessionClosed {
 }
 
 impl std::error::Error for ViewerSessionClosed {}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct AtomColorRule {
+    pub name: String,
+    pub palette: ScalarColorMap,
+    pub min: Option<f32>,
+    pub max: Option<f32>,
+}
 
 impl ViewerSessionHandle {
     pub fn new(sender: Sender<ViewerCommand>) -> Self {
@@ -71,6 +95,46 @@ impl ViewerSessionHandle {
             .map_err(|_| ViewerSessionClosed)
     }
 
+    pub fn set_atom_scalars(
+        &self,
+        name: String,
+        values: Vec<f32>,
+        frame_index: Option<usize>,
+    ) -> Result<(), ViewerSessionClosed> {
+        self.sender
+            .send(ViewerCommand::SetAtomScalars {
+                name,
+                values,
+                frame_index,
+            })
+            .map_err(|_| ViewerSessionClosed)
+    }
+
+    pub fn color_by_scalar(
+        &self,
+        name: String,
+        palette: ScalarColorMap,
+        min: Option<f32>,
+        max: Option<f32>,
+        append: bool,
+    ) -> Result<(), ViewerSessionClosed> {
+        self.sender
+            .send(ViewerCommand::ColorByScalar {
+                name,
+                palette,
+                min,
+                max,
+                append,
+            })
+            .map_err(|_| ViewerSessionClosed)
+    }
+
+    pub fn reset_atom_colors(&self) -> Result<(), ViewerSessionClosed> {
+        self.sender
+            .send(ViewerCommand::ResetAtomColors)
+            .map_err(|_| ViewerSessionClosed)
+    }
+
     pub fn close(&self) -> Result<(), ViewerSessionClosed> {
         self.sender
             .send(ViewerCommand::Close)
@@ -83,6 +147,8 @@ pub struct ViewerState {
     pub traj: Trajectory,
     pub current: usize,
     pub follow_tail: bool,
+    pub atom_scalars: HashMap<String, Vec<Option<Vec<f32>>>>,
+    pub atom_color_rules: Vec<AtomColorRule>,
     pub needs_render: bool,
     pub needs_camera_reset: bool,
 }
@@ -94,6 +160,8 @@ impl ViewerState {
             traj,
             current,
             follow_tail: false,
+            atom_scalars: HashMap::new(),
+            atom_color_rules: Vec::new(),
             needs_render: true,
             needs_camera_reset: true,
         }
@@ -113,8 +181,10 @@ impl ViewerState {
                 frames,
                 initial_frame,
             } => {
+                let frame_count = frames.len();
                 self.traj = Trajectory::new(frames);
                 self.current = clamp_frame(initial_frame, self.traj.len());
+                self.resize_scalar_storage(frame_count);
                 self.needs_render = true;
                 self.needs_camera_reset = true;
                 CommandOutcome::default()
@@ -149,6 +219,50 @@ impl ViewerState {
                 self.follow_tail = enabled;
                 CommandOutcome::default()
             }
+            ViewerCommand::SetAtomScalars {
+                name,
+                values,
+                frame_index,
+            } => {
+                let target_frame = frame_index.unwrap_or(self.current);
+                let should_refresh_active_mode = self.current == target_frame
+                    && self
+                        .atom_color_rules
+                        .iter()
+                        .any(|rule| rule.name == name);
+                if self.validate_scalar_values(target_frame, &values) {
+                    self.store_scalars(name, target_frame, values);
+                    self.needs_render = should_refresh_active_mode;
+                }
+                CommandOutcome::default()
+            }
+            ViewerCommand::ColorByScalar {
+                name,
+                palette,
+                min,
+                max,
+                append,
+            } => {
+                let rule = AtomColorRule {
+                    name,
+                    palette,
+                    min,
+                    max,
+                };
+                if append {
+                    self.atom_color_rules.push(rule);
+                } else {
+                    self.atom_color_rules.clear();
+                    self.atom_color_rules.push(rule);
+                }
+                self.needs_render = true;
+                CommandOutcome::default()
+            }
+            ViewerCommand::ResetAtomColors => {
+                self.atom_color_rules.clear();
+                self.needs_render = true;
+                CommandOutcome::default()
+            }
             ViewerCommand::Close => CommandOutcome { should_close: true },
         }
     }
@@ -178,6 +292,28 @@ impl ViewerState {
     fn cell_changed(&self, old_index: usize, new_index: usize) -> bool {
         self.traj.view(old_index).cell != self.traj.view(new_index).cell
     }
+
+    fn validate_scalar_values(&self, frame_index: usize, values: &[f32]) -> bool {
+        frame_index < self.traj.len() && self.traj.view(frame_index).positions.len() == values.len()
+    }
+
+    fn store_scalars(&mut self, name: String, frame_index: usize, values: Vec<f32>) {
+        let frame_count = self.traj.len();
+        let entries = self
+            .atom_scalars
+            .entry(name)
+            .or_insert_with(|| vec![None; frame_count]);
+        if entries.len() < frame_count {
+            entries.resize(frame_count, None);
+        }
+        entries[frame_index] = Some(values);
+    }
+
+    fn resize_scalar_storage(&mut self, frame_count: usize) {
+        for values in self.atom_scalars.values_mut() {
+            values.resize(frame_count, None);
+        }
+    }
 }
 
 #[derive(Default)]
@@ -191,7 +327,7 @@ fn clamp_frame(index: usize, len: usize) -> usize {
 
 #[cfg(test)]
 mod tests {
-    use super::{ViewerCommand, ViewerState};
+    use super::{AtomColorRule, ScalarColorMap, ViewerCommand, ViewerState};
     use ak_core::{Structure, Trajectory};
 
     fn test_structure(x: f64) -> Structure {
@@ -274,5 +410,68 @@ mod tests {
 
         assert_eq!(state.current, 0);
         assert!(!state.needs_render);
+    }
+
+    #[test]
+    fn set_atom_scalars_stores_current_frame_values() {
+        let mut state = ViewerState::new(Trajectory::new(vec![test_structure(0.0)]), 0);
+
+        state.apply_command(ViewerCommand::SetAtomScalars {
+            name: "energy".to_string(),
+            values: vec![1.0, 2.0],
+            frame_index: None,
+        });
+
+        assert_eq!(
+            state.atom_scalars["energy"][0].as_ref().unwrap(),
+            &vec![1.0, 2.0]
+        );
+    }
+
+    #[test]
+    fn color_by_scalar_switches_color_mode() {
+        let mut state = ViewerState::new(Trajectory::new(vec![test_structure(0.0)]), 0);
+
+        state.apply_command(ViewerCommand::ColorByScalar {
+            name: "energy".to_string(),
+            palette: ScalarColorMap::Viridis,
+            min: None,
+            max: None,
+            append: false,
+        });
+
+        assert_eq!(
+            state.atom_color_rules,
+            vec![AtomColorRule {
+                name: "energy".to_string(),
+                palette: ScalarColorMap::Viridis,
+                min: None,
+                max: None,
+            }]
+        );
+    }
+
+    #[test]
+    fn append_color_rule_preserves_existing_rules() {
+        let mut state = ViewerState::new(Trajectory::new(vec![test_structure(0.0)]), 0);
+
+        state.apply_command(ViewerCommand::ColorByScalar {
+            name: "energy".to_string(),
+            palette: ScalarColorMap::Viridis,
+            min: None,
+            max: None,
+            append: false,
+        });
+        state.apply_command(ViewerCommand::ColorByScalar {
+            name: "charge".to_string(),
+            palette: ScalarColorMap::Plasma,
+            min: Some(-1.0),
+            max: Some(1.0),
+            append: true,
+        });
+
+        assert_eq!(state.atom_color_rules.len(), 2);
+        assert_eq!(state.atom_color_rules[0].name, "energy");
+        assert_eq!(state.atom_color_rules[1].name, "charge");
     }
 }
