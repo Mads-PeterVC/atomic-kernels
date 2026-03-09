@@ -1,8 +1,13 @@
 pub mod app;
-pub use app::{run, run_default, run_structure, run_structure_default};
+pub use app::{
+    launch, run, run_default, run_prepared, run_structure, run_structure_default, run_with_session,
+};
 
 pub mod config;
 pub use config::{ColorConfig, LightingConfig, RenderConfig, ViewerConfig};
+
+pub mod session;
+pub use session::{ViewerCommand, ViewerSessionHandle, ViewerState};
 
 mod systems;
 

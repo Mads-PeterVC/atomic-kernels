@@ -1,32 +1,34 @@
 use ak_core::{Structure, Trajectory};
+use bevy::prelude::*;
+use bevy_panorbit_camera::PanOrbitCameraPlugin;
+use std::sync::{Mutex, mpsc};
+use std::thread;
 
+use crate::ui::setup_ui;
 use crate::viewer::ViewerConfig;
-use crate::viewer::systems::*;
-
 use crate::viewer::controls::{
     keyboard_controls, navigate_frames, screenshot_on_spacebar, screenshot_saving,
     toggle_ui_visibility, toggle_view,
 };
-
-use crate::ui::setup_ui;
-
-use bevy::prelude::*;
-use bevy_panorbit_camera::PanOrbitCameraPlugin;
+use crate::viewer::session::{ViewerSessionHandle, ViewerState};
+use crate::viewer::systems::{
+    apply_viewer_commands, render_current_frame, rerender_if_dirty, setup_camera,
+    setup_camera_light, setup_lighting, update_camera_light,
+};
 
 #[derive(Resource)]
-pub struct ViewerTrajectory {
-    pub traj: Trajectory,
-    pub current: usize,
-}
+pub struct CommandReceiver(pub Option<Mutex<mpsc::Receiver<crate::viewer::ViewerCommand>>>);
 
-pub fn run(trajectory: Trajectory, config: ViewerConfig) {
+fn build_app(
+    trajectory: Trajectory,
+    config: ViewerConfig,
+    receiver: Option<mpsc::Receiver<crate::viewer::ViewerCommand>>,
+) -> App {
     let mut app = App::new();
     app.insert_resource(ClearColor(config.color.background))
-        .insert_resource(ViewerTrajectory {
-            traj: trajectory,
-            current: config.initial_frame,
-        })
+        .insert_resource(ViewerState::new(trajectory, config.initial_frame))
         .insert_resource(config)
+        .insert_resource(CommandReceiver(receiver.map(Mutex::new)))
         .add_plugins((DefaultPlugins, MeshPickingPlugin))
         .add_plugins(PanOrbitCameraPlugin)
         .add_systems(
@@ -41,19 +43,74 @@ pub fn run(trajectory: Trajectory, config: ViewerConfig) {
         .add_systems(
             Update,
             (
+                apply_viewer_commands,
                 toggle_view,
                 keyboard_controls,
                 update_camera_light,
                 screenshot_on_spacebar,
                 screenshot_saving,
                 navigate_frames,
+                rerender_if_dirty,
             ),
         );
+
     if app.world().resource::<ViewerConfig>().render.show_ui {
         app.add_systems(Startup, setup_ui);
         app.add_systems(Update, toggle_ui_visibility);
     }
+
+    app
+}
+
+fn run_app(
+    trajectory: Trajectory,
+    config: ViewerConfig,
+    receiver: Option<mpsc::Receiver<crate::viewer::ViewerCommand>>,
+) {
+    let mut app = build_app(trajectory, config, receiver);
     app.run();
+}
+
+pub fn run_prepared(
+    trajectory: Trajectory,
+    config: ViewerConfig,
+    receiver: mpsc::Receiver<crate::viewer::ViewerCommand>,
+) {
+    run_app(trajectory, config, Some(receiver));
+}
+
+pub fn launch(trajectory: Trajectory, config: ViewerConfig) -> ViewerSessionHandle {
+    let (sender, receiver) = mpsc::channel();
+
+    thread::Builder::new()
+        .name("ak-viewer-session".to_string())
+        .spawn(move || {
+            run_app(trajectory, config, Some(receiver));
+        })
+        .expect("failed to launch viewer session thread");
+
+    ViewerSessionHandle::new(sender)
+}
+
+pub fn run_with_session<F>(trajectory: Trajectory, config: ViewerConfig, driver: F)
+where
+    F: FnOnce(ViewerSessionHandle) + Send + 'static,
+{
+    let (sender, receiver) = mpsc::channel();
+    let handle = ViewerSessionHandle::new(sender);
+
+    thread::Builder::new()
+        .name("ak-viewer-session-driver".to_string())
+        .spawn(move || {
+            driver(handle);
+        })
+        .expect("failed to launch viewer session driver thread");
+
+    run_app(trajectory, config, Some(receiver));
+}
+
+pub fn run(trajectory: Trajectory, config: ViewerConfig) {
+    run_app(trajectory, config, None);
 }
 
 pub fn run_default(trajectory: Trajectory) {

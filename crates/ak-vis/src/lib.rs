@@ -10,7 +10,10 @@ pub mod render;
 pub use render::render_atoms;
 
 pub mod viewer;
-pub use viewer::{run, run_default, run_structure, run_structure_default};
+pub use viewer::{
+    ViewerCommand, ViewerSessionHandle, launch, run, run_default, run_prepared, run_structure,
+    run_structure_default, run_with_session,
+};
 
 pub mod ui;
 

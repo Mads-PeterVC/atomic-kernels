@@ -2,38 +2,63 @@ use crate::render::{render_atoms, render_axis, render_cell};
 use crate::{JMOL, convert_axis, convert_cell, convert_structure};
 use std::f32::consts::FRAC_PI_2;
 
+use crate::components::{FrameAtom, FrameAxis, FrameCell};
 use crate::viewer::ViewerConfig;
-use crate::viewer::app::ViewerTrajectory;
+use crate::viewer::ViewerState;
+use crate::viewer::app::CommandReceiver;
+use crate::viewer::controls::default_radius_focus;
+use crate::viewer::controls::despawn_current_frame;
 use bevy::prelude::*;
 use bevy_panorbit_camera::PanOrbitCamera;
-pub fn render_current_frame(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-    viewer: Res<ViewerTrajectory>,
-    config: Res<ViewerConfig>,
-) {
-    let view = viewer.traj.view(viewer.current);
 
-    // Create and render atoms
+fn render_frame(
+    commands: &mut Commands,
+    meshes: &mut ResMut<Assets<Mesh>>,
+    materials: &mut ResMut<Assets<StandardMaterial>>,
+    viewer: &mut ViewerState,
+    config: &ViewerConfig,
+) {
+    if !viewer.has_frames() {
+        return;
+    }
+
+    let view = viewer.traj.view(viewer.current);
     let atom_visuals = convert_structure(&view, &JMOL);
     render_atoms(
         atom_visuals,
-        &mut commands,
-        &mut materials,
-        &mut meshes,
+        commands,
+        materials,
+        meshes,
         config.render.ico_subdiv,
     );
 
     if config.render.show_cell {
         let cell_visuals = convert_cell(&view, config.color.cell_color);
-        render_cell(cell_visuals, &mut commands, &mut materials, &mut meshes);
+        render_cell(cell_visuals, commands, materials, meshes);
     }
 
     if config.render.show_axes {
         let axis_visuals = convert_axis(&view);
-        render_axis(axis_visuals, &mut commands, &mut materials, &mut meshes);
+        render_axis(axis_visuals, commands, materials, meshes);
     }
+
+    viewer.needs_render = false;
+}
+
+pub fn render_current_frame(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut viewer: ResMut<ViewerState>,
+    config: Res<ViewerConfig>,
+) {
+    render_frame(
+        &mut commands,
+        &mut meshes,
+        &mut materials,
+        viewer.as_mut(),
+        config.as_ref(),
+    );
 }
 
 pub fn setup_lighting(
@@ -79,12 +104,10 @@ pub fn setup_lighting(
     ));
 }
 
-pub fn setup_camera(
-    mut commands: Commands,
-    viewer: Res<ViewerTrajectory>,
-    config: Res<ViewerConfig>,
-) {
-    // Setup camera
+pub fn setup_camera(mut commands: Commands, viewer: Res<ViewerState>, config: Res<ViewerConfig>) {
+    if !viewer.has_frames() {
+        return;
+    }
 
     let view = viewer.traj.view(viewer.current);
 
@@ -92,9 +115,7 @@ pub fn setup_camera(
 
     let max_cell_length = [view.cell.a(), view.cell.b(), view.cell.c()]
         .iter()
-        .map(|v| v.norm())
-        .max_by(|a, b| a.partial_cmp(b).unwrap())
-        .unwrap() as f32;
+        .fold(0.0_f64, |acc, v| acc.max(v.norm())) as f32;
 
     let mut camera = commands.spawn(PanOrbitCamera {
         yaw: Some(-FRAC_PI_2),
@@ -132,12 +153,74 @@ pub fn update_camera_light(
     cam_q: Query<(&GlobalTransform, &PanOrbitCamera)>,
     mut light_q: Query<&mut Transform, With<CameraLight>>,
 ) {
-    let (cam_gt, orbit) = cam_q.single().unwrap();
-    let mut light_transform = light_q.single_mut().unwrap();
+    let Ok((cam_gt, orbit)) = cam_q.single() else {
+        return;
+    };
+    let Ok(mut light_transform) = light_q.single_mut() else {
+        return;
+    };
 
     let cam_pos = cam_gt.translation();
     let to_focus = (orbit.focus - cam_pos).normalize_or_zero();
 
     // Directional light shines along its -Z axis
     light_transform.rotation = Quat::from_rotation_arc(Vec3::NEG_Z, to_focus);
+}
+
+pub fn apply_viewer_commands(
+    mut viewer: ResMut<ViewerState>,
+    receiver: Res<CommandReceiver>,
+    mut app_exit_events: MessageWriter<AppExit>,
+) {
+    let Some(receiver) = receiver.0.as_ref() else {
+        return;
+    };
+
+    let Ok(receiver) = receiver.lock() else {
+        return;
+    };
+
+    loop {
+        match receiver.try_recv() {
+            Ok(command) => {
+                let outcome = viewer.apply_command(command);
+                if outcome.should_close {
+                    app_exit_events.write(AppExit::Success);
+                    break;
+                }
+            }
+            Err(std::sync::mpsc::TryRecvError::Empty) => break,
+            Err(std::sync::mpsc::TryRecvError::Disconnected) => break,
+        }
+    }
+}
+
+pub fn rerender_if_dirty(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut viewer: ResMut<ViewerState>,
+    config: Res<ViewerConfig>,
+    atoms: Query<Entity, With<FrameAtom>>,
+    cells: Query<Entity, With<FrameCell>>,
+    axes: Query<Entity, With<FrameAxis>>,
+    camera: Query<&mut PanOrbitCamera>,
+) {
+    if !viewer.needs_render || !viewer.has_frames() {
+        return;
+    }
+
+    despawn_current_frame(&mut commands, atoms, cells, axes);
+    render_frame(
+        &mut commands,
+        &mut meshes,
+        &mut materials,
+        viewer.as_mut(),
+        config.as_ref(),
+    );
+
+    if viewer.needs_camera_reset {
+        default_radius_focus(viewer.as_ref(), camera);
+        viewer.needs_camera_reset = false;
+    }
 }

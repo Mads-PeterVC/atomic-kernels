@@ -2,13 +2,12 @@ use bevy::prelude::*;
 use bevy_panorbit_camera::PanOrbitCamera;
 use std::f32::consts::FRAC_PI_2;
 
-use crate::viewer::app::ViewerTrajectory;
-
+use crate::viewer::ViewerState;
 use crate::viewer::controls::utils::default_radius_focus;
 
 pub fn toggle_view(
     keys: Res<ButtonInput<KeyCode>>,
-    viewer: Res<ViewerTrajectory>,
+    viewer: Res<ViewerState>,
     mut cam_query: Query<&mut PanOrbitCamera>,
 ) {
     let (target_yaw, target_pitch) = if keys.just_pressed(KeyCode::KeyX) {
@@ -28,7 +27,7 @@ pub fn toggle_view(
     orbit.target_yaw = target_yaw;
     orbit.target_pitch = target_pitch;
     orbit.force_update = true;
-    default_radius_focus(viewer, cam_query);
+    default_radius_focus(viewer.as_ref(), cam_query);
 }
 
 pub fn keyboard_controls(
