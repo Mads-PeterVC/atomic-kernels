@@ -1,0 +1,123 @@
+from __future__ import annotations
+
+import multiprocessing as mp
+import threading
+from typing import Optional
+
+from ase import Atoms
+
+from atomic_kernels._atomic_kernels import (
+    PreparedViewerSession,
+    ViewerConfig,
+    ViewerSession,
+    prepare_viewer_session as _prepare_viewer_session,
+)
+
+from ._config import deserialize_config, serialize_config
+from ._utils import normalize_colormap
+
+
+def viewer_process_main(
+    atoms: list[Atoms], config_payload: Optional[dict], connection
+) -> None:
+    config = deserialize_config(config_payload)
+    prepared = _prepare_viewer_session(atoms, config)
+    session = prepared.session
+
+    def command_loop() -> None:
+        while True:
+            try:
+                command, payload = connection.recv()
+            except EOFError:
+                break
+            except OSError:
+                break
+
+            if command == "append_frame":
+                session.append_frame(payload)
+            elif command == "set_frame":
+                session.set_frame(payload)
+            elif command == "follow_tail":
+                session.follow_tail(payload)
+            elif command == "set_atom_scalars":
+                session.set_atom_scalars(*payload)
+            elif command == "color_by_scalar":
+                session.color_by_scalar(*payload)
+            elif command == "reset_atom_colors":
+                session.reset_atom_colors()
+            elif command == "close":
+                try:
+                    session.close()
+                except RuntimeError:
+                    pass
+                break
+
+    worker = threading.Thread(target=command_loop)
+    worker.start()
+    prepared.run()
+    connection.close()
+    worker.join()
+
+
+class ViewerSessionProxy:
+    def __init__(self, connection, process: mp.Process):
+        self._connection = connection
+        self._process = process
+
+    def _send(self, command: str, payload=None) -> None:
+        if not self._process.is_alive():
+            raise RuntimeError("viewer session process is no longer running")
+        self._connection.send((command, payload))
+
+    def append_frame(self, frame: Atoms) -> None:
+        self._send("append_frame", frame)
+
+    def set_frame(self, index: int) -> None:
+        self._send("set_frame", index)
+
+    def follow_tail(self, enabled: bool = True) -> None:
+        self._send("follow_tail", enabled)
+
+    def set_atom_scalars(
+        self, name: str, values, frame_index: int | None = None
+    ) -> None:
+        self._send("set_atom_scalars", (name, list(values), frame_index))
+
+    def color_by_scalar(
+        self,
+        name: str,
+        palette: str = "viridis",
+        colors=None,
+        min: float | None = None,
+        max: float | None = None,
+        append: bool = False,
+    ) -> None:
+        normalized = None if colors is None else normalize_colormap(colors)
+        self._send("color_by_scalar", (name, palette, normalized, min, max, append))
+
+    def reset_atom_colors(self) -> None:
+        self._send("reset_atom_colors")
+
+    def close(self) -> None:
+        if self._connection.closed:
+            return
+        try:
+            self._send("close")
+        finally:
+            self._connection.close()
+
+
+def spawn_process_viewer_session(
+    atoms: list[Atoms],
+    config: Optional[ViewerConfig],
+) -> ViewerSessionProxy:
+    ctx = mp.get_context("spawn")
+    parent, child = ctx.Pipe()
+    process = ctx.Process(
+        target=viewer_process_main,
+        args=(atoms, serialize_config(config), child),
+        daemon=False,
+    )
+    process.start()
+    child.close()
+    return ViewerSessionProxy(parent, process)
