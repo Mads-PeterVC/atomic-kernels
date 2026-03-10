@@ -142,3 +142,23 @@ class ViewerSelection:
             append=True,
         )
         return self._session
+
+    def ball_and_stick(
+        self,
+        atom_scale: float = 0.45,
+        bond_radius: float = 0.08,
+        bond_color=(0.7, 0.7, 0.7),
+        bond_scope: str = "both_selected",
+        frame_index: int | None = None,
+    ) -> "ViewerSessionFacade":
+        """Render the selection in ball-and-stick style and leave other atoms unchanged."""
+        self._session.render().ball_and_stick(
+            selection=self._selection,
+            atom_scale=atom_scale,
+            bond_radius=bond_radius,
+            bond_color=bond_color,
+            bond_scope=bond_scope,
+            frame_index=self._frame_index if frame_index is None else frame_index,
+            append=True,
+        )
+        return self._session

@@ -1,7 +1,7 @@
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
-use crate::components::{FrameAtom, FrameAxis, FrameCell};
+use crate::components::{FrameAtom, FrameAxis, FrameBond, FrameCell};
 use crate::viewer::ViewerState;
 
 #[derive(SystemParam)]
@@ -16,6 +16,7 @@ pub fn despawn_current_frame(
     atoms: Query<Entity, With<FrameAtom>>,
     cells: Query<Entity, With<FrameCell>>,
     axes: Query<Entity, With<FrameAxis>>,
+    bonds: Query<Entity, With<FrameBond>>,
 ) {
     for entity in atoms.iter() {
         commands.entity(entity).despawn();
@@ -24,6 +25,9 @@ pub fn despawn_current_frame(
         commands.entity(entity).despawn();
     }
     for entity in axes.iter() {
+        commands.entity(entity).despawn();
+    }
+    for entity in bonds.iter() {
         commands.entity(entity).despawn();
     }
 }

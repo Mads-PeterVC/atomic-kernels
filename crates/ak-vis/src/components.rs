@@ -4,6 +4,9 @@ use bevy::prelude::*;
 pub struct FrameAtom;
 
 #[derive(Component)]
+pub struct FrameBond;
+
+#[derive(Component)]
 pub struct FrameCell;
 
 #[derive(Component)]

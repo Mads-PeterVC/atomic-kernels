@@ -24,6 +24,46 @@ def normalize_colormap(colors) -> list[tuple[float, float, float, float]]:
     return [tuple(row) for row in array.tolist()]
 
 
+def normalize_rgba(color) -> tuple[float, float, float, float]:
+    array = np.asarray(color, dtype=np.float32).ravel()
+    if array.shape not in ((3,), (4,)):
+        raise ValueError("bond_color must have shape (3,) or (4,)")
+    if array.shape == (3,):
+        array = np.concatenate([array, np.array([1.0], dtype=np.float32)])
+    return tuple(float(value) for value in array.tolist())
+
+
+def normalize_bonds(bonds) -> list[tuple[int, int]]:
+    array = np.asarray(bonds)
+    if array.ndim == 2 and array.shape[0] == array.shape[1]:
+        return bonds_from_adjacency(array)
+
+    pairs = np.asarray(bonds, dtype=np.int64)
+    if pairs.ndim != 2 or pairs.shape[1] != 2:
+        raise ValueError("bonds must be an adjacency matrix or an array of shape (N, 2)")
+
+    canonical = {
+        (int(min(i, j)), int(max(i, j)))
+        for i, j in pairs.tolist()
+        if int(i) != int(j)
+    }
+    return sorted(canonical)
+
+
+def bonds_from_adjacency(adjacency) -> list[tuple[int, int]]:
+    matrix = np.asarray(adjacency)
+    if matrix.ndim != 2 or matrix.shape[0] != matrix.shape[1]:
+        raise ValueError("adjacency must be a square matrix")
+
+    matrix = matrix.astype(bool)
+    bonds = []
+    for i in range(matrix.shape[0]):
+        for j in range(i + 1, matrix.shape[1]):
+            if matrix[i, j] or matrix[j, i]:
+                bonds.append((int(i), int(j)))
+    return bonds
+
+
 def selection_mask(atoms: Atoms, selection) -> np.ndarray:
     raw = selection(atoms) if callable(selection) else selection
     mask = np.asarray(raw)

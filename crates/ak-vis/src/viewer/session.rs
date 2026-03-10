@@ -1,6 +1,6 @@
 use ak_core::{Structure, Trajectory};
 use bevy::prelude::{Resource, Vec3};
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 use std::sync::mpsc::Sender;
 
 use crate::ScalarColorMap;
@@ -32,6 +32,17 @@ pub enum ViewerCommand {
         append: bool,
     },
     ResetAtomColors,
+    SetBonds {
+        bonds: BondList,
+        frame_index: Option<usize>,
+    },
+    SetRenderStyle {
+        style: RenderStyle,
+        selection: Vec<bool>,
+        frame_index: Option<usize>,
+        append: bool,
+    },
+    ResetRenderStyle,
     SetCameraView {
         focus: Option<[f32; 3]>,
         radius: Option<f32>,
@@ -80,6 +91,43 @@ pub struct AtomColorRule {
     pub palette: ScalarColorMap,
     pub min: Option<f32>,
     pub max: Option<f32>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct BondList {
+    edges: Vec<(usize, usize)>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct BondFrames {
+    frames: Vec<Option<BondList>>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum BondScope {
+    BothSelected,
+    TouchSelection,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct BallAndStickStyle {
+    pub atom_scale: f32,
+    pub bond_radius: f32,
+    pub bond_color: [f32; 4],
+    pub bond_scope: BondScope,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum RenderStyle {
+    SpaceFilling,
+    BallAndStick(BallAndStickStyle),
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct RenderStyleRule {
+    pub frame_index: usize,
+    pub selection: Vec<bool>,
+    pub style: RenderStyle,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -182,6 +230,39 @@ impl ViewerSessionHandle {
             .map_err(|_| ViewerSessionClosed)
     }
 
+    pub fn set_bonds(
+        &self,
+        bonds: BondList,
+        frame_index: Option<usize>,
+    ) -> Result<(), ViewerSessionClosed> {
+        self.sender
+            .send(ViewerCommand::SetBonds { bonds, frame_index })
+            .map_err(|_| ViewerSessionClosed)
+    }
+
+    pub fn set_render_style(
+        &self,
+        style: RenderStyle,
+        selection: Vec<bool>,
+        frame_index: Option<usize>,
+        append: bool,
+    ) -> Result<(), ViewerSessionClosed> {
+        self.sender
+            .send(ViewerCommand::SetRenderStyle {
+                style,
+                selection,
+                frame_index,
+                append,
+            })
+            .map_err(|_| ViewerSessionClosed)
+    }
+
+    pub fn reset_render_style(&self) -> Result<(), ViewerSessionClosed> {
+        self.sender
+            .send(ViewerCommand::ResetRenderStyle)
+            .map_err(|_| ViewerSessionClosed)
+    }
+
     pub fn set_camera_view(
         &self,
         focus: Option<[f32; 3]>,
@@ -263,12 +344,15 @@ pub struct ViewerState {
     pub follow_tail: bool,
     pub atom_scalars: HashMap<String, Vec<Option<Vec<f32>>>>,
     pub atom_color_rules: Vec<AtomColorRule>,
+    pub bonds: BondFrames,
+    pub render_style_rules: Vec<RenderStyleRule>,
     pub needs_render: bool,
     pub needs_camera_reset: bool,
 }
 
 impl ViewerState {
     pub fn new(traj: Trajectory, initial_frame: usize) -> Self {
+        let frame_count = traj.len();
         let current = clamp_frame(initial_frame, traj.len());
         Self {
             traj,
@@ -276,6 +360,8 @@ impl ViewerState {
             follow_tail: false,
             atom_scalars: HashMap::new(),
             atom_color_rules: Vec::new(),
+            bonds: BondFrames::new(frame_count),
+            render_style_rules: Vec::new(),
             needs_render: true,
             needs_camera_reset: true,
         }
@@ -299,6 +385,8 @@ impl ViewerState {
                 self.traj = Trajectory::new(frames);
                 self.current = clamp_frame(initial_frame, self.traj.len());
                 self.resize_scalar_storage(frame_count);
+                self.bonds = BondFrames::new(frame_count);
+                self.render_style_rules.clear();
                 self.needs_render = true;
                 self.needs_camera_reset = true;
                 CommandOutcome::default()
@@ -307,6 +395,7 @@ impl ViewerState {
                 let was_empty = self.traj.is_empty();
                 let previous = if was_empty { None } else { Some(self.current) };
                 self.traj.append(frame);
+                self.bonds.resize(self.traj.len());
                 if was_empty {
                     self.current = 0;
                     self.needs_render = true;
@@ -374,6 +463,42 @@ impl ViewerState {
                 self.needs_render = true;
                 CommandOutcome::default()
             }
+            ViewerCommand::SetBonds { bonds, frame_index } => {
+                let target_frame = frame_index.unwrap_or(self.current);
+                if target_frame < self.traj.len() {
+                    self.bonds.set(target_frame, bonds);
+                    self.needs_render = self.current == target_frame;
+                }
+                CommandOutcome::default()
+            }
+            ViewerCommand::SetRenderStyle {
+                style,
+                selection,
+                frame_index,
+                append,
+            } => {
+                let target_frame = frame_index.unwrap_or(self.current);
+                if self.validate_selection(target_frame, &selection) {
+                    let rule = RenderStyleRule {
+                        frame_index: target_frame,
+                        selection,
+                        style,
+                    };
+                    if append {
+                        self.render_style_rules.push(rule);
+                    } else {
+                        self.render_style_rules.clear();
+                        self.render_style_rules.push(rule);
+                    }
+                    self.needs_render = self.current == target_frame;
+                }
+                CommandOutcome::default()
+            }
+            ViewerCommand::ResetRenderStyle => {
+                self.render_style_rules.clear();
+                self.needs_render = true;
+                CommandOutcome::default()
+            }
             ViewerCommand::SetCameraView { .. }
             | ViewerCommand::PanCamera { .. }
             | ViewerCommand::ZoomCamera { .. }
@@ -415,6 +540,11 @@ impl ViewerState {
         frame_index < self.traj.len() && self.traj.view(frame_index).positions.len() == values.len()
     }
 
+    fn validate_selection(&self, frame_index: usize, selection: &[bool]) -> bool {
+        frame_index < self.traj.len()
+            && self.traj.view(frame_index).positions.len() == selection.len()
+    }
+
     fn store_scalars(&mut self, name: String, frame_index: usize, values: Vec<f32>) {
         let frame_count = self.traj.len();
         let entries = self
@@ -431,6 +561,68 @@ impl ViewerState {
         for values in self.atom_scalars.values_mut() {
             values.resize(frame_count, None);
         }
+    }
+}
+
+impl BondList {
+    pub fn new(edges: impl IntoIterator<Item = (usize, usize)>) -> Self {
+        let mut canonical = BTreeSet::new();
+        for (i, j) in edges {
+            if i == j {
+                continue;
+            }
+            canonical.insert((i.min(j), i.max(j)));
+        }
+        Self {
+            edges: canonical.into_iter().collect(),
+        }
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &(usize, usize)> {
+        self.edges.iter()
+    }
+
+    pub fn len(&self) -> usize {
+        self.edges.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.edges.is_empty()
+    }
+}
+
+impl BondFrames {
+    pub fn new(frame_count: usize) -> Self {
+        Self {
+            frames: vec![None; frame_count],
+        }
+    }
+
+    pub fn set(&mut self, frame_index: usize, bonds: BondList) {
+        if frame_index < self.frames.len() {
+            self.frames[frame_index] = Some(bonds);
+        }
+    }
+
+    pub fn get(&self, frame_index: usize) -> Option<&BondList> {
+        self.frames
+            .get(frame_index)
+            .and_then(|bonds| bonds.as_ref())
+    }
+
+    pub fn resize(&mut self, frame_count: usize) {
+        self.frames.resize(frame_count, None);
+    }
+}
+
+impl BallAndStickStyle {
+    pub fn bond_color(self) -> bevy::color::Color {
+        bevy::color::Color::srgba(
+            self.bond_color[0],
+            self.bond_color[1],
+            self.bond_color[2],
+            self.bond_color[3],
+        )
     }
 }
 
@@ -553,7 +745,9 @@ pub fn camera_view_for_frame(viewer: &ViewerState) -> Option<CameraView> {
     }
 
     let view = viewer.traj.view(viewer.current);
-    let focus = Vec3::from_slice(view.cell.reduced(0.5, 0.5, 0.5).cast::<f32>().as_slice());
+    let focus = structure_vec3_to_world(Vec3::from_slice(
+        view.cell.reduced(0.5, 0.5, 0.5).cast::<f32>().as_slice(),
+    ));
     let radius = [view.cell.a(), view.cell.b(), view.cell.c()]
         .iter()
         .fold(0.0_f64, |acc, v| acc.max(v.norm())) as f32;
@@ -569,8 +763,8 @@ pub fn camera_view_for_frame(viewer: &ViewerState) -> Option<CameraView> {
 #[cfg(test)]
 mod tests {
     use super::{
-        AtomColorRule, CameraState, ScalarColorMap, ViewerCommand, ViewerState,
-        camera_view_for_frame,
+        AtomColorRule, BallAndStickStyle, BondFrames, BondList, BondScope, CameraState,
+        RenderStyle, ScalarColorMap, ViewerCommand, ViewerState, camera_view_for_frame,
     };
     use ak_core::{Structure, Trajectory};
     use bevy::prelude::Vec3;
@@ -718,6 +912,54 @@ mod tests {
         assert_eq!(state.atom_color_rules.len(), 2);
         assert_eq!(state.atom_color_rules[0].name, "energy");
         assert_eq!(state.atom_color_rules[1].name, "charge");
+    }
+
+    #[test]
+    fn bond_list_canonicalizes_edges() {
+        let bonds = BondList::new([(2, 1), (1, 2), (0, 0), (0, 3)]);
+
+        let edges: Vec<(usize, usize)> = bonds.iter().copied().collect();
+        assert_eq!(edges, vec![(0, 3), (1, 2)]);
+    }
+
+    #[test]
+    fn bond_frames_store_per_frame_bonds() {
+        let mut frames = BondFrames::new(2);
+        frames.set(1, BondList::new([(0, 1)]));
+
+        assert!(frames.get(0).is_none());
+        assert_eq!(
+            frames.get(1).unwrap().iter().copied().collect::<Vec<_>>(),
+            vec![(0, 1)]
+        );
+    }
+
+    #[test]
+    fn set_render_style_stores_selection_rule() {
+        let mut state = ViewerState::new(Trajectory::new(vec![test_structure(0.0)]), 0);
+
+        state.apply_command(ViewerCommand::SetRenderStyle {
+            style: RenderStyle::BallAndStick(BallAndStickStyle {
+                atom_scale: 0.45,
+                bond_radius: 0.08,
+                bond_color: [0.7, 0.7, 0.7, 1.0],
+                bond_scope: BondScope::TouchSelection,
+            }),
+            selection: vec![true, false],
+            frame_index: None,
+            append: false,
+        });
+
+        assert_eq!(state.render_style_rules.len(), 1);
+        assert_eq!(state.render_style_rules[0].selection, vec![true, false]);
+        assert_eq!(state.render_style_rules[0].frame_index, 0);
+        assert!(matches!(
+            state.render_style_rules[0].style,
+            RenderStyle::BallAndStick(BallAndStickStyle {
+                bond_scope: BondScope::TouchSelection,
+                ..
+            })
+        ));
     }
 
     #[test]

@@ -1,6 +1,9 @@
 pub mod atom_visual;
 pub use atom_visual::AtomVisual;
 
+pub mod bond_visual;
+pub use bond_visual::BondVisual;
+
 pub mod convert;
 pub use convert::*;
 

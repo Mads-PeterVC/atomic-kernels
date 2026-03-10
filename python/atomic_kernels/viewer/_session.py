@@ -4,6 +4,7 @@ from ase import Atoms
 
 from ._camera import CameraController
 from ._color import ColorController, ViewerSelection
+from ._render import RenderController
 
 
 class ViewerSessionFacade:
@@ -15,6 +16,7 @@ class ViewerSessionFacade:
         self._current_frame = 0
         self._camera = CameraController(self)
         self._colors = ColorController(self)
+        self._render = RenderController(self)
 
     def _resolve_frame_index(self, frame_index: int | None = None) -> int:
         return self._current_frame if frame_index is None else frame_index
@@ -47,6 +49,10 @@ class ViewerSessionFacade:
     def colors(self) -> ColorController:
         """Return the color controller for this session."""
         return self._colors
+
+    def render(self) -> RenderController:
+        """Return the rendering controller for this session."""
+        return self._render
 
     def select(
         self,

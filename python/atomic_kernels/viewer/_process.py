@@ -45,6 +45,12 @@ def viewer_process_main(
                 session.color_by_scalar(*payload)
             elif command == "reset_atom_colors":
                 session.reset_atom_colors()
+            elif command == "set_bonds":
+                session.set_bonds(*payload)
+            elif command == "set_ball_and_stick_style":
+                session.set_ball_and_stick_style(*payload)
+            elif command == "reset_render_style":
+                session.reset_render_style()
             elif command == "set_camera_view":
                 session.set_camera_view(*payload)
             elif command == "pan_camera":
@@ -111,6 +117,35 @@ class ViewerSessionProxy:
 
     def reset_atom_colors(self) -> None:
         self._send("reset_atom_colors")
+
+    def set_bonds(self, bonds, frame_index: int | None = None) -> None:
+        self._send("set_bonds", (list(bonds), frame_index))
+
+    def set_ball_and_stick_style(
+        self,
+        selection,
+        atom_scale: float = 0.45,
+        bond_radius: float = 0.08,
+        bond_color=(0.7, 0.7, 0.7, 1.0),
+        bond_scope: str = "both_selected",
+        frame_index: int | None = None,
+        append: bool = False,
+    ) -> None:
+        self._send(
+            "set_ball_and_stick_style",
+            (
+                list(selection),
+                atom_scale,
+                bond_radius,
+                tuple(bond_color),
+                bond_scope,
+                frame_index,
+                append,
+            ),
+        )
+
+    def reset_render_style(self) -> None:
+        self._send("reset_render_style")
 
     def set_camera_view(
         self,

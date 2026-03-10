@@ -3,6 +3,7 @@ from __future__ import annotations
 import numpy as np
 from ase.build import bulk
 from ase.calculators.emt import EMT
+from ase.neighborlist import neighbor_list
 
 from atomic_kernels import viewer_session
 
@@ -33,11 +34,15 @@ if __name__ == "__main__":
     nickel_mask = ~copper_mask
     session = viewer_session(atoms)
     camera = session.camera()
+    render = session.render()
     camera.frame_all()
 
     energies = atomic_energies(atoms)
     copper_energies = energies[copper_mask]
     nickel_energies = energies[nickel_mask]
+    senders, receivers = neighbor_list("ij", atoms, 2.8)
+    render.set_bonds(np.column_stack([senders, receivers]))
+    session.select(copper_mask).ball_and_stick(atom_scale=0.4, bond_radius=0.06)
 
     # Layer two independent coloring rules onto the same frame: Cu atoms use
     # inferno while Ni atoms use plasma.

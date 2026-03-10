@@ -2,8 +2,8 @@ use crate::{PyStructure, PyTrajectory, PyViewerConfig};
 #[cfg(not(target_os = "macos"))]
 use ak_vis::launch;
 use ak_vis::{
-    ScalarColorMap, ViewerSessionHandle, run, run_default, run_prepared, run_structure,
-    run_structure_default, run_with_session,
+    BallAndStickStyle, BondList, BondScope, RenderStyle, ScalarColorMap, ViewerSessionHandle, run,
+    run_default, run_prepared, run_structure, run_structure_default, run_with_session,
 };
 use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
@@ -101,6 +101,53 @@ impl PyViewerSession {
 
     fn reset_atom_colors(&self) -> PyResult<()> {
         self.handle.reset_atom_colors().map_err(Self::send_error)
+    }
+
+    #[pyo3(signature = (bonds, frame_index=None))]
+    fn set_bonds(&self, bonds: Vec<(usize, usize)>, frame_index: Option<usize>) -> PyResult<()> {
+        self.handle
+            .set_bonds(BondList::new(bonds), frame_index)
+            .map_err(Self::send_error)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    #[pyo3(signature = (selection, atom_scale=0.45, bond_radius=0.08, bond_color=(0.7, 0.7, 0.7, 1.0), bond_scope="both_selected", frame_index=None, append=false))]
+    fn set_ball_and_stick_style(
+        &self,
+        selection: Vec<bool>,
+        atom_scale: f32,
+        bond_radius: f32,
+        bond_color: (f32, f32, f32, f32),
+        bond_scope: &str,
+        frame_index: Option<usize>,
+        append: bool,
+    ) -> PyResult<()> {
+        let bond_scope = match bond_scope {
+            "both_selected" => BondScope::BothSelected,
+            "touch_selection" => BondScope::TouchSelection,
+            _ => {
+                return Err(PyValueError::new_err(
+                    "unsupported bond_scope, expected 'both_selected' or 'touch_selection'",
+                ));
+            }
+        };
+        self.handle
+            .set_render_style(
+                RenderStyle::BallAndStick(BallAndStickStyle {
+                    atom_scale,
+                    bond_radius,
+                    bond_color: [bond_color.0, bond_color.1, bond_color.2, bond_color.3],
+                    bond_scope,
+                }),
+                selection,
+                frame_index,
+                append,
+            )
+            .map_err(Self::send_error)
+    }
+
+    fn reset_render_style(&self) -> PyResult<()> {
+        self.handle.reset_render_style().map_err(Self::send_error)
     }
 
     #[pyo3(signature = (focus=None, radius=None, yaw=None, pitch=None))]

@@ -1,15 +1,19 @@
-use crate::render::{render_atoms, render_axis, render_cell};
-use crate::{JMOL, convert_axis, convert_cell, convert_structure};
+use crate::render::{render_atoms, render_axis, render_bonds, render_cell};
+use crate::visuals::BondVisual;
+use crate::{JMOL, convert_axis, convert_cell, convert_structure, structure_position_to_world};
 
-use crate::components::{FrameAtom, FrameAxis, FrameCell};
+use crate::components::{FrameAtom, FrameAxis, FrameBond, FrameCell, MainSceneCamera};
 use crate::viewer::ViewerConfig;
 use crate::viewer::app::CommandReceiver;
 use crate::viewer::controls::default_camera_state;
 use crate::viewer::controls::despawn_current_frame;
-use crate::viewer::{AtomColorRule, CameraState, ViewerState};
+use crate::viewer::{
+    AtomColorRule, BallAndStickStyle, BondList, BondScope, CameraState, RenderStyle, ViewerState,
+};
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 use bevy_panorbit_camera::PanOrbitCamera;
+use std::collections::HashMap;
 
 fn scalar_colors_for_rule(
     viewer: &ViewerState,
@@ -81,6 +85,87 @@ fn scalar_colors_for_current_frame(viewer: &ViewerState) -> Option<Vec<Option<Co
     applied_any.then_some(layered_colors)
 }
 
+fn resolved_atom_styles_for_current_frame(
+    viewer: &ViewerState,
+) -> Option<Vec<Option<BallAndStickStyle>>> {
+    let atom_count = viewer.traj.view(viewer.current).positions.len();
+    let mut styles = vec![None; atom_count];
+    let mut applied_any = false;
+
+    for rule in viewer
+        .render_style_rules
+        .iter()
+        .filter(|rule| rule.frame_index == viewer.current)
+    {
+        if let RenderStyle::BallAndStick(style) = rule.style {
+            for (slot, selected) in styles.iter_mut().zip(rule.selection.iter().copied()) {
+                if selected {
+                    *slot = Some(style);
+                    applied_any = true;
+                }
+            }
+        }
+    }
+
+    applied_any.then_some(styles)
+}
+
+fn resolved_bond_styles_for_current_frame(
+    viewer: &ViewerState,
+    bonds: &BondList,
+) -> Option<HashMap<(usize, usize), BallAndStickStyle>> {
+    let mut styles = HashMap::new();
+
+    for rule in viewer
+        .render_style_rules
+        .iter()
+        .filter(|rule| rule.frame_index == viewer.current)
+    {
+        if let RenderStyle::BallAndStick(style) = rule.style {
+            for &(i, j) in bonds.iter() {
+                if i >= rule.selection.len() || j >= rule.selection.len() {
+                    continue;
+                }
+                let include = match style.bond_scope {
+                    BondScope::BothSelected => rule.selection[i] && rule.selection[j],
+                    BondScope::TouchSelection => rule.selection[i] || rule.selection[j],
+                };
+                if include {
+                    styles.insert((i, j), style);
+                }
+            }
+        }
+    }
+
+    (!styles.is_empty()).then_some(styles)
+}
+
+fn bond_visuals_for_current_frame(viewer: &ViewerState) -> Vec<BondVisual> {
+    let Some(bonds) = viewer.bonds.get(viewer.current) else {
+        return Vec::new();
+    };
+    let Some(styles) = resolved_bond_styles_for_current_frame(viewer, bonds) else {
+        return Vec::new();
+    };
+
+    let view = viewer.traj.view(viewer.current);
+    let mut visuals = Vec::new();
+    for &(i, j) in bonds.iter() {
+        let Some(style) = styles.get(&(i, j)).copied() else {
+            continue;
+        };
+        let start = structure_position_to_world(view.positions[i]);
+        let end = structure_position_to_world(view.positions[j]);
+        visuals.push(BondVisual {
+            start,
+            end,
+            color: style.bond_color(),
+            radius: style.bond_radius,
+        });
+    }
+    visuals
+}
+
 fn render_frame(
     commands: &mut Commands,
     meshes: &mut ResMut<Assets<Mesh>>,
@@ -93,19 +178,25 @@ fn render_frame(
     }
 
     let view = viewer.traj.view(viewer.current);
-    let atom_visuals = match scalar_colors_for_current_frame(viewer) {
-        Some(colors) => convert_structure(&view, &JMOL)
-            .into_iter()
-            .zip(colors)
-            .map(|(mut visual, color)| {
-                if let Some(color) = color {
-                    visual.color = color;
-                }
-                visual
-            })
-            .collect(),
-        None => convert_structure(&view, &JMOL),
-    };
+    let scalar_colors = scalar_colors_for_current_frame(viewer);
+    let ball_and_stick_styles = resolved_atom_styles_for_current_frame(viewer);
+    let atom_visuals = convert_structure(&view, &JMOL)
+        .into_iter()
+        .enumerate()
+        .map(|(index, mut visual)| {
+            if let Some(colors) = scalar_colors.as_ref()
+                && let Some(color) = colors[index]
+            {
+                visual.color = color;
+            }
+            if let Some(styles) = ball_and_stick_styles.as_ref()
+                && let Some(style) = styles[index]
+            {
+                visual.radius *= style.atom_scale;
+            }
+            visual
+        })
+        .collect();
     render_atoms(
         atom_visuals,
         commands,
@@ -113,6 +204,11 @@ fn render_frame(
         meshes,
         config.render.ico_subdiv,
     );
+
+    let bond_visuals = bond_visuals_for_current_frame(viewer);
+    if !bond_visuals.is_empty() {
+        render_bonds(bond_visuals, commands, materials, meshes);
+    }
 
     if config.render.show_cell {
         let cell_visuals = convert_cell(&view, config.color.cell_color);
@@ -276,6 +372,7 @@ pub struct RenderFrameQueries<'w, 's> {
     atoms: Query<'w, 's, Entity, With<FrameAtom>>,
     cells: Query<'w, 's, Entity, With<FrameCell>>,
     axes: Query<'w, 's, Entity, With<FrameAxis>>,
+    bonds: Query<'w, 's, Entity, With<FrameBond>>,
 }
 
 #[derive(SystemParam)]
@@ -296,7 +393,13 @@ pub fn rerender_if_dirty(
         return;
     }
 
-    despawn_current_frame(&mut commands, queries.atoms, queries.cells, queries.axes);
+    despawn_current_frame(
+        &mut commands,
+        queries.atoms,
+        queries.cells,
+        queries.axes,
+        queries.bonds,
+    );
     render_frame(
         &mut commands,
         &mut assets.meshes,

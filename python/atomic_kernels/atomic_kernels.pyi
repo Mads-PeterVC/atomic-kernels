@@ -93,6 +93,20 @@ class ViewerSession:
         append: bool = False,
     ) -> None: ...
     def reset_atom_colors(self) -> None: ...
+    def set_bonds(
+        self, bonds: list[tuple[int, int]], frame_index: int | None = None
+    ) -> None: ...
+    def set_ball_and_stick_style(
+        self,
+        selection: list[bool],
+        atom_scale: float = 0.45,
+        bond_radius: float = 0.08,
+        bond_color: tuple[float, float, float, float] = (0.7, 0.7, 0.7, 1.0),
+        bond_scope: str = "both_selected",
+        frame_index: int | None = None,
+        append: bool = False,
+    ) -> None: ...
+    def reset_render_style(self) -> None: ...
     def set_camera_view(
         self,
         focus: tuple[float, float, float] | None = None,
@@ -155,6 +169,24 @@ class ColorController:
     def range_tracker(self) -> ScalarRangeTracker: ...
 
 
+class RenderController:
+    def set_bonds(self, bonds: object, frame_index: int | None = None) -> None: ...
+    def set_bonds_from_adjacency(
+        self, adjacency: object, frame_index: int | None = None
+    ) -> None: ...
+    def ball_and_stick(
+        self,
+        selection: object | None = None,
+        atom_scale: float = 0.45,
+        bond_radius: float = 0.08,
+        bond_color: object = (0.7, 0.7, 0.7),
+        bond_scope: str = "both_selected",
+        frame_index: int | None = None,
+        append: bool = False,
+    ) -> None: ...
+    def reset(self) -> None: ...
+
+
 class ViewerSelection:
     def set_atom_scalars(
         self, name: str, values: object, frame_index: int | None = None
@@ -169,6 +201,14 @@ class ViewerSelection:
         max: float | None = None,
         frame_index: int | None = None,
     ) -> ViewerSessionFacade: ...
+    def ball_and_stick(
+        self,
+        atom_scale: float = 0.45,
+        bond_radius: float = 0.08,
+        bond_color: object = (0.7, 0.7, 0.7),
+        bond_scope: str = "both_selected",
+        frame_index: int | None = None,
+    ) -> ViewerSessionFacade: ...
 
 
 class ViewerSessionFacade:
@@ -178,6 +218,7 @@ class ViewerSessionFacade:
     def close(self) -> None: ...
     def camera(self) -> CameraController: ...
     def colors(self) -> ColorController: ...
+    def render(self) -> RenderController: ...
     def select(
         self, selection: object, frame_index: int | None = None
     ) -> ViewerSelection: ...

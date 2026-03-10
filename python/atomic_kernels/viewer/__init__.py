@@ -21,6 +21,7 @@ from atomic_kernels._atomic_kernels import (
 from ._camera import CameraController
 from ._color import ColorController, ScalarRangeTracker, ViewerSelection
 from ._process import spawn_process_viewer_session
+from ._render import RenderController
 from ._session import ViewerSessionFacade
 from ._utils import normalize_atoms
 
@@ -69,6 +70,7 @@ __all__ = [
     "CameraController",
     "LightingConfig",
     "PreparedViewerSession",
+    "RenderController",
     "RenderConfig",
     "ScalarRangeTracker",
     "ViewerConfig",
