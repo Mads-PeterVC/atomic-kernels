@@ -17,6 +17,12 @@ on:
 
 permissions:
   contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -31,15 +37,29 @@ jobs:
 
       - uses: astral-sh/setup-uv@v7
 
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
       - name: Install docs dependencies
         run: uv sync --only-group docs --no-install-project
 
       - name: Build docs
         run: .venv/bin/zensical build
 
-      - name: Upload docs artifact
-        uses: actions/upload-artifact@v5
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
         with:
-          name: site
           path: site
-          if-no-files-found: error
+
+  deploy:
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/development' }}
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
