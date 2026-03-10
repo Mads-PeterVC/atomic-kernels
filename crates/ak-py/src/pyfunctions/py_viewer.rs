@@ -2,9 +2,10 @@ use crate::{PyStructure, PyTrajectory, PyViewerConfig};
 #[cfg(not(target_os = "macos"))]
 use ak_vis::launch;
 use ak_vis::{
-    BallAndStickStyle, BondList, BondScope, Face, FaceList, RenderStyle, ScalarColorMap,
-    ViewerReadiness, ViewerSessionHandle, run, run_default, run_prepared, run_structure,
-    run_structure_default, run_with_session,
+    BallAndStickStyle, BondList, BondScope, Face, FaceList, HeadlessRenderConfig, RenderStyle,
+    ScalarColorMap, ViewerReadiness, ViewerSessionHandle, export_image, export_image_with_session,
+    export_prepared_image, run, run_default, run_prepared, run_structure, run_structure_default,
+    run_with_session,
 };
 use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
@@ -258,6 +259,15 @@ pub struct PyPreparedViewerSession {
     receiver: Option<std::sync::mpsc::Receiver<ak_vis::ViewerCommand>>,
 }
 
+#[pyclass(name = "PreparedHeadlessRender", unsendable)]
+pub struct PyPreparedHeadlessRender {
+    handle: ViewerSessionHandle,
+    trajectory: Option<ak_core::Trajectory>,
+    config: Option<ak_vis::viewer::ViewerConfig>,
+    export: Option<HeadlessRenderConfig>,
+    receiver: Option<std::sync::mpsc::Receiver<ak_vis::ViewerCommand>>,
+}
+
 #[pymethods]
 impl PyPreparedViewerSession {
     #[getter]
@@ -282,6 +292,32 @@ impl PyPreparedViewerSession {
         });
 
         Ok(())
+    }
+}
+
+#[pymethods]
+impl PyPreparedHeadlessRender {
+    #[getter]
+    fn session(&self) -> PyViewerSession {
+        PyViewerSession::new(self.handle.clone())
+    }
+
+    fn save(&mut self, py: Python<'_>) -> PyResult<()> {
+        let trajectory = self.trajectory.take().ok_or_else(|| {
+            PyRuntimeError::new_err("prepared headless render has already been saved")
+        })?;
+        let config = self.config.take().ok_or_else(|| {
+            PyRuntimeError::new_err("prepared headless render has already been saved")
+        })?;
+        let export = self.export.take().ok_or_else(|| {
+            PyRuntimeError::new_err("prepared headless render has already been saved")
+        })?;
+        let receiver = self.receiver.take().ok_or_else(|| {
+            PyRuntimeError::new_err("prepared headless render has already been saved")
+        })?;
+
+        py.detach(move || export_prepared_image(trajectory, config, export, receiver))
+            .map_err(|err| PyRuntimeError::new_err(err.to_string()))
     }
 }
 
@@ -400,6 +436,68 @@ pub fn prepare_viewer_session(
         handle: ViewerSessionHandle::with_readiness(sender, readiness),
         trajectory: Some(trajectory.0),
         config: Some(config.map(|cfg| cfg.inner.clone()).unwrap_or_default()),
+        receiver: Some(receiver),
+    })
+}
+
+#[pyfunction]
+#[pyo3(signature = (trajectory, path, width=800, height=600, callback=None, config=None))]
+pub fn render_viewer_image(
+    py: Python<'_>,
+    trajectory: PyTrajectory,
+    path: String,
+    width: u32,
+    height: u32,
+    callback: Option<Py<PyAny>>,
+    config: Option<PyViewerConfig>,
+) -> PyResult<()> {
+    ensure_non_empty_trajectory(&trajectory)?;
+
+    let config = config.map(|cfg| cfg.inner.clone()).unwrap_or_default();
+    let export = HeadlessRenderConfig::new(path, width, height);
+
+    match callback {
+        Some(callback) => py.detach(move || {
+            export_image_with_session(trajectory.0, config, export, move |handle| {
+                Python::attach(|py| {
+                    let session = match Py::new(py, PyViewerSession::new(handle)) {
+                        Ok(session) => session,
+                        Err(err) => {
+                            err.print(py);
+                            return;
+                        }
+                    };
+
+                    if let Err(err) = callback.call1(py, (session,)) {
+                        err.print(py);
+                    }
+                });
+            })
+        }),
+        None => py.detach(move || export_image(trajectory.0, config, export)),
+    }
+    .map_err(|err| PyRuntimeError::new_err(err.to_string()))
+}
+
+#[pyfunction]
+#[pyo3(signature = (trajectory, path, width=800, height=600, config=None))]
+pub fn prepare_render_viewer_image(
+    _py: Python<'_>,
+    trajectory: PyTrajectory,
+    path: String,
+    width: u32,
+    height: u32,
+    config: Option<PyViewerConfig>,
+) -> PyResult<PyPreparedHeadlessRender> {
+    ensure_non_empty_trajectory(&trajectory)?;
+
+    let (sender, receiver) = std::sync::mpsc::channel();
+    let readiness = Arc::new(ViewerReadiness::new());
+    Ok(PyPreparedHeadlessRender {
+        handle: ViewerSessionHandle::with_readiness(sender, readiness),
+        trajectory: Some(trajectory.0),
+        config: Some(config.map(|cfg| cfg.inner.clone()).unwrap_or_default()),
+        export: Some(HeadlessRenderConfig::new(path, width, height)),
         receiver: Some(receiver),
     })
 }

@@ -18,6 +18,31 @@ permissions:
   contents: read
 
 jobs:
+  tests:
+    if: ${{ false }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v7
+      - name: Install software rendering dependencies
+        run: sudo apt-get update && sudo apt-get install -y libegl1-mesa mesa-vulkan-drivers
+      - name: Install Python dependencies
+        run: uv sync --group test
+      - name: Build extension in-place
+        run: uv run maturin develop
+      - name: Run Rust tests
+        run: cargo test
+      - name: Run Python tests
+        run: uv run --group test pytest tests
+        env:
+          ATOMIC_KERNELS_USE_REAL_EXTENSION: "1"
+          ATOMIC_KERNELS_RUN_VIEWER_TESTS: "1"
+          WGPU_BACKEND: "vulkan"
+
   # linux:
   #   runs-on: ${{ matrix.platform.runner }}
   #   strategy:

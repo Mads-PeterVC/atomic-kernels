@@ -79,9 +79,82 @@ class _PreparedViewerSession:
         return None
 
 
+class _PreparedHeadlessRender:
+    def __init__(self, session=None):
+        self.session = session
+
+    def save(self):
+        return None
+
+
 class _ViewerSession:
     def wait_until_ready(self, timeout=None):
         return True
+
+    def close(self):
+        return None
+
+    def append_frame(self, frame):
+        return None
+
+    def set_frame(self, index):
+        return None
+
+    def follow_tail(self, enabled=True):
+        return None
+
+    def set_atom_scalars(self, name, values, frame_index=None):
+        return None
+
+    def color_by_scalar(
+        self, name, palette="viridis", colors=None, min=None, max=None, append=False
+    ):
+        return None
+
+    def reset_atom_colors(self):
+        return None
+
+    def set_bonds(self, bonds, frame_index=None):
+        return None
+
+    def set_faces(self, faces, color=(0.2, 0.6, 0.9, 0.35), face_colors=None, frame_index=None):
+        return None
+
+    def set_ball_and_stick_style(
+        self,
+        selection,
+        atom_scale=0.45,
+        bond_radius=0.08,
+        bond_color=(0.7, 0.7, 0.7, 1.0),
+        bond_scope="both_selected",
+        frame_index=None,
+        append=False,
+    ):
+        return None
+
+    def reset_render_style(self):
+        return None
+
+    def set_camera_view(self, focus=None, radius=None, yaw=None, pitch=None):
+        return None
+
+    def pan_camera(self, delta):
+        return None
+
+    def zoom_camera(self, factor=None, delta=None):
+        return None
+
+    def orbit_camera(self, yaw_delta=0.0, pitch_delta=0.0):
+        return None
+
+    def frame_all(self):
+        return None
+
+    def start_orbit(self, yaw_rate=0.5, pitch_rate=0.0):
+        return None
+
+    def stop_camera_motion(self):
+        return None
 
 
 def _install_extension_stub() -> None:
@@ -96,10 +169,16 @@ def _install_extension_stub() -> None:
     module.RenderConfig = _RenderConfig
     module.ViewerConfig = _ViewerConfig
     module.PreparedViewerSession = _PreparedViewerSession
+    module.PreparedHeadlessRender = _PreparedHeadlessRender
     module.ViewerSession = _ViewerSession
     module.launch_viewer = lambda atoms, config=None: _ViewerSession()
     module.prepare_viewer_session = (
         lambda atoms, config=None: _PreparedViewerSession(_ViewerSession())
+    )
+    module.prepare_render_viewer_image = (
+        lambda atoms, path, width=800, height=600, config=None: _PreparedHeadlessRender(
+            _ViewerSession()
+        )
     )
     module.run_viewer_session = lambda atoms, callback, config=None: callback(
         _ViewerSession()

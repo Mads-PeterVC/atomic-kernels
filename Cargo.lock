@@ -133,6 +133,8 @@ dependencies = [
  "ak-core",
  "bevy",
  "bevy_panorbit_camera",
+ "crossbeam-channel",
+ "image",
  "smallvec",
 ]
 

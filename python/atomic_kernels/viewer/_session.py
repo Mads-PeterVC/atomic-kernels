@@ -65,3 +65,15 @@ class ViewerSessionFacade:
     ) -> ViewerSelection:
         """Create a selection object for subset-aware color operations."""
         return ViewerSelection(self, selection, frame_index=frame_index)
+
+
+class PreparedHeadlessRenderFacade(ViewerSessionFacade):
+    """Script a headless render directly, then save it."""
+
+    def __init__(self, prepared_backend, atoms: list[Atoms]):
+        self._prepared_backend = prepared_backend
+        super().__init__(prepared_backend.session, atoms)
+
+    def save(self) -> None:
+        """Render the scripted scene offscreen and write the PNG."""
+        self._prepared_backend.save()

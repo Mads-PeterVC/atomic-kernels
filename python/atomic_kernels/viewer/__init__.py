@@ -8,11 +8,12 @@ from ase import Atoms
 from atomic_kernels._atomic_kernels import (
     ColorConfig,
     LightingConfig,
+    PreparedHeadlessRender,
     PreparedViewerSession,
     RenderConfig,
     ViewerConfig,
-    ViewerSession,
     launch_viewer as _launch_viewer,
+    prepare_render_viewer_image as _prepare_render_viewer_image,
     prepare_viewer_session as _prepare_viewer_session,
     run_viewer_session as _run_viewer_session,
     trajectory_viewer,
@@ -22,7 +23,7 @@ from ._camera import CameraController
 from ._color import ColorController, ScalarRangeTracker, ViewerSelection
 from ._process import spawn_process_viewer_session
 from ._render import RenderController
-from ._session import ViewerSessionFacade
+from ._session import PreparedHeadlessRenderFacade, ViewerSessionFacade
 from ._utils import normalize_atoms
 
 
@@ -64,12 +65,33 @@ def viewer_session(
     return ViewerSessionFacade(spawn_process_viewer_session(frames, config), frames)
 
 
+def headless_viewer_session(
+    atoms: Atoms | list[Atoms],
+    path: str,
+    width: int = 800,
+    height: int = 600,
+    config: Optional[ViewerConfig] = None,
+) -> PreparedHeadlessRenderFacade:
+    """Prepare a scriptable headless session; call ``save()`` when ready."""
+    frames = normalize_atoms(atoms)
+    prepared = _prepare_render_viewer_image(
+        frames,
+        path,
+        width=width,
+        height=height,
+        config=config,
+    )
+    return PreparedHeadlessRenderFacade(prepared, frames)
+
+
 __all__ = [
     "ColorConfig",
     "ColorController",
     "CameraController",
     "LightingConfig",
+    "PreparedHeadlessRender",
     "PreparedViewerSession",
+    "PreparedHeadlessRenderFacade",
     "RenderController",
     "RenderConfig",
     "ScalarRangeTracker",
@@ -78,6 +100,7 @@ __all__ = [
     "ViewerSession",
     "ViewerSessionFacade",
     "bevy_viewer",
+    "headless_viewer_session",
     "launch_viewer",
     "prepare_viewer_session",
     "run_viewer_session",

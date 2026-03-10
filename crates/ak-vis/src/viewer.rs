@@ -3,6 +3,12 @@ pub use app::{
     launch, run, run_default, run_prepared, run_structure, run_structure_default, run_with_session,
 };
 
+pub mod headless;
+pub use headless::{
+    HeadlessRenderConfig, HeadlessRenderError, export_image, export_image_with_session,
+    export_prepared_image, export_structure_image,
+};
+
 pub mod config;
 pub use config::{ColorConfig, LightingConfig, RenderConfig, ViewerConfig};
 
@@ -14,6 +20,8 @@ pub use session::{
 };
 
 mod orientation_widget;
+
+mod runtime;
 
 mod systems;
 

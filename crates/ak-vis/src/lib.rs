@@ -13,9 +13,10 @@ pub use render::render_atoms;
 pub mod viewer;
 pub use viewer::{
     AtomColorRule, BallAndStickStyle, BondFrames, BondList, BondScope, CameraState, Face,
-    FaceFrames, FaceList, RenderStyle, RenderStyleRule, ViewerCommand, ViewerReadiness,
-    ViewerSessionClosed, ViewerSessionHandle, launch, run, run_default, run_prepared,
-    run_structure, run_structure_default, run_with_session,
+    FaceFrames, FaceList, HeadlessRenderConfig, HeadlessRenderError, RenderStyle, RenderStyleRule,
+    ViewerCommand, ViewerReadiness, ViewerSessionClosed, ViewerSessionHandle, export_image,
+    export_image_with_session, export_prepared_image, export_structure_image, launch, run,
+    run_default, run_prepared, run_structure, run_structure_default, run_with_session,
 };
 
 pub mod ui;

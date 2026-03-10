@@ -4,9 +4,9 @@ use crate::{JMOL, convert_axis, convert_cell, convert_structure, structure_posit
 
 use crate::components::{FrameAtom, FrameAxis, FrameBond, FrameCell, FrameFace, MainSceneCamera};
 use crate::viewer::ViewerConfig;
-use crate::viewer::app::CommandReceiver;
 use crate::viewer::controls::default_camera_state;
 use crate::viewer::controls::despawn_current_frame;
+use crate::viewer::runtime::{CommandReceiver, MainCameraRenderTarget};
 use crate::viewer::{
     AtomColorRule, BallAndStickStyle, BondList, BondScope, CameraState, RenderStyle, ViewerState,
 };
@@ -314,12 +314,19 @@ pub fn setup_lighting(
     ));
 }
 
-pub fn setup_camera(mut commands: Commands, camera: Res<CameraState>, config: Res<ViewerConfig>) {
+pub fn setup_camera(
+    mut commands: Commands,
+    camera: Res<CameraState>,
+    config: Res<ViewerConfig>,
+    render_target: Option<Res<MainCameraRenderTarget>>,
+) {
     if camera.radius <= 0.0 {
         return;
     }
 
+    let is_headless = render_target.is_some();
     let mut camera = commands.spawn((
+        Camera3d::default(),
         Camera {
             order: 0,
             ..default()
@@ -330,9 +337,15 @@ pub fn setup_camera(mut commands: Commands, camera: Res<CameraState>, config: Re
             radius: Some(camera.radius),
             focus: camera.focus,
             axis: [Vec3::X, Vec3::Y, Vec3::Z],
+            orbit_smoothness: if is_headless { 0.0 } else { 0.8 },
+            pan_smoothness: if is_headless { 0.0 } else { 0.6 },
+            zoom_smoothness: if is_headless { 0.0 } else { 0.8 },
             ..default()
         },
     ));
+    if let Some(render_target) = render_target {
+        camera.insert(render_target.0.clone());
+    }
     camera.insert(MainSceneCamera);
     if config.lighting.enable_fog {
         camera.insert(DistanceFog {
@@ -472,13 +485,9 @@ pub fn apply_camera_state(
     };
 
     orbit.target_focus = camera_state.focus;
-    orbit.focus = camera_state.focus;
     orbit.target_radius = camera_state.radius;
-    orbit.radius = Some(camera_state.radius);
     orbit.target_yaw = camera_state.yaw;
-    orbit.yaw = Some(camera_state.yaw);
     orbit.target_pitch = camera_state.pitch;
-    orbit.pitch = Some(camera_state.pitch);
     orbit.force_update = true;
     camera_state.needs_apply = false;
 }

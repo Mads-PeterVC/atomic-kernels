@@ -2,7 +2,7 @@ use ak_core::{Structure, Trajectory};
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 use bevy_panorbit_camera::PanOrbitCameraPlugin;
-use std::sync::{Arc, Mutex, mpsc};
+use std::sync::{Arc, mpsc};
 use std::thread;
 
 use crate::ui::setup_ui;
@@ -15,14 +15,8 @@ use crate::viewer::orientation_widget::{
     setup_orientation_widget, sync_orientation_widget, sync_orientation_widget_letter_strokes,
     update_orientation_widget_viewport,
 };
-use crate::viewer::session::{CameraState, ViewerReadiness, ViewerSessionHandle, ViewerState};
-use crate::viewer::systems::{
-    advance_camera_motion, apply_camera_state, apply_viewer_commands, render_current_frame,
-    rerender_if_dirty, setup_camera, setup_camera_light, setup_lighting, update_camera_light,
-};
-
-#[derive(Resource)]
-pub struct CommandReceiver(pub Option<Mutex<mpsc::Receiver<crate::viewer::ViewerCommand>>>);
+use crate::viewer::runtime::{asset_root, configure_shared_app};
+use crate::viewer::session::{ViewerCommand, ViewerReadiness, ViewerSessionHandle};
 
 #[derive(Resource, Clone)]
 struct ViewerLifecycle {
@@ -36,65 +30,41 @@ impl Drop for ViewerLifecycle {
     }
 }
 
-fn asset_root() -> String {
-    format!("{}/assets", env!("CARGO_MANIFEST_DIR"))
-}
-
 fn build_app(
     trajectory: Trajectory,
     config: ViewerConfig,
-    receiver: Option<mpsc::Receiver<crate::viewer::ViewerCommand>>,
+    receiver: Option<mpsc::Receiver<ViewerCommand>>,
     readiness: Arc<ViewerReadiness>,
 ) -> App {
-    let viewer_state = ViewerState::new(trajectory, config.initial_frame);
-    let camera_state = CameraState::new(&viewer_state);
     let mut app = App::new();
-    app.insert_resource(ClearColor(config.color.background))
-        .insert_resource(viewer_state)
-        .insert_resource(camera_state)
-        .insert_resource(config)
-        .insert_resource(CommandReceiver(receiver.map(Mutex::new)))
-        .insert_resource(ViewerLifecycle {
-            readiness,
-            ready_signaled: false,
-        })
-        .add_plugins((
-            DefaultPlugins.set(AssetPlugin {
-                file_path: asset_root(),
-                ..default()
-            }),
-            MeshPickingPlugin,
-        ))
-        .add_plugins(PanOrbitCameraPlugin)
-        .add_systems(
-            Startup,
-            (
-                setup_lighting,
-                setup_camera,
-                render_current_frame,
-                setup_camera_light,
-                setup_orientation_widget,
-            ),
-        )
-        .add_systems(
-            Update,
-            (
-                apply_viewer_commands,
-                advance_camera_motion,
-                apply_camera_state,
-                toggle_view,
-                keyboard_controls,
-                update_camera_light,
-                screenshot_on_spacebar,
-                screenshot_saving,
-                navigate_frames,
-                rerender_if_dirty,
-                sync_orientation_widget,
-                sync_orientation_widget_letter_strokes,
-                update_orientation_widget_viewport,
-                signal_viewer_ready,
-            ),
-        );
+    app.add_plugins((
+        DefaultPlugins.set(AssetPlugin {
+            file_path: asset_root(),
+            ..default()
+        }),
+        MeshPickingPlugin,
+        PanOrbitCameraPlugin,
+    ));
+    configure_shared_app(&mut app, trajectory, config, receiver);
+    app.insert_resource(ViewerLifecycle {
+        readiness,
+        ready_signaled: false,
+    })
+    .add_systems(Startup, setup_orientation_widget)
+    .add_systems(
+        Update,
+        (
+            toggle_view,
+            keyboard_controls,
+            screenshot_on_spacebar,
+            screenshot_saving,
+            navigate_frames,
+            sync_orientation_widget,
+            sync_orientation_widget_letter_strokes,
+            update_orientation_widget_viewport,
+            signal_viewer_ready,
+        ),
+    );
 
     if app.world().resource::<ViewerConfig>().render.show_ui {
         app.add_systems(Startup, setup_ui);
@@ -107,7 +77,7 @@ fn build_app(
 fn run_app(
     trajectory: Trajectory,
     config: ViewerConfig,
-    receiver: Option<mpsc::Receiver<crate::viewer::ViewerCommand>>,
+    receiver: Option<mpsc::Receiver<ViewerCommand>>,
     readiness: Arc<ViewerReadiness>,
 ) {
     let mut app = build_app(trajectory, config, receiver, readiness);
@@ -129,7 +99,7 @@ fn signal_viewer_ready(
 pub fn run_prepared(
     trajectory: Trajectory,
     config: ViewerConfig,
-    receiver: mpsc::Receiver<crate::viewer::ViewerCommand>,
+    receiver: mpsc::Receiver<ViewerCommand>,
     readiness: Arc<ViewerReadiness>,
 ) {
     run_app(trajectory, config, Some(receiver), readiness);
