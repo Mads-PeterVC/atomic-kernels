@@ -1,0 +1,15 @@
+[project]
+site_name = "atomic-kernels"
+nav = [
+  {"Overview" = "index.md"},
+  {"Getting Started" = "getting-started.md"},
+  {"Architecture" = "architecture.md"},
+  {"Agent Development" = "agent-development.md"},
+  {"Agent Development Notes" = "agent-development-notes.md"},
+]
+
+[project.theme]
+features = [
+  "navigation.instant",
+  "navigation.sections",
+]

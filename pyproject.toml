@@ -17,6 +17,11 @@ dependencies = [
     "scipy>=1.10.1",
 ]
 
+[dependency-groups]
+docs = [
+    "zensical",
+]
+
 [tool.maturin]
 manifest-path = "crates/ak-py/Cargo.toml"
 python-source = "python"

@@ -62,6 +62,9 @@ coverage.xml
 # Sphinx documentation
 docs/_build/
 
+# Docs site output
+site/
+
 # Copilot stuff
 .github/*.md
 
