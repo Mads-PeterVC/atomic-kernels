@@ -1,6 +1,13 @@
 from __future__ import annotations
 
-from ._utils import bonds_from_adjacency, normalize_bonds, normalize_rgba, selection_mask
+from ._utils import (
+    bonds_from_adjacency,
+    normalize_bonds,
+    normalize_face_colors,
+    normalize_faces,
+    normalize_rgba,
+    selection_mask,
+)
 
 
 class RenderController:
@@ -19,6 +26,26 @@ class RenderController:
         """Store bonds from a square adjacency matrix."""
         self._session._backend.set_bonds(
             bonds_from_adjacency(adjacency), frame_index=frame_index
+        )
+
+    def set_faces(
+        self,
+        faces,
+        color=(0.2, 0.6, 0.9, 0.35),
+        face_colors=None,
+        frame_index: int | None = None,
+    ) -> None:
+        """Store explicit polygon faces for one frame."""
+        frame_index = self._session._resolve_frame_index(frame_index)
+        normalized_faces = normalize_faces(faces)
+        normalized_colors = normalize_face_colors(
+            len(normalized_faces), color, face_colors=face_colors
+        )
+        self._session._backend.set_faces(
+            normalized_faces,
+            color=normalize_rgba(color),
+            face_colors=normalized_colors,
+            frame_index=frame_index,
         )
 
     def ball_and_stick(

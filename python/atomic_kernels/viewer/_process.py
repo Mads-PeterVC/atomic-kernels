@@ -48,6 +48,8 @@ def viewer_process_main(
                 session.reset_atom_colors()
             elif command == "set_bonds":
                 session.set_bonds(*payload)
+            elif command == "set_faces":
+                session.set_faces(*payload)
             elif command == "set_ball_and_stick_style":
                 session.set_ball_and_stick_style(*payload)
             elif command == "reset_render_style":
@@ -130,6 +132,18 @@ class ViewerSessionProxy:
 
     def set_bonds(self, bonds, frame_index: int | None = None) -> None:
         self._send("set_bonds", (list(bonds), frame_index))
+
+    def set_faces(
+        self,
+        faces,
+        color=(0.2, 0.6, 0.9, 0.35),
+        face_colors=None,
+        frame_index: int | None = None,
+    ) -> None:
+        self._send(
+            "set_faces",
+            (list(faces), tuple(color), None if face_colors is None else list(face_colors), frame_index),
+        )
 
     def set_ball_and_stick_style(
         self,

@@ -25,6 +25,9 @@ class BackendSpy:
     def reset_atom_colors(self):
         self.calls.append(("reset_atom_colors",))
 
+    def set_faces(self, faces, color=(0.2, 0.6, 0.9, 0.35), face_colors=None, frame_index=None):
+        self.calls.append(("set_faces", faces, color, face_colors, frame_index))
+
     def set_ball_and_stick_style(
         self,
         selection,
@@ -116,5 +119,21 @@ def test_ball_and_stick_selection_resolves_mask_and_normalizes_color():
             "both_selected",
             0,
             False,
+        )
+    ]
+
+
+def test_set_faces_normalizes_polygons_and_broadcasts_color():
+    session = make_session()
+
+    session.render().set_faces([(0, 1, 2), (1, 2, 0)], color=(0.3, 0.4, 0.5))
+
+    assert session._backend.calls == [
+        (
+            "set_faces",
+            [[0, 1, 2]],
+            pytest.approx((0.3, 0.4, 0.5, 1.0)),
+            [pytest.approx((0.3, 0.4, 0.5, 1.0))],
+            0,
         )
     ]

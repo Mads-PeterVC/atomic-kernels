@@ -7,6 +7,9 @@ pub struct FrameAtom;
 pub struct FrameBond;
 
 #[derive(Component)]
+pub struct FrameFace;
+
+#[derive(Component)]
 pub struct FrameCell;
 
 #[derive(Component)]

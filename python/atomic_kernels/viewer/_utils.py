@@ -33,6 +33,16 @@ def normalize_rgba(color) -> tuple[float, float, float, float]:
     return tuple(float(value) for value in array.tolist())
 
 
+def _canonical_face_key(face: list[int]) -> tuple[int, ...]:
+    rotations = [tuple(face[index:] + face[:index]) for index in range(len(face))]
+    reversed_face = list(reversed(face))
+    rotations.extend(
+        tuple(reversed_face[index:] + reversed_face[:index])
+        for index in range(len(reversed_face))
+    )
+    return min(rotations)
+
+
 def normalize_bonds(bonds) -> list[tuple[int, int]]:
     array = np.asarray(bonds)
     if array.ndim == 2 and array.shape[0] == array.shape[1]:
@@ -62,6 +72,36 @@ def bonds_from_adjacency(adjacency) -> list[tuple[int, int]]:
             if matrix[i, j] or matrix[j, i]:
                 bonds.append((int(i), int(j)))
     return bonds
+
+
+def normalize_faces(faces) -> list[list[int]]:
+    normalized = []
+    seen = set()
+    for face in faces:
+        atoms = np.asarray(face, dtype=np.int64).ravel()
+        if atoms.size < 3:
+            raise ValueError("faces must contain at least three atom indices")
+
+        resolved = [int(value) for value in atoms.tolist()]
+        if len(set(resolved)) != len(resolved):
+            raise ValueError("faces must not repeat atom indices")
+
+        key = _canonical_face_key(resolved)
+        if key in seen:
+            continue
+        seen.add(key)
+        normalized.append(resolved)
+    return normalized
+
+
+def normalize_face_colors(face_count: int, color, face_colors=None):
+    if face_colors is None:
+        return [normalize_rgba(color)] * face_count
+
+    if len(face_colors) != face_count:
+        raise ValueError("face_colors must have the same length as faces")
+
+    return [normalize_rgba(face_color) for face_color in face_colors]
 
 
 def selection_mask(atoms: Atoms, selection) -> np.ndarray:

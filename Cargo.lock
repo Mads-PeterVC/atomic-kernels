@@ -133,6 +133,7 @@ dependencies = [
  "ak-core",
  "bevy",
  "bevy_panorbit_camera",
+ "smallvec",
 ]
 
 [[package]]

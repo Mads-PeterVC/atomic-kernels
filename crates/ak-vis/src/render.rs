@@ -4,6 +4,9 @@ pub use render_atoms::render_atoms;
 pub mod render_bonds;
 pub use render_bonds::render_bonds;
 
+pub mod render_faces;
+pub use render_faces::render_faces;
+
 pub mod render_cell;
 pub use render_cell::render_cell;
 

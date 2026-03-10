@@ -4,6 +4,9 @@ pub use atom_visual::AtomVisual;
 pub mod bond_visual;
 pub use bond_visual::BondVisual;
 
+pub mod face_visual;
+pub use face_visual::FaceVisual;
+
 pub mod convert;
 pub use convert::*;
 

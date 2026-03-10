@@ -1,5 +1,6 @@
 use ak_core::{Structure, Trajectory};
 use bevy::prelude::{Resource, Vec3};
+use smallvec::SmallVec;
 use std::collections::{BTreeSet, HashMap};
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, Condvar, Mutex};
@@ -37,6 +38,10 @@ pub enum ViewerCommand {
     ResetAtomColors,
     SetBonds {
         bonds: BondList,
+        frame_index: Option<usize>,
+    },
+    SetFaces {
+        faces: FaceList,
         frame_index: Option<usize>,
     },
     SetRenderStyle {
@@ -118,6 +123,22 @@ pub struct BondList {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BondFrames {
     frames: Vec<Option<BondList>>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Face {
+    pub atoms: SmallVec<[usize; 4]>,
+    pub color: [f32; 4],
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct FaceList {
+    faces: Vec<Face>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct FaceFrames {
+    frames: Vec<Option<FaceList>>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -269,6 +290,16 @@ impl ViewerSessionHandle {
     ) -> Result<(), ViewerSessionClosed> {
         self.sender
             .send(ViewerCommand::SetBonds { bonds, frame_index })
+            .map_err(|_| ViewerSessionClosed)
+    }
+
+    pub fn set_faces(
+        &self,
+        faces: FaceList,
+        frame_index: Option<usize>,
+    ) -> Result<(), ViewerSessionClosed> {
+        self.sender
+            .send(ViewerCommand::SetFaces { faces, frame_index })
             .map_err(|_| ViewerSessionClosed)
     }
 
@@ -438,6 +469,7 @@ pub struct ViewerState {
     pub atom_scalars: HashMap<String, Vec<Option<Vec<f32>>>>,
     pub atom_color_rules: Vec<AtomColorRule>,
     pub bonds: BondFrames,
+    pub faces: FaceFrames,
     pub render_style_rules: Vec<RenderStyleRule>,
     pub needs_render: bool,
     pub needs_camera_reset: bool,
@@ -454,6 +486,7 @@ impl ViewerState {
             atom_scalars: HashMap::new(),
             atom_color_rules: Vec::new(),
             bonds: BondFrames::new(frame_count),
+            faces: FaceFrames::new(frame_count),
             render_style_rules: Vec::new(),
             needs_render: true,
             needs_camera_reset: true,
@@ -479,6 +512,7 @@ impl ViewerState {
                 self.current = clamp_frame(initial_frame, self.traj.len());
                 self.resize_scalar_storage(frame_count);
                 self.bonds = BondFrames::new(frame_count);
+                self.faces = FaceFrames::new(frame_count);
                 self.render_style_rules.clear();
                 self.needs_render = true;
                 self.needs_camera_reset = true;
@@ -489,6 +523,7 @@ impl ViewerState {
                 let previous = if was_empty { None } else { Some(self.current) };
                 self.traj.append(frame);
                 self.bonds.resize(self.traj.len());
+                self.faces.resize(self.traj.len());
                 if was_empty {
                     self.current = 0;
                     self.needs_render = true;
@@ -560,6 +595,16 @@ impl ViewerState {
                 let target_frame = frame_index.unwrap_or(self.current);
                 if target_frame < self.traj.len() {
                     self.bonds.set(target_frame, bonds);
+                    self.needs_render = self.current == target_frame;
+                }
+                CommandOutcome::default()
+            }
+            ViewerCommand::SetFaces { faces, frame_index } => {
+                let target_frame = frame_index.unwrap_or(self.current);
+                if target_frame < self.traj.len() {
+                    let atom_count = self.traj.view(target_frame).positions.len();
+                    self.faces
+                        .set(target_frame, faces.validated_for_atom_count(atom_count));
                     self.needs_render = self.current == target_frame;
                 }
                 CommandOutcome::default()
@@ -708,6 +753,89 @@ impl BondFrames {
     }
 }
 
+impl Face {
+    pub fn new(atoms: impl IntoIterator<Item = usize>, color: [f32; 4]) -> Option<Self> {
+        let atoms: SmallVec<[usize; 4]> = atoms.into_iter().collect();
+        if atoms.len() < 3 {
+            return None;
+        }
+        let unique: BTreeSet<_> = atoms.iter().copied().collect();
+        if unique.len() != atoms.len() {
+            return None;
+        }
+        Some(Self { atoms, color })
+    }
+
+    pub fn color(self) -> bevy::color::Color {
+        bevy::color::Color::srgba(self.color[0], self.color[1], self.color[2], self.color[3])
+    }
+
+    fn canonical_atoms(&self) -> Vec<usize> {
+        canonicalize_face_atoms(&self.atoms)
+    }
+}
+
+impl FaceList {
+    pub fn new(faces: impl IntoIterator<Item = Face>) -> Self {
+        let mut seen = BTreeSet::new();
+        let mut canonical = Vec::new();
+
+        for face in faces {
+            let key = face.canonical_atoms();
+            if seen.insert(key) {
+                canonical.push(face);
+            }
+        }
+
+        Self { faces: canonical }
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &Face> {
+        self.faces.iter()
+    }
+
+    pub fn len(&self) -> usize {
+        self.faces.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.faces.is_empty()
+    }
+
+    pub fn validated_for_atom_count(&self, atom_count: usize) -> Self {
+        Self::new(self.faces.iter().filter_map(|face| {
+            face.atoms
+                .iter()
+                .all(|&index| index < atom_count)
+                .then(|| face.clone())
+        }))
+    }
+}
+
+impl FaceFrames {
+    pub fn new(frame_count: usize) -> Self {
+        Self {
+            frames: vec![None; frame_count],
+        }
+    }
+
+    pub fn set(&mut self, frame_index: usize, faces: FaceList) {
+        if frame_index < self.frames.len() {
+            self.frames[frame_index] = Some(faces);
+        }
+    }
+
+    pub fn get(&self, frame_index: usize) -> Option<&FaceList> {
+        self.frames
+            .get(frame_index)
+            .and_then(|faces| faces.as_ref())
+    }
+
+    pub fn resize(&mut self, frame_count: usize) {
+        self.frames.resize(frame_count, None);
+    }
+}
+
 impl BallAndStickStyle {
     pub fn bond_color(self) -> bevy::color::Color {
         bevy::color::Color::srgba(
@@ -832,6 +960,35 @@ fn clamp_frame(index: usize, len: usize) -> usize {
     if len == 0 { 0 } else { index.min(len - 1) }
 }
 
+fn canonicalize_face_atoms(atoms: &[usize]) -> Vec<usize> {
+    let forward = minimum_face_rotation(atoms);
+    let mut reversed = atoms.to_vec();
+    reversed.reverse();
+    let reversed = minimum_face_rotation(&reversed);
+    if reversed < forward {
+        reversed
+    } else {
+        forward
+    }
+}
+
+fn minimum_face_rotation(atoms: &[usize]) -> Vec<usize> {
+    let mut best = atoms.to_vec();
+    for shift in 1..atoms.len() {
+        let rotated: Vec<usize> = atoms
+            .iter()
+            .cycle()
+            .skip(shift)
+            .take(atoms.len())
+            .copied()
+            .collect();
+        if rotated < best {
+            best = rotated;
+        }
+    }
+    best
+}
+
 pub fn camera_view_for_frame(viewer: &ViewerState) -> Option<CameraView> {
     if !viewer.has_frames() {
         return None;
@@ -856,8 +1013,9 @@ pub fn camera_view_for_frame(viewer: &ViewerState) -> Option<CameraView> {
 #[cfg(test)]
 mod tests {
     use super::{
-        AtomColorRule, BallAndStickStyle, BondFrames, BondList, BondScope, CameraState,
-        RenderStyle, ScalarColorMap, ViewerCommand, ViewerState, camera_view_for_frame,
+        AtomColorRule, BallAndStickStyle, BondFrames, BondList, BondScope, CameraState, Face,
+        FaceFrames, FaceList, RenderStyle, ScalarColorMap, ViewerCommand, ViewerState,
+        camera_view_for_frame,
     };
     use ak_core::{Structure, Trajectory};
     use bevy::prelude::Vec3;
@@ -866,6 +1024,20 @@ mod tests {
         Structure::new(
             vec![[x, 0.0, 0.0], [x + 1.0, 0.0, 0.0]],
             vec![1, 1],
+            [[10.0, 0.0, 0.0], [0.0, 10.0, 0.0], [0.0, 0.0, 10.0]],
+            [false, false, false],
+        )
+    }
+
+    fn test_structure4() -> Structure {
+        Structure::new(
+            vec![
+                [0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [1.0, 1.0, 0.0],
+                [0.0, 1.0, 0.0],
+            ],
+            vec![1, 1, 1, 1],
             [[10.0, 0.0, 0.0], [0.0, 10.0, 0.0], [0.0, 0.0, 10.0]],
             [false, false, false],
         )
@@ -1025,6 +1197,47 @@ mod tests {
             frames.get(1).unwrap().iter().copied().collect::<Vec<_>>(),
             vec![(0, 1)]
         );
+    }
+
+    #[test]
+    fn face_list_canonicalizes_rotations_and_reversals() {
+        let faces = FaceList::new([
+            Face::new([0, 1, 2, 3], [1.0, 0.0, 0.0, 0.5]).unwrap(),
+            Face::new([2, 3, 0, 1], [0.0, 1.0, 0.0, 0.5]).unwrap(),
+            Face::new([3, 2, 1, 0], [0.0, 0.0, 1.0, 0.5]).unwrap(),
+        ]);
+
+        assert_eq!(faces.len(), 1);
+        assert_eq!(faces.iter().next().unwrap().atoms.as_slice(), &[0, 1, 2, 3]);
+    }
+
+    #[test]
+    fn face_frames_store_per_frame_faces() {
+        let mut frames = FaceFrames::new(2);
+        frames.set(
+            1,
+            FaceList::new([Face::new([0, 1, 2], [0.2, 0.4, 0.6, 0.3]).unwrap()]),
+        );
+
+        assert!(frames.get(0).is_none());
+        assert_eq!(frames.get(1).unwrap().len(), 1);
+    }
+
+    #[test]
+    fn set_faces_drops_out_of_range_polygons() {
+        let mut state = ViewerState::new(Trajectory::new(vec![test_structure4()]), 0);
+
+        state.apply_command(ViewerCommand::SetFaces {
+            faces: FaceList::new([
+                Face::new([0, 1, 2], [0.1, 0.2, 0.3, 0.4]).unwrap(),
+                Face::new([0, 1, 9], [0.5, 0.6, 0.7, 0.8]).unwrap(),
+            ]),
+            frame_index: None,
+        });
+
+        let faces = state.faces.get(0).unwrap();
+        assert_eq!(faces.len(), 1);
+        assert_eq!(faces.iter().next().unwrap().atoms.as_slice(), &[0, 1, 2]);
     }
 
     #[test]

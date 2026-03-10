@@ -2,9 +2,9 @@ use crate::{PyStructure, PyTrajectory, PyViewerConfig};
 #[cfg(not(target_os = "macos"))]
 use ak_vis::launch;
 use ak_vis::{
-    BallAndStickStyle, BondList, BondScope, RenderStyle, ScalarColorMap, ViewerReadiness,
-    ViewerSessionHandle, run, run_default, run_prepared, run_structure, run_structure_default,
-    run_with_session,
+    BallAndStickStyle, BondList, BondScope, Face, FaceList, RenderStyle, ScalarColorMap,
+    ViewerReadiness, ViewerSessionHandle, run, run_default, run_prepared, run_structure,
+    run_structure_default, run_with_session,
 };
 use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
@@ -125,6 +125,41 @@ impl PyViewerSession {
     fn set_bonds(&self, bonds: Vec<(usize, usize)>, frame_index: Option<usize>) -> PyResult<()> {
         self.handle
             .set_bonds(BondList::new(bonds), frame_index)
+            .map_err(Self::send_error)
+    }
+
+    #[pyo3(signature = (faces, color=(0.2, 0.6, 0.9, 0.35), face_colors=None, frame_index=None))]
+    fn set_faces(
+        &self,
+        faces: Vec<Vec<usize>>,
+        color: (f32, f32, f32, f32),
+        face_colors: Option<Vec<(f32, f32, f32, f32)>>,
+        frame_index: Option<usize>,
+    ) -> PyResult<()> {
+        let default_color = [color.0, color.1, color.2, color.3];
+        let face_colors = match face_colors {
+            Some(colors) => {
+                if colors.len() != faces.len() {
+                    return Err(PyValueError::new_err(
+                        "face_colors must have the same length as faces",
+                    ));
+                }
+                colors
+                    .into_iter()
+                    .map(|(r, g, b, a)| [r, g, b, a])
+                    .collect::<Vec<_>>()
+            }
+            None => vec![default_color; faces.len()],
+        };
+
+        let normalized = FaceList::new(
+            faces
+                .into_iter()
+                .zip(face_colors)
+                .filter_map(|(atoms, color)| Face::new(atoms, color)),
+        );
+        self.handle
+            .set_faces(normalized, frame_index)
             .map_err(Self::send_error)
     }
 

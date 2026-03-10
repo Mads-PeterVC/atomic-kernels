@@ -8,6 +8,8 @@ from atomic_kernels.viewer._utils import (
     bonds_from_adjacency,
     normalize_bonds,
     normalize_colormap,
+    normalize_face_colors,
+    normalize_faces,
     normalize_rgba,
     selection_mask,
 )
@@ -47,6 +49,21 @@ def test_bonds_from_adjacency_uses_upper_triangle():
     )
 
     assert bonds_from_adjacency(adjacency) == [(0, 1), (1, 2)]
+
+
+def test_normalize_faces_deduplicates_rotations_and_reversals():
+    faces = normalize_faces([(0, 1, 2, 3), (2, 3, 0, 1), (3, 2, 1, 0)])
+
+    assert faces == [[0, 1, 2, 3]]
+
+
+def test_normalize_face_colors_broadcasts_shared_color():
+    colors = normalize_face_colors(2, (0.1, 0.2, 0.3))
+
+    assert colors == [
+        pytest.approx((0.1, 0.2, 0.3, 1.0)),
+        pytest.approx((0.1, 0.2, 0.3, 1.0)),
+    ]
 
 
 def test_selection_mask_accepts_indices_and_callables():

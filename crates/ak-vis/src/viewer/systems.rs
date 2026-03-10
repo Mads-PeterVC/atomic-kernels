@@ -1,8 +1,8 @@
-use crate::render::{render_atoms, render_axis, render_bonds, render_cell};
-use crate::visuals::BondVisual;
+use crate::render::{render_atoms, render_axis, render_bonds, render_cell, render_faces};
+use crate::visuals::{BondVisual, FaceVisual};
 use crate::{JMOL, convert_axis, convert_cell, convert_structure, structure_position_to_world};
 
-use crate::components::{FrameAtom, FrameAxis, FrameBond, FrameCell, MainSceneCamera};
+use crate::components::{FrameAtom, FrameAxis, FrameBond, FrameCell, FrameFace, MainSceneCamera};
 use crate::viewer::ViewerConfig;
 use crate::viewer::app::CommandReceiver;
 use crate::viewer::controls::default_camera_state;
@@ -166,6 +166,33 @@ fn bond_visuals_for_current_frame(viewer: &ViewerState) -> Vec<BondVisual> {
     visuals
 }
 
+fn face_visuals_for_current_frame(viewer: &ViewerState) -> Vec<FaceVisual> {
+    let Some(faces) = viewer.faces.get(viewer.current) else {
+        return Vec::new();
+    };
+
+    let view = viewer.traj.view(viewer.current);
+    let mut visuals = Vec::new();
+    for face in faces.iter() {
+        let Some(vertices) = face
+            .atoms
+            .iter()
+            .map(|&index| view.positions.get(index).copied())
+            .collect::<Option<Vec<_>>>()
+        else {
+            continue;
+        };
+        visuals.push(FaceVisual {
+            vertices: vertices
+                .into_iter()
+                .map(structure_position_to_world)
+                .collect(),
+            color: face.clone().color(),
+        });
+    }
+    visuals
+}
+
 fn render_frame(
     commands: &mut Commands,
     meshes: &mut ResMut<Assets<Mesh>>,
@@ -208,6 +235,11 @@ fn render_frame(
     let bond_visuals = bond_visuals_for_current_frame(viewer);
     if !bond_visuals.is_empty() {
         render_bonds(bond_visuals, commands, materials, meshes);
+    }
+
+    let face_visuals = face_visuals_for_current_frame(viewer);
+    if !face_visuals.is_empty() {
+        render_faces(face_visuals, commands, materials, meshes);
     }
 
     if config.render.show_cell {
@@ -380,6 +412,7 @@ pub struct RenderFrameQueries<'w, 's> {
     cells: Query<'w, 's, Entity, With<FrameCell>>,
     axes: Query<'w, 's, Entity, With<FrameAxis>>,
     bonds: Query<'w, 's, Entity, With<FrameBond>>,
+    faces: Query<'w, 's, Entity, With<FrameFace>>,
 }
 
 #[derive(SystemParam)]
@@ -406,6 +439,7 @@ pub fn rerender_if_dirty(
         queries.cells,
         queries.axes,
         queries.bonds,
+        queries.faces,
     );
     render_frame(
         &mut commands,
