@@ -1,0 +1,4 @@
+interface:
+  display_name: "Update Agent Notes"
+  short_description: "Append agent development log entries"
+  default_prompt: "Use $update-agent-development-notes to update docs/agent-development-notes.md from docs/agent-development.md after a feature commit."
