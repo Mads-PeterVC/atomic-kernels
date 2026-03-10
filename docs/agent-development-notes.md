@@ -130,3 +130,34 @@ and format defined in
   test path. Consider whether future viewer lifecycle checks should distinguish between
   "window created" and "first frame rendered" if startup assertions need to become
   stricter.
+
+## 2026-03-10 - Explicit face overlays for polyhedra-style viewer rendering
+
+- Commit: `002fdf3`
+- Context: The viewer already supported explicit bonds plus selection-scoped
+  ball-and-stick styling, but that abstraction did not extend cleanly to
+  polyhedra-style surfaces because faces are explicit scene elements rather than a
+  render style on top of atoms.
+- Implementation: Added face domain types and per-frame storage in
+  `crates/ak-vis/src/viewer/session.rs`, a dedicated face render path in
+  `crates/ak-vis/src/render/render_faces.rs` plus
+  `crates/ak-vis/src/visuals/face_visual.rs`, and Python-side normalization and
+  bindings in `python/atomic_kernels/viewer/_render.py`,
+  `python/atomic_kernels/viewer/_utils.py`, `python/atomic_kernels/viewer/_process.py`,
+  and `crates/ak-py/src/pyfunctions/py_viewer.rs`. Example usage lives in
+  `scripts/py_polyhedra_faces.py`.
+- Difficulty: The main design choice was resisting the temptation to force faces into the
+  existing `RenderStyleRule` machinery. That worked for ball-and-stick because bonds and
+  atoms already existed as scene data, but it would have made polyhedra semantics
+  selection-driven and ambiguous. The stable split was explicit per-frame face topology
+  in Rust with permissive Python normalization and fan triangulation only at render
+  time.
+- Constraints: v1 faces are ordered polygons with 3 or more distinct atom indices and
+  per-face RGBA colors. Rust validates and stores explicit faces but does not infer
+  polygon order, convex hulls, or neighbor-derived polyhedra. Rendering assumes planar,
+  convex-enough polygons for triangle-fan triangulation and draws translucent filled
+  faces only, without outline edges.
+- Follow-up: Add higher-level Python helpers for generating polyhedra faces from common
+  chemistry inputs such as neighbor lists or coordination environments, and run a live
+  viewer smoke check once a representative polyhedron script set exists beyond the
+  synthetic tetrahedral example.
