@@ -2,7 +2,7 @@
 
 This page is the running log for agent-driven development updates. Follow the workflow
 and format defined in
-[`docs/agent-development.md`](/Users/au616397/Repositories/atomic-kernels/docs/agent-development.md).
+[`docs/src/agent-development.md`](/Users/au616397/Repositories/atomic-kernels/docs/src/agent-development.md).
 
 ## Existing notes
 
@@ -13,7 +13,8 @@ and format defined in
   changes are validated automatically instead of only when someone runs the site
   locally.
 - Implementation: Added `.github/workflows/docs.yml` to install the docs-only Python
-  dependency group with `uv`, run `zensical build`, upload a GitHub Pages artifact, and
+  dependency group with `uv`, run `zensical build --config-file docs/zensical.toml`,
+  upload a GitHub Pages artifact, and
   deploy the built site through a dedicated Pages job on pushes to `development`. The
   job is scoped to docs-related path changes and uses `--no-install-project` so the
   Python package itself is not installed.
@@ -38,8 +39,9 @@ and format defined in
   was no longer recoverable from source layout alone, and the top-level README did not
   provide a usable entry point.
 - Implementation: Added a Markdown-first docs site via `Zensical`, introduced
-  `docs/index.md`, `docs/getting-started.md`, `docs/architecture.md`, and the agent
-  development pages, and linked the docs entry points from the repository README.
+  `docs/src/index.md`, `docs/src/getting-started.md`,
+  `docs/src/architecture.md`, and the agent development pages, and linked the docs
+  entry points from the repository README.
 - Difficulty: The setup itself was straightforward, but it exposed that project-level
   context had been spread across source layout, scripts, and recent memory rather than
   in durable documentation.

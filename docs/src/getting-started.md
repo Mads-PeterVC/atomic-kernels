@@ -26,8 +26,8 @@ uv run python scripts/slab_adsorbate_ball_and_stick.py
 
 Browse the reusable viewer examples:
 
-- [Viewer Examples](/Users/au616397/Repositories/atomic-kernels/docs/viewer-examples.md)
-- [Viewer Scripts](/Users/au616397/Repositories/atomic-kernels/docs/viewer-scripts.md)
+- [Viewer Examples](/Users/au616397/Repositories/atomic-kernels/docs/src/viewer-examples.md)
+- [Viewer Scripts](/Users/au616397/Repositories/atomic-kernels/docs/src/viewer-scripts.md)
 
 Run Rust tests:
 
@@ -39,7 +39,7 @@ Serve the documentation site:
 
 ```bash
 uv sync --group docs
-uv run zensical serve
+just docs-serve
 ```
 
 ## Documentation rules

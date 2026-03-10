@@ -1,5 +1,7 @@
 [project]
 site_name = "atomic-kernels"
+docs_dir = "src"
+site_dir = "site"
 nav = [
   {"Home" = [
     {"Overview" = "index.md"},
