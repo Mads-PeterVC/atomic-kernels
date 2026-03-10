@@ -25,6 +25,18 @@ uv sync --group docs
 uv run zensical serve
 ```
 
+## Running Python tests locally
+
+If you have [`just`](https://github.com/casey/just) installed, use:
+
+```bash
+just test
+just viewer-test
+```
+
+`just test` runs the default Python-side suite without GUI viewer integration tests.
+`just viewer-test` runs the real viewer smoke test with the required environment flags.
+
 ## Current docs scope
 
 The initial docs focus on:

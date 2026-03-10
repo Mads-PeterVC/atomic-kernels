@@ -1,7 +1,8 @@
 use ak_core::{Structure, Trajectory};
 use bevy::prelude::*;
+use bevy::window::PrimaryWindow;
 use bevy_panorbit_camera::PanOrbitCameraPlugin;
-use std::sync::{Mutex, mpsc};
+use std::sync::{Arc, Mutex, mpsc};
 use std::thread;
 
 use crate::ui::setup_ui;
@@ -14,7 +15,7 @@ use crate::viewer::orientation_widget::{
     setup_orientation_widget, sync_orientation_widget, sync_orientation_widget_letter_strokes,
     update_orientation_widget_viewport,
 };
-use crate::viewer::session::{CameraState, ViewerSessionHandle, ViewerState};
+use crate::viewer::session::{CameraState, ViewerReadiness, ViewerSessionHandle, ViewerState};
 use crate::viewer::systems::{
     advance_camera_motion, apply_camera_state, apply_viewer_commands, render_current_frame,
     rerender_if_dirty, setup_camera, setup_camera_light, setup_lighting, update_camera_light,
@@ -22,6 +23,18 @@ use crate::viewer::systems::{
 
 #[derive(Resource)]
 pub struct CommandReceiver(pub Option<Mutex<mpsc::Receiver<crate::viewer::ViewerCommand>>>);
+
+#[derive(Resource, Clone)]
+struct ViewerLifecycle {
+    readiness: Arc<ViewerReadiness>,
+    ready_signaled: bool,
+}
+
+impl Drop for ViewerLifecycle {
+    fn drop(&mut self) {
+        self.readiness.mark_closed();
+    }
+}
 
 fn asset_root() -> String {
     format!("{}/assets", env!("CARGO_MANIFEST_DIR"))
@@ -31,6 +44,7 @@ fn build_app(
     trajectory: Trajectory,
     config: ViewerConfig,
     receiver: Option<mpsc::Receiver<crate::viewer::ViewerCommand>>,
+    readiness: Arc<ViewerReadiness>,
 ) -> App {
     let viewer_state = ViewerState::new(trajectory, config.initial_frame);
     let camera_state = CameraState::new(&viewer_state);
@@ -40,6 +54,10 @@ fn build_app(
         .insert_resource(camera_state)
         .insert_resource(config)
         .insert_resource(CommandReceiver(receiver.map(Mutex::new)))
+        .insert_resource(ViewerLifecycle {
+            readiness,
+            ready_signaled: false,
+        })
         .add_plugins((
             DefaultPlugins.set(AssetPlugin {
                 file_path: asset_root(),
@@ -74,6 +92,7 @@ fn build_app(
                 sync_orientation_widget,
                 sync_orientation_widget_letter_strokes,
                 update_orientation_widget_viewport,
+                signal_viewer_ready,
             ),
         );
 
@@ -89,30 +108,46 @@ fn run_app(
     trajectory: Trajectory,
     config: ViewerConfig,
     receiver: Option<mpsc::Receiver<crate::viewer::ViewerCommand>>,
+    readiness: Arc<ViewerReadiness>,
 ) {
-    let mut app = build_app(trajectory, config, receiver);
+    let mut app = build_app(trajectory, config, receiver, readiness);
     app.run();
+}
+
+fn signal_viewer_ready(
+    mut lifecycle: ResMut<'_, ViewerLifecycle>,
+    windows: Query<'_, '_, Entity, With<PrimaryWindow>>,
+) {
+    if lifecycle.ready_signaled || windows.is_empty() {
+        return;
+    }
+
+    lifecycle.ready_signaled = true;
+    lifecycle.readiness.mark_ready();
 }
 
 pub fn run_prepared(
     trajectory: Trajectory,
     config: ViewerConfig,
     receiver: mpsc::Receiver<crate::viewer::ViewerCommand>,
+    readiness: Arc<ViewerReadiness>,
 ) {
-    run_app(trajectory, config, Some(receiver));
+    run_app(trajectory, config, Some(receiver), readiness);
 }
 
 pub fn launch(trajectory: Trajectory, config: ViewerConfig) -> ViewerSessionHandle {
     let (sender, receiver) = mpsc::channel();
+    let readiness = Arc::new(ViewerReadiness::new());
+    let launch_readiness = readiness.clone();
 
     thread::Builder::new()
         .name("ak-viewer-session".to_string())
         .spawn(move || {
-            run_app(trajectory, config, Some(receiver));
+            run_app(trajectory, config, Some(receiver), launch_readiness);
         })
         .expect("failed to launch viewer session thread");
 
-    ViewerSessionHandle::new(sender)
+    ViewerSessionHandle::with_readiness(sender, readiness)
 }
 
 pub fn run_with_session<F>(trajectory: Trajectory, config: ViewerConfig, driver: F)
@@ -120,7 +155,8 @@ where
     F: FnOnce(ViewerSessionHandle) + Send + 'static,
 {
     let (sender, receiver) = mpsc::channel();
-    let handle = ViewerSessionHandle::new(sender);
+    let readiness = Arc::new(ViewerReadiness::new());
+    let handle = ViewerSessionHandle::with_readiness(sender, readiness.clone());
 
     thread::Builder::new()
         .name("ak-viewer-session-driver".to_string())
@@ -129,11 +165,11 @@ where
         })
         .expect("failed to launch viewer session driver thread");
 
-    run_app(trajectory, config, Some(receiver));
+    run_app(trajectory, config, Some(receiver), readiness);
 }
 
 pub fn run(trajectory: Trajectory, config: ViewerConfig) {
-    run_app(trajectory, config, None);
+    run_app(trajectory, config, None, Arc::new(ViewerReadiness::new()));
 }
 
 pub fn run_default(trajectory: Trajectory) {

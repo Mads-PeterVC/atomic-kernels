@@ -1,0 +1,105 @@
+from __future__ import annotations
+
+import pytest
+from ase import Atoms
+
+from atomic_kernels.viewer._camera import CameraController, _structure_to_world
+from atomic_kernels.viewer._session import ViewerSessionFacade
+
+
+class BackendSpy:
+    def __init__(self):
+        self.calls = []
+
+    def append_frame(self, frame):
+        self.calls.append(("append_frame", frame))
+
+    def set_frame(self, index):
+        self.calls.append(("set_frame", index))
+
+    def follow_tail(self, enabled):
+        self.calls.append(("follow_tail", enabled))
+
+    def close(self):
+        self.calls.append(("close",))
+
+    def set_camera_view(self, focus, radius, yaw, pitch):
+        self.calls.append(("set_camera_view", focus, radius, yaw, pitch))
+
+    def pan_camera(self, delta):
+        self.calls.append(("pan_camera", delta))
+
+    def zoom_camera(self, factor=None, delta=None):
+        self.calls.append(("zoom_camera", factor, delta))
+
+    def orbit_camera(self, yaw_delta, pitch_delta):
+        self.calls.append(("orbit_camera", yaw_delta, pitch_delta))
+
+    def frame_all(self):
+        self.calls.append(("frame_all",))
+
+    def start_orbit(self, yaw_rate, pitch_rate):
+        self.calls.append(("start_orbit", yaw_rate, pitch_rate))
+
+    def stop_camera_motion(self):
+        self.calls.append(("stop_camera_motion",))
+
+
+def test_structure_to_world_rotates_axes_for_viewer_backend():
+    assert _structure_to_world((1, 2, 3)) == (1.0, 3.0, -2.0)
+
+
+def test_camera_controller_translates_structure_space_calls():
+    session = type("Session", (), {"_backend": BackendSpy()})()
+    camera = CameraController(session)
+
+    camera.look_at((1, 2, 3), radius=4.0, yaw=0.5, pitch=0.25)
+    camera.pan((3, 2, 1))
+    camera.set_focus((0, 1, 2))
+
+    assert session._backend.calls == [
+        ("set_camera_view", (1.0, 3.0, -2.0), 4.0, 0.5, 0.25),
+        ("pan_camera", (3.0, 1.0, -2.0)),
+        ("set_camera_view", (0.0, 2.0, -1.0), None, None, None),
+    ]
+
+
+def test_camera_zoom_requires_exactly_one_mode():
+    session = type("Session", (), {"_backend": BackendSpy()})()
+    camera = CameraController(session)
+
+    with pytest.raises(ValueError, match="exactly one"):
+        camera.zoom()
+
+    with pytest.raises(ValueError, match="exactly one"):
+        camera.zoom(factor=1.1, delta=0.2)
+
+
+def test_viewer_session_facade_copies_frames_and_tracks_current_index():
+    first = Atoms("H2", positions=[(0, 0, 0), (0, 0, 1)])
+    second = Atoms("He", positions=[(1, 0, 0)])
+    backend = BackendSpy()
+    facade = ViewerSessionFacade(backend, [first])
+
+    facade.append_frame(second)
+    second.positions[0, 0] = 99.0
+    facade.set_frame(1)
+
+    assert backend.calls[:2] == [
+        ("append_frame", second),
+        ("set_frame", 1),
+    ]
+    assert facade._frame(1).positions[0, 0] == pytest.approx(1.0)
+
+
+def test_viewer_session_facade_wait_until_ready_delegates_to_backend():
+    class ReadyBackend(BackendSpy):
+        def wait_until_ready(self, timeout):
+            self.calls.append(("wait_until_ready", timeout))
+            return True
+
+    backend = ReadyBackend()
+    facade = ViewerSessionFacade(backend, [Atoms("H")])
+
+    assert facade.wait_until_ready(timeout=1.5) is True
+    assert backend.calls == [("wait_until_ready", 1.5)]

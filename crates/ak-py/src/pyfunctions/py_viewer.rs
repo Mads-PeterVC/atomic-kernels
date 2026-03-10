@@ -2,11 +2,14 @@ use crate::{PyStructure, PyTrajectory, PyViewerConfig};
 #[cfg(not(target_os = "macos"))]
 use ak_vis::launch;
 use ak_vis::{
-    BallAndStickStyle, BondList, BondScope, RenderStyle, ScalarColorMap, ViewerSessionHandle, run,
-    run_default, run_prepared, run_structure, run_structure_default, run_with_session,
+    BallAndStickStyle, BondList, BondScope, RenderStyle, ScalarColorMap, ViewerReadiness,
+    ViewerSessionHandle, run, run_default, run_prepared, run_structure, run_structure_default,
+    run_with_session,
 };
 use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
+use std::sync::Arc;
+use std::time::Duration;
 
 #[pyclass(name = "ViewerSession")]
 pub struct PyViewerSession {
@@ -44,6 +47,21 @@ impl PyViewerSession {
 
     fn close(&self) -> PyResult<()> {
         self.handle.close().map_err(Self::send_error)
+    }
+
+    #[pyo3(signature = (timeout=None))]
+    fn wait_until_ready(&self, timeout: Option<f64>) -> PyResult<bool> {
+        let timeout = match timeout {
+            Some(value) if !value.is_finite() || value < 0.0 => {
+                return Err(PyValueError::new_err(
+                    "timeout must be a finite non-negative number of seconds",
+                ));
+            }
+            Some(value) => Some(Duration::from_secs_f64(value)),
+            None => None,
+        };
+
+        Ok(self.handle.wait_until_ready(timeout))
     }
 
     #[pyo3(signature = (name, values, frame_index=None))]
@@ -213,6 +231,7 @@ impl PyPreparedViewerSession {
     }
 
     fn run(&mut self, py: Python<'_>) -> PyResult<()> {
+        let handle = self.handle.clone();
         let trajectory = self.trajectory.take().ok_or_else(|| {
             PyRuntimeError::new_err("prepared viewer session has already been run")
         })?;
@@ -224,7 +243,7 @@ impl PyPreparedViewerSession {
         })?;
 
         py.detach(move || {
-            run_prepared(trajectory, config, receiver);
+            run_prepared(trajectory, config, receiver, handle.readiness().clone());
         });
 
         Ok(())
@@ -341,8 +360,9 @@ pub fn prepare_viewer_session(
     ensure_non_empty_trajectory(&trajectory)?;
 
     let (sender, receiver) = std::sync::mpsc::channel();
+    let readiness = Arc::new(ViewerReadiness::new());
     Ok(PyPreparedViewerSession {
-        handle: ViewerSessionHandle::new(sender),
+        handle: ViewerSessionHandle::with_readiness(sender, readiness),
         trajectory: Some(trajectory.0),
         config: Some(config.map(|cfg| cfg.inner.clone()).unwrap_or_default()),
         receiver: Some(receiver),

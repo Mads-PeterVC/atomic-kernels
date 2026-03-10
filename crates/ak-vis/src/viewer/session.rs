@@ -2,6 +2,8 @@ use ak_core::{Structure, Trajectory};
 use bevy::prelude::{Resource, Vec3};
 use std::collections::{BTreeSet, HashMap};
 use std::sync::mpsc::Sender;
+use std::sync::{Arc, Condvar, Mutex};
+use std::time::{Duration, Instant};
 
 use crate::ScalarColorMap;
 use crate::structure_vec3_to_world;
@@ -73,6 +75,20 @@ pub enum ViewerCommand {
 #[derive(Clone)]
 pub struct ViewerSessionHandle {
     sender: Sender<ViewerCommand>,
+    readiness: Arc<ViewerReadiness>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum ViewerLifecycleState {
+    Pending,
+    Ready,
+    Closed,
+}
+
+#[derive(Debug)]
+pub struct ViewerReadiness {
+    state: Mutex<ViewerLifecycleState>,
+    changed: Condvar,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -157,7 +173,22 @@ pub struct CameraState {
 
 impl ViewerSessionHandle {
     pub fn new(sender: Sender<ViewerCommand>) -> Self {
-        Self { sender }
+        Self {
+            sender,
+            readiness: Arc::new(ViewerReadiness::new()),
+        }
+    }
+
+    pub fn with_readiness(sender: Sender<ViewerCommand>, readiness: Arc<ViewerReadiness>) -> Self {
+        Self { sender, readiness }
+    }
+
+    pub fn wait_until_ready(&self, timeout: Option<Duration>) -> bool {
+        self.readiness.wait(timeout)
+    }
+
+    pub fn readiness(&self) -> &Arc<ViewerReadiness> {
+        &self.readiness
     }
 
     pub fn load_trajectory(
@@ -335,6 +366,67 @@ impl ViewerSessionHandle {
         self.sender
             .send(ViewerCommand::Close)
             .map_err(|_| ViewerSessionClosed)
+    }
+}
+
+impl ViewerReadiness {
+    pub fn new() -> Self {
+        Self {
+            state: Mutex::new(ViewerLifecycleState::Pending),
+            changed: Condvar::new(),
+        }
+    }
+
+    pub fn mark_ready(&self) {
+        let mut state = self.state.lock().expect("viewer readiness mutex poisoned");
+        if *state == ViewerLifecycleState::Pending {
+            *state = ViewerLifecycleState::Ready;
+            self.changed.notify_all();
+        }
+    }
+
+    pub fn mark_closed(&self) {
+        let mut state = self.state.lock().expect("viewer readiness mutex poisoned");
+        if *state != ViewerLifecycleState::Closed {
+            *state = ViewerLifecycleState::Closed;
+            self.changed.notify_all();
+        }
+    }
+
+    pub fn wait(&self, timeout: Option<Duration>) -> bool {
+        let mut state = self.state.lock().expect("viewer readiness mutex poisoned");
+
+        match timeout {
+            Some(timeout) => {
+                let deadline = Instant::now() + timeout;
+                while *state == ViewerLifecycleState::Pending {
+                    let now = Instant::now();
+                    if now >= deadline {
+                        return false;
+                    }
+
+                    let remaining = deadline.saturating_duration_since(now);
+                    let (next_state, result) = self
+                        .changed
+                        .wait_timeout(state, remaining)
+                        .expect("viewer readiness mutex poisoned");
+                    state = next_state;
+                    if result.timed_out() && *state == ViewerLifecycleState::Pending {
+                        return false;
+                    }
+                }
+            }
+            None => {
+                while *state == ViewerLifecycleState::Pending {
+                    state = self
+                        .changed
+                        .wait(state)
+                        .expect("viewer readiness mutex poisoned");
+                }
+            }
+        }
+
+        *state == ViewerLifecycleState::Ready
     }
 }
 

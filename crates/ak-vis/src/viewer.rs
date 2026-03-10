@@ -9,7 +9,8 @@ pub use config::{ColorConfig, LightingConfig, RenderConfig, ViewerConfig};
 pub mod session;
 pub use session::{
     AtomColorRule, BallAndStickStyle, BondFrames, BondList, BondScope, CameraState, RenderStyle,
-    RenderStyleRule, ViewerCommand, ViewerSessionClosed, ViewerSessionHandle, ViewerState,
+    RenderStyleRule, ViewerCommand, ViewerReadiness, ViewerSessionClosed, ViewerSessionHandle,
+    ViewerState,
 };
 
 mod orientation_widget;

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import multiprocessing as mp
 import threading
+import time
 from typing import Optional
 
 from ase import Atoms
@@ -65,6 +66,15 @@ def viewer_process_main(
                 session.start_orbit(*payload)
             elif command == "stop_camera_motion":
                 session.stop_camera_motion()
+            elif command == "wait_until_ready":
+                try:
+                    ready = session.wait_until_ready(payload)
+                except RuntimeError:
+                    ready = False
+                try:
+                    connection.send(("wait_until_ready", ready))
+                except (BrokenPipeError, EOFError, OSError):
+                    break
             elif command == "close":
                 try:
                     session.close()
@@ -183,6 +193,31 @@ class ViewerSessionProxy:
             self._send("close")
         finally:
             self._connection.close()
+
+    def wait_until_ready(self, timeout: float | None = None) -> bool:
+        if timeout is not None and timeout < 0:
+            raise ValueError("timeout must be non-negative")
+
+        self._send("wait_until_ready", timeout)
+        deadline = None if timeout is None else time.monotonic() + timeout
+
+        while True:
+            if not self._process.is_alive() and not self._connection.poll():
+                return False
+
+            wait_time = 0.1
+            if deadline is not None:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    return False
+                wait_time = min(wait_time, remaining)
+
+            if not self._connection.poll(wait_time):
+                continue
+
+            message, payload = self._connection.recv()
+            if message == "wait_until_ready":
+                return bool(payload)
 
 
 def spawn_process_viewer_session(

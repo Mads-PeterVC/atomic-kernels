@@ -21,8 +21,16 @@ dependencies = [
 docs = [
     "zensical",
 ]
+test = [
+    "pytest>=8.3.0",
+]
 
 [tool.maturin]
 manifest-path = "crates/ak-py/Cargo.toml"
 python-source = "python"
 module-name = "atomic_kernels._atomic_kernels"
+
+[tool.pytest.ini_options]
+markers = [
+    "viewer_integration: launches the real Bevy viewer and waits for readiness",
+]

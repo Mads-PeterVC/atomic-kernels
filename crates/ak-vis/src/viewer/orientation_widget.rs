@@ -3,8 +3,7 @@ use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 
 use crate::components::{
-    MainSceneCamera, OrientationWidgetCamera, OrientationWidgetLetterStroke,
-    OrientationWidgetRoot,
+    MainSceneCamera, OrientationWidgetCamera, OrientationWidgetLetterStroke, OrientationWidgetRoot,
 };
 use crate::viewer::ViewerConfig;
 use crate::visuals::structure_vec3_to_world;
@@ -273,7 +272,12 @@ pub fn sync_orientation_widget_letter_strokes(
     let root_rotation = main_camera.rotation().inverse();
     for (stroke, mut transform) in &mut strokes {
         let center = root_rotation * (stroke.direction * LABEL_DISTANCE);
-        let p0 = center + Vec3::new(stroke.start.x * LETTER_SIZE, stroke.start.y * LETTER_SIZE, 0.0);
+        let p0 = center
+            + Vec3::new(
+                stroke.start.x * LETTER_SIZE,
+                stroke.start.y * LETTER_SIZE,
+                0.0,
+            );
         let p1 = center + Vec3::new(stroke.end.x * LETTER_SIZE, stroke.end.y * LETTER_SIZE, 0.0);
         *transform = transform_cylinder_between(p0, p1, LETTER_STROKE_RADIUS);
     }

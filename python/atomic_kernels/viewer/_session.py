@@ -42,6 +42,10 @@ class ViewerSessionFacade:
         """Close the running viewer session."""
         self._backend.close()
 
+    def wait_until_ready(self, timeout: float | None = None) -> bool:
+        """Block until the viewer reports readiness or the timeout elapses."""
+        return self._backend.wait_until_ready(timeout)
+
     def camera(self) -> CameraController:
         """Return the camera controller for this session."""
         return self._camera
