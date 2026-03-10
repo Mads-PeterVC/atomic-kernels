@@ -1,13 +1,7 @@
 # Viewer Examples
 
-These examples distill the usage-oriented scripts in
-[`scripts/`](/Users/au616397/Repositories/atomic-kernels/scripts) into smaller patterns
-you can copy into your own ASE workflows. Each example focuses on one viewer feature.
-
-The examples below are adapted from:
-
-- [`py_slab_adsorbate_ball_and_stick.py`](/Users/au616397/Repositories/atomic-kernels/scripts/py_slab_adsorbate_ball_and_stick.py)
-- [`py_polyhedra_faces.py`](/Users/au616397/Repositories/atomic-kernels/scripts/py_polyhedra_faces.py)
+These examples collect small patterns you can copy into your own ASE workflows. Each
+example focuses on one viewer feature.
 
 ## Start a live session
 

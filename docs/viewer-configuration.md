@@ -3,9 +3,6 @@
 Use `ViewerConfig` when you want to change the default viewer appearance before opening
 the window.
 
-This page extracts the cleanest configuration patterns from
-[`py_viewer_config.py`](/Users/au616397/Repositories/atomic-kernels/scripts/py_viewer_config.py).
-
 ## Configure the viewer up front
 
 Pass a `ViewerConfig` into `bevy_viewer(...)` or `viewer_session(...)` to control colors,
