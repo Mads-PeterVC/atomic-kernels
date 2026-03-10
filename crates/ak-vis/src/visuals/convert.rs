@@ -3,12 +3,29 @@ use ak_core::{PERIODIC_TABLE, StructureView};
 use bevy::math::Vec3;
 use bevy::prelude::*;
 
+pub fn structure_vec3_to_world(vector: Vec3) -> Vec3 {
+    // Rotate structure-space coordinates so chemistry-style z-up becomes Bevy-world y-up.
+    Vec3::new(vector.x, vector.z, -vector.y)
+}
+
+pub fn structure_position_to_world(position: [f64; 3]) -> Vec3 {
+    structure_vec3_to_world(Vec3::new(
+        position[0] as f32,
+        position[1] as f32,
+        position[2] as f32,
+    ))
+}
+
 pub fn convert_structure<C: ColorScheme>(view: &StructureView, scheme: &C) -> Vec<AtomVisual> {
     let mut visuals: Vec<AtomVisual> = Vec::with_capacity(view.len());
     for i in 0..view.positions.len() {
         let radius: f32 = 0.9 * PERIODIC_TABLE.get(view.numbers[i]).covalent_radius as f32;
         let color = scheme.color(view, i);
-        let atom_visual = AtomVisual::new(view.positions[i], color, radius);
+        let atom_visual = AtomVisual {
+            position: structure_position_to_world(view.positions[i]).to_array(),
+            color,
+            radius,
+        };
         visuals.push(atom_visual);
     }
     visuals
@@ -17,9 +34,9 @@ pub fn convert_structure<C: ColorScheme>(view: &StructureView, scheme: &C) -> Ve
 pub fn convert_cell(view: &StructureView, cell_color: Color) -> Vec<CellVisual> {
     let mut visuals: Vec<CellVisual> = Vec::new();
 
-    let a = Vec3::from_slice(view.cell.a().cast::<f32>().as_slice());
-    let b = Vec3::from_slice(view.cell.b().cast::<f32>().as_slice());
-    let c = Vec3::from_slice(view.cell.c().cast::<f32>().as_slice());
+    let a = structure_vec3_to_world(Vec3::from_slice(view.cell.a().cast::<f32>().as_slice()));
+    let b = structure_vec3_to_world(Vec3::from_slice(view.cell.b().cast::<f32>().as_slice()));
+    let c = structure_vec3_to_world(Vec3::from_slice(view.cell.c().cast::<f32>().as_slice()));
     let origin = Vec3::ZERO;
 
     let edges = [
@@ -52,9 +69,9 @@ pub fn convert_cell(view: &StructureView, cell_color: Color) -> Vec<CellVisual> 
 pub fn convert_axis(view: &StructureView) -> Vec<AxisVisual> {
     let mut visuals: Vec<AxisVisual> = Vec::new();
 
-    let a = Vec3::from_slice(view.cell.a().cast::<f32>().as_slice());
-    let b = Vec3::from_slice(view.cell.b().cast::<f32>().as_slice());
-    let c = Vec3::from_slice(view.cell.c().cast::<f32>().as_slice());
+    let a = structure_vec3_to_world(Vec3::from_slice(view.cell.a().cast::<f32>().as_slice()));
+    let b = structure_vec3_to_world(Vec3::from_slice(view.cell.b().cast::<f32>().as_slice()));
+    let c = structure_vec3_to_world(Vec3::from_slice(view.cell.c().cast::<f32>().as_slice()));
 
     let a_unit = a / a.length();
     let b_unit = b / b.length();

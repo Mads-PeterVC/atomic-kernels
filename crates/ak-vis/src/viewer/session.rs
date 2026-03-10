@@ -4,6 +4,7 @@ use std::collections::{BTreeSet, HashMap};
 use std::sync::mpsc::Sender;
 
 use crate::ScalarColorMap;
+use crate::structure_vec3_to_world;
 
 pub enum ViewerCommand {
     LoadTrajectory {

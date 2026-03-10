@@ -12,6 +12,8 @@ pub use session::{
     RenderStyleRule, ViewerCommand, ViewerSessionClosed, ViewerSessionHandle, ViewerState,
 };
 
+mod orientation_widget;
+
 mod systems;
 
 mod controls;

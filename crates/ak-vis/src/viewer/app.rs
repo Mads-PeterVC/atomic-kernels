@@ -10,6 +10,10 @@ use crate::viewer::controls::{
     keyboard_controls, navigate_frames, screenshot_on_spacebar, screenshot_saving,
     toggle_ui_visibility, toggle_view,
 };
+use crate::viewer::orientation_widget::{
+    setup_orientation_widget, sync_orientation_widget, sync_orientation_widget_letter_strokes,
+    update_orientation_widget_viewport,
+};
 use crate::viewer::session::{CameraState, ViewerSessionHandle, ViewerState};
 use crate::viewer::systems::{
     advance_camera_motion, apply_camera_state, apply_viewer_commands, render_current_frame,
@@ -18,6 +22,10 @@ use crate::viewer::systems::{
 
 #[derive(Resource)]
 pub struct CommandReceiver(pub Option<Mutex<mpsc::Receiver<crate::viewer::ViewerCommand>>>);
+
+fn asset_root() -> String {
+    format!("{}/assets", env!("CARGO_MANIFEST_DIR"))
+}
 
 fn build_app(
     trajectory: Trajectory,
@@ -32,7 +40,13 @@ fn build_app(
         .insert_resource(camera_state)
         .insert_resource(config)
         .insert_resource(CommandReceiver(receiver.map(Mutex::new)))
-        .add_plugins((DefaultPlugins, MeshPickingPlugin))
+        .add_plugins((
+            DefaultPlugins.set(AssetPlugin {
+                file_path: asset_root(),
+                ..default()
+            }),
+            MeshPickingPlugin,
+        ))
         .add_plugins(PanOrbitCameraPlugin)
         .add_systems(
             Startup,
@@ -41,6 +55,7 @@ fn build_app(
                 setup_camera,
                 render_current_frame,
                 setup_camera_light,
+                setup_orientation_widget,
             ),
         )
         .add_systems(
@@ -56,6 +71,9 @@ fn build_app(
                 screenshot_saving,
                 navigate_frames,
                 rerender_if_dirty,
+                sync_orientation_widget,
+                sync_orientation_widget_letter_strokes,
+                update_orientation_widget_viewport,
             ),
         );
 

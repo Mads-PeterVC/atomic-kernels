@@ -41,12 +41,24 @@ class RenderConfig:
     show_axes: bool
     show_ui: bool
     ico_subdiv: int
+    show_orientation_widget: bool
+    orientation_widget_size_px: int
+    orientation_widget_margin_px: int
+    orientation_widget_offset_x_px: int
+    orientation_widget_offset_y_px: int
+    orientation_widget_camera_scale: float
     def __init__(
         self,
         show_cell: bool = True,
         show_axes: bool = True,
         show_ui: bool = False,
         ico_subdiv: int = 5,
+        show_orientation_widget: bool = True,
+        orientation_widget_size_px: int = 100,
+        orientation_widget_margin_px: int = 0,
+        orientation_widget_offset_x_px: int | None = None,
+        orientation_widget_offset_y_px: int | None = None,
+        orientation_widget_camera_scale: float = 0.065,
     ) -> None: ...
 
 

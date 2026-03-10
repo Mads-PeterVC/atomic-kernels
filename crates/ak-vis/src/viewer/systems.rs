@@ -287,14 +287,21 @@ pub fn setup_camera(mut commands: Commands, camera: Res<CameraState>, config: Re
         return;
     }
 
-    let mut camera = commands.spawn(PanOrbitCamera {
-        yaw: Some(camera.yaw),
-        pitch: Some(camera.pitch),
-        radius: Some(camera.radius),
-        focus: camera.focus,
-        axis: [Vec3::X, Vec3::Y, Vec3::Z],
-        ..default()
-    });
+    let mut camera = commands.spawn((
+        Camera {
+            order: 0,
+            ..default()
+        },
+        PanOrbitCamera {
+            yaw: Some(camera.yaw),
+            pitch: Some(camera.pitch),
+            radius: Some(camera.radius),
+            focus: camera.focus,
+            axis: [Vec3::X, Vec3::Y, Vec3::Z],
+            ..default()
+        },
+    ));
+    camera.insert(MainSceneCamera);
     if config.lighting.enable_fog {
         camera.insert(DistanceFog {
             color: config.color.background,

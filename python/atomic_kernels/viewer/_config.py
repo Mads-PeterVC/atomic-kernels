@@ -32,6 +32,12 @@ def serialize_config(config: Optional[ViewerConfig]) -> Optional[dict]:
             "show_axes": config.render.show_axes,
             "show_ui": config.render.show_ui,
             "ico_subdiv": config.render.ico_subdiv,
+            "show_orientation_widget": config.render.show_orientation_widget,
+            "orientation_widget_size_px": config.render.orientation_widget_size_px,
+            "orientation_widget_margin_px": config.render.orientation_widget_margin_px,
+            "orientation_widget_offset_x_px": config.render.orientation_widget_offset_x_px,
+            "orientation_widget_offset_y_px": config.render.orientation_widget_offset_y_px,
+            "orientation_widget_camera_scale": config.render.orientation_widget_camera_scale,
         },
         "initial_frame": config.initial_frame,
     }

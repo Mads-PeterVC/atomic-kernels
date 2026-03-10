@@ -152,18 +152,50 @@ pub struct PyRenderConfig {
     pub show_ui: bool,
     #[pyo3(get, set)]
     pub ico_subdiv: u32,
+    #[pyo3(get, set)]
+    pub show_orientation_widget: bool,
+    #[pyo3(get, set)]
+    pub orientation_widget_size_px: u32,
+    #[pyo3(get, set)]
+    pub orientation_widget_margin_px: u32,
+    #[pyo3(get, set)]
+    pub orientation_widget_offset_x_px: u32,
+    #[pyo3(get, set)]
+    pub orientation_widget_offset_y_px: u32,
+    #[pyo3(get, set)]
+    pub orientation_widget_camera_scale: f32,
 }
 
 #[pymethods]
 impl PyRenderConfig {
     #[new]
-    #[pyo3(signature = (show_cell=true, show_axes=true, show_ui=false, ico_subdiv=5))]
-    fn new(show_cell: bool, show_axes: bool, show_ui: bool, ico_subdiv: u32) -> Self {
+    #[allow(clippy::too_many_arguments)]
+    #[pyo3(signature = (show_cell=true, show_axes=true, show_ui=false, ico_subdiv=5, show_orientation_widget=true, orientation_widget_size_px=100, orientation_widget_margin_px=0, orientation_widget_offset_x_px=None, orientation_widget_offset_y_px=None, orientation_widget_camera_scale=0.065))]
+    fn new(
+        show_cell: bool,
+        show_axes: bool,
+        show_ui: bool,
+        ico_subdiv: u32,
+        show_orientation_widget: bool,
+        orientation_widget_size_px: u32,
+        orientation_widget_margin_px: u32,
+        orientation_widget_offset_x_px: Option<u32>,
+        orientation_widget_offset_y_px: Option<u32>,
+        orientation_widget_camera_scale: f32,
+    ) -> Self {
         PyRenderConfig {
             show_cell,
             show_axes,
             show_ui,
             ico_subdiv,
+            show_orientation_widget,
+            orientation_widget_size_px,
+            orientation_widget_margin_px,
+            orientation_widget_offset_x_px: orientation_widget_offset_x_px
+                .unwrap_or(orientation_widget_margin_px),
+            orientation_widget_offset_y_px: orientation_widget_offset_y_px
+                .unwrap_or(orientation_widget_margin_px),
+            orientation_widget_camera_scale,
         }
     }
 }
@@ -175,6 +207,12 @@ impl From<&RenderConfig> for PyRenderConfig {
             show_axes: config.show_axes,
             show_ui: config.show_ui,
             ico_subdiv: config.ico_subdiv,
+            show_orientation_widget: config.show_orientation_widget,
+            orientation_widget_size_px: config.orientation_widget_size_px,
+            orientation_widget_margin_px: config.orientation_widget_margin_px,
+            orientation_widget_offset_x_px: config.orientation_widget_offset_x_px,
+            orientation_widget_offset_y_px: config.orientation_widget_offset_y_px,
+            orientation_widget_camera_scale: config.orientation_widget_camera_scale,
         }
     }
 }
@@ -186,6 +224,12 @@ impl From<&PyRenderConfig> for RenderConfig {
             show_axes: py.show_axes,
             show_ui: py.show_ui,
             ico_subdiv: py.ico_subdiv,
+            show_orientation_widget: py.show_orientation_widget,
+            orientation_widget_size_px: py.orientation_widget_size_px,
+            orientation_widget_margin_px: py.orientation_widget_margin_px,
+            orientation_widget_offset_x_px: py.orientation_widget_offset_x_px,
+            orientation_widget_offset_y_px: py.orientation_widget_offset_y_px,
+            orientation_widget_camera_scale: py.orientation_widget_camera_scale,
         }
     }
 }
