@@ -6,6 +6,27 @@ and format defined in
 
 ## Existing notes
 
+## 2026-03-10 - Documentation build workflow in GitHub Actions
+
+- Commit: `e3ad597`
+- Context: The documentation setup needed CI coverage so docs configuration and content
+  changes are validated automatically instead of only when someone runs the site
+  locally.
+- Implementation: Added `.github/workflows/docs.yml` to install the docs-only Python
+  dependency group with `uv`, run `zensical build`, and upload the generated `site/`
+  directory as a workflow artifact. The job is scoped to docs-related path changes and
+  uses `--no-install-project` so the Python package itself is not installed.
+- Difficulty: The main point of care was avoiding an accidental Rust build. A naive
+  `uv sync --group docs` would still install the local `maturin` project, which can
+  trigger compilation of the Rust extension even though the current docs are pure
+  Markdown.
+- Constraints: This workflow validates the static docs site only. It does not exercise
+  the Rust crates, Python bindings, or any future docs feature that imports the local
+  package during site generation.
+- Follow-up: If the docs later gain generated API pages or other build-time imports of
+  `atomic-kernels`, revisit the workflow and decide whether a separate heavier docs CI
+  job is justified.
+
 ## 2026-03-10 - Documentation system introduced
 
 - Commit: `TBD`
