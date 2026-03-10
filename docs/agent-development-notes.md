@@ -100,3 +100,33 @@ and format defined in
   next investigation should be whether `PanOrbitCamera` is the right long-term camera
   backend. The orientation widget may also need future polish around DPI scaling and
   theming.
+
+## 2026-03-10 - Python test harness and viewer readiness handshake
+
+- Commit: `1d65f52`
+- Context: The Python package had wrapper code for neighbor-list utilities and live
+  viewer control, but almost no automated coverage and no reliable way to assert that a
+  spawned Bevy viewer session had actually reached a usable state.
+- Implementation: Added a pytest dependency group and marker configuration in
+  `pyproject.toml`, a stub-backed `tests/` suite for pure-Python viewer helpers and
+  session facades, and `just test` / `just viewer-test` entry points via `justfile` and
+  the README. Added `wait_until_ready()` through the Rust viewer session handle in
+  `crates/ak-vis/src/viewer/session.rs`, signaled readiness from the Bevy app loop in
+  `crates/ak-vis/src/viewer/app.rs`, exposed it through the PyO3 bindings in
+  `crates/ak-py/src/pyfunctions/py_viewer.rs`, and bridged it on macOS through the
+  subprocess proxy in `python/atomic_kernels/viewer/_process.py`.
+- Difficulty: The first macOS approach tried to send readiness as an out-of-band message
+  over the same multiprocessing pipe used for viewer commands, which was race-prone and
+  failed even when the viewer itself launched correctly. The stable design was to make
+  readiness an explicit request/response command and to delay the Bevy-side ready signal
+  until the app had entered its update loop with a primary window available.
+- Constraints: The default Python tests still run against a stubbed
+  `atomic_kernels._atomic_kernels` module and intentionally avoid launching the real
+  viewer. The real GUI smoke test is opt-in behind the `viewer_integration` marker and
+  `ATOMIC_KERNELS_RUN_VIEWER_TESTS=1`, because it depends on a usable display
+  environment and the compiled extension.
+- Follow-up: If viewer integration tests become part of CI, give them a dedicated job
+  with explicit display/runtime support rather than folding them into the default Python
+  test path. Consider whether future viewer lifecycle checks should distinguish between
+  "window created" and "first frame rendered" if startup assertions need to become
+  stricter.
