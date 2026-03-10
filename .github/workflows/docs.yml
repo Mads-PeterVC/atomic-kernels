@@ -35,7 +35,7 @@ jobs:
         run: uv sync --only-group docs --no-install-project
 
       - name: Build docs
-        run: uv run zensical build
+        run: .venv/bin/zensical build
 
       - name: Upload docs artifact
         uses: actions/upload-artifact@v5
