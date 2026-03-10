@@ -183,14 +183,37 @@ and format defined in
   was initially being lost during app startup and `PanOrbitCamera` initialization. The
   final fix was to apply queued commands before inserting the Bevy resources, drive only
   the plugin `target_*` fields after initialization, and delay capture until after the
-  camera/transform update path had produced a fresh rendered frame.
+  camera/transform update path had produced a fresh rendered frame. That split also
+  clarified an important future-web constraint: script commands must be expressible as
+  durable viewer state before a concrete native window or render surface exists, because
+  a browser/WebGPU or WebGL backend will likely need the same "prepare state first,
+  attach surface later" behavior when canvas lifecycle and async device creation are not
+  under direct Rust control.
 - Constraints: The public Python workflow is now `headless_viewer_session(...).save()`;
   the one-shot `render_image()` helper was intentionally removed because it did not offer
   a better long-term path for scripted sequences. The CI job definition was added but
   explicitly disabled pending environment configuration, and local Rust tests still skip
-  gracefully when no GPU/backend is available.
+  gracefully when no GPU/backend is available. The current offscreen implementation is
+  still native-oriented: it depends on Bevy render-graph image readback, filesystem PNG
+  output, and host-side GPU polling. Those choices are acceptable for CI and local batch
+  rendering but should not be treated as the eventual abstraction boundary for a browser
+  target. For a future WebGPU/WebGL backend, the reusable layer is the shared
+  `ViewerState`/`CameraState` plus the scene-construction systems in
+  `crates/ak-vis/src/viewer/runtime.rs` and `crates/ak-vis/src/viewer/systems.rs`; the
+  replaceable layer is the runner/bootstrap code in `app.rs` and `headless.rs`, because
+  browser canvas ownership, async adapter/device acquisition, and image export/download
+  semantics differ materially from native winit/offscreen flows. In particular, avoid
+  coupling higher-level Python or Rust scripting APIs to native-only concepts like
+  `ScheduleRunnerPlugin`, filesystem output paths as the only sink, or "device exists at
+  app construction time" assumptions.
 - Follow-up: When sequence rendering becomes a priority, build it on top of a persistent
   headless session/app rather than reusing the current one-shot export path per frame.
   Re-enable the CI job once the software-rendering environment is settled, and consider
   adding an image-difference assertion on top of the existing camera regression test if
-  byte inequality proves too weak.
+  byte inequality proves too weak. If a WebGPU/WebGL viewer backend is pursued, keep the
+  current direction of travel: define backend-neutral viewer/session commands and shared
+  scene systems first, then build separate native-window, native-headless, and browser
+  runners around them. Do not reuse the current native headless image-readback path as a
+  proxy for the browser design; instead, treat it as evidence that the state/systems
+  split is useful and that future backend work should preserve that split while swapping
+  out surface creation, frame scheduling, and image delivery.
