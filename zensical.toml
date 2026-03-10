@@ -4,8 +4,10 @@ nav = [
   {"Home" = [
     {"Overview" = "index.md"},
     {"Getting Started" = "getting-started.md"},
-    {"Viewer Examples" = "viewer-examples.md"},
     {"Architecture" = "architecture.md"},
+  ]},
+  {"Viewer" = [
+    {"Examples" = "viewer-examples.md"},
   ]},
   {"Agent Development" = [
     {"Instructions" = "agent-development.md"},
