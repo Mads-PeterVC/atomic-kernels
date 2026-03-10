@@ -7,7 +7,7 @@ description: Update `docs/agent-development-notes.md` using the workflow and ent
 
 ## Overview
 
-Follow the repository workflow for durable agent-development logging. Trigger this skill after a relevant implementation commit exists, then read the policy doc, inspect the commit history, and append or correct an entry in `docs/agent-development-notes.md` without inventing hashes or implementation details.
+Follow the repository workflow for durable agent-development logging. Prefer triggering this skill after a relevant implementation commit exists, but if it is invoked early, first create or confirm the feature commit, then inspect the commit history and append or correct an entry in `docs/agent-development-notes.md` without inventing hashes or implementation details.
 
 ## Workflow
 
@@ -20,11 +20,15 @@ Follow the repository workflow for durable agent-development logging. Trigger th
    - development workflows future agent sessions should preserve
    - difficult implementation paths that future work should not rediscover
 3. Confirm the implementation commit already exists.
-4. Inspect the feature commit with `git show --stat --summary <hash>` and read the relevant touched files if the summary is not enough.
-5. Append a new note to `docs/agent-development-notes.md` in chronological order unless you are correcting a factually wrong existing entry.
-6. Commit the documentation update separately from the feature commit.
+4. If no implementation commit exists yet:
+   - make the feature commit yourself when your current permissions and workflow allow it
+   - otherwise ask the user whether you should create the feature commit before continuing
+   - do not abandon the task only because the skill was invoked before the commit step
+5. Inspect the feature commit with `git show --stat --summary <hash>` and read the relevant touched files if the summary is not enough.
+6. Append a new note to `docs/agent-development-notes.md` in chronological order unless you are correcting a factually wrong existing entry.
+7. Commit the documentation update separately from the feature commit.
 
-If the feature commit does not exist yet, stop and say the notes update must happen after the feature or fix is committed. Do not guess the hash.
+Do not guess commit hashes. If you must create the feature commit first, finish that step before writing the log entry so the note can reference the real hash.
 
 ## Entry Rules
 
@@ -48,6 +52,7 @@ Prefer a short hash. Use concrete file, module, crate, script, and behavior refe
 - Derive the note from the committed diff and surrounding source, not from vague memory.
 - Keep the notes page append-only and chronological unless an existing entry is factually wrong.
 - Preserve the repository’s current Markdown style and line wrapping.
+- Treat pre-commit invocation as a recoverable workflow state: create the implementation commit when allowed, or explicitly ask the user whether to do that next.
 - Call out constraints that matter to future implementation work, especially temporary workflow decisions and script-led behavior.
 - Record genuine friction in `Difficulty`, including dead ends, misleading abstractions, or repeated iterations.
 - If updating an older placeholder entry such as `Commit: TBD`, replace only the missing factual data and tighten the wording only where needed for accuracy.
