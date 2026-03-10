@@ -129,3 +129,76 @@ Notes:
 - Each face is a list of atom indices for one polygon.
 - `face_colors` must match the number of faces.
 - Faces are independent of bonds and ball-and-stick styling.
+
+## Scalar coloring
+
+Use `colors.set_atom_scalars(...)` and `colors.by_scalar(...)` to color atoms from a
+per-atom property array.
+
+```python
+import numpy as np
+from ase.build import bulk
+
+from atomic_kernels import viewer_session
+
+atoms = bulk("Cu", "fcc", a=3.615).repeat((4, 4, 4))
+atoms.center(vacuum=6.0)
+
+z = atoms.positions[:, 2]
+heights = ((z - z.min()) / (z.max() - z.min())).astype(np.float32)
+
+session = viewer_session(atoms)
+colors = session.colors()
+colors.set_atom_scalars("height", heights)
+colors.by_scalar("height", palette="inferno")
+```
+
+This example isolates scalar coloring on a single frame. For subset-only coloring, use
+`session.select(...).color_by_scalar(...)` instead.
+
+## Append frames and follow the newest one
+
+Use `append_frame(...)` and `follow_tail(True)` when your structure changes over time
+and the viewer should keep following the latest frame.
+
+```python
+import numpy as np
+from ase.build import molecule
+
+from atomic_kernels import viewer_session
+
+atoms = molecule("H2O")
+atoms.cell = (8.0, 8.0, 8.0)
+atoms.center()
+
+session = viewer_session(atoms)
+session.follow_tail(True)
+
+for step in range(10):
+    frame = atoms.copy()
+    frame.positions[:, 2] += 0.05 * step * np.sin(np.linspace(0.0, np.pi, len(frame)))
+    session.append_frame(frame)
+```
+
+## Camera controls
+
+Use the camera controller when the script needs a specific view or a scripted camera
+motion.
+
+```python
+from ase.build import fcc111
+
+from atomic_kernels import viewer_session
+
+atoms = fcc111("Cu", size=(4, 4, 3), vacuum=8.0)
+atoms.center(axis=2)
+
+session = viewer_session(atoms)
+camera = session.camera()
+
+camera.frame_all()
+camera.set_rotation(yaw=-1.1, pitch=0.45)
+camera.pan((2.0, 0.0, 0.5))
+camera.zoom(factor=0.75)
+camera.look_at((0.0, 0.0, 0.0), radius=18.0, yaw=0.4, pitch=0.2)
+```
