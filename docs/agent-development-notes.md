@@ -61,8 +61,8 @@ and format defined in
   `crates/ak-vis/src/visuals/bond_visual.rs`, and a Python render controller in
   `python/atomic_kernels/viewer/_render.py` wired through the PyO3 bindings in
   `crates/ak-py/src/pyfunctions/py_viewer.rs`. Example usage lives in
-  `scripts/py_ball_and_stick_selection.py` and
-  `scripts/py_slab_adsorbate_ball_and_stick.py`.
+  `scripts/ball_and_stick_selection.py` and
+  `scripts/slab_adsorbate_ball_and_stick.py`.
 - Difficulty: The useful abstraction was not "ball-and-stick for the whole frame" but
   ordered selection-scoped style rules. That required explicit bond storage,
   bond-scope semantics (`both_selected` vs `touch_selection`), and keeping the viewer
@@ -145,7 +145,7 @@ and format defined in
   bindings in `python/atomic_kernels/viewer/_render.py`,
   `python/atomic_kernels/viewer/_utils.py`, `python/atomic_kernels/viewer/_process.py`,
   and `crates/ak-py/src/pyfunctions/py_viewer.rs`. Example usage lives in
-  `scripts/py_polyhedra_faces.py`.
+  `scripts/polyhedra_faces.py`.
 - Difficulty: The main design choice was resisting the temptation to force faces into the
   existing `RenderStyleRule` machinery. That worked for ball-and-stick because bonds and
   atoms already existed as scene data, but it would have made polyhedra semantics
@@ -176,7 +176,7 @@ and format defined in
   `crates/ak-py/src/pyfunctions/py_viewer.rs` and the Python session facade in
   `python/atomic_kernels/viewer/_session.py` and
   `python/atomic_kernels/viewer/__init__.py`, with the scriptable demo in
-  `scripts/py_headless_render.py` and real integration coverage in
+  `scripts/headless_render.py` and real integration coverage in
   `tests/test_headless_render.py`.
 - Difficulty: Several iterations were needed before camera scripting behaved like the
   interactive viewer. Headless sessions queue commands before `save()`, so camera state

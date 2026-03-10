@@ -43,6 +43,8 @@ def main() -> None:
         render=RenderConfig(
             show_ui=False,
             show_orientation_widget=False,
+            show_axes=False,
+            show_cell=False,
         )
     )
 
@@ -68,10 +70,19 @@ def main() -> None:
         config=config,
     )
     style(moved_session)
-    moved_session.camera().frame_all()
-    moved_session.camera().set_rotation(yaw=1.8, pitch=0.95)
-    moved_session.camera().pan((0.7, -0.4, 0.3))
-    moved_session.camera().zoom(factor=0.35)
+
+    camera = moved_session.camera()
+
+    # camera.frame_all()
+    # camera.set_rotation(yaw=1.8, pitch=0.95)
+    # camera.pan((0.7, -0.4, 0.3))
+    # camera.zoom(factor=0.35)
+    camera.look_at(
+        focus=atoms.get_center_of_mass(),
+        radius=7.0,
+        yaw=1.8,
+        pitch=0.95,
+    )
     moved_session.save()
 
     print(f"saved {default_path.resolve()}")

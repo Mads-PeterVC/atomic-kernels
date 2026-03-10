@@ -21,7 +21,7 @@ uv run maturin develop
 Run a Python script:
 
 ```bash
-uv run python scripts/py_slab_adsorbate_ball_and_stick.py
+uv run python scripts/slab_adsorbate_ball_and_stick.py
 ```
 
 Browse the reusable viewer examples:
