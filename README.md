@@ -45,3 +45,8 @@ The initial docs focus on:
 - local development setup
 - repository architecture
 - agent-driven development conventions
+
+## License
+
+This project is licensed under the Apache License 2.0. See
+[`LICENSE`](/Users/au616397/Repositories/atomic-kernels/LICENSE).
