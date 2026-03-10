@@ -161,3 +161,36 @@ and format defined in
   chemistry inputs such as neighbor lists or coordination environments, and run a live
   viewer smoke check once a representative polyhedron script set exists beyond the
   synthetic tetrahedral example.
+
+## 2026-03-10 - Windowless headless viewer rendering
+
+- Commit: `6a9e216`
+- Context: The viewer needed a fully windowless render path both for non-interactive
+  scripting workflows and for CI coverage that exercises the real Bevy scene/render
+  stack without relying on a display server or window screenshot hooks.
+- Implementation: Split shared viewer bootstrap/state setup into
+  `crates/ak-vis/src/viewer/runtime.rs`, kept window-specific behavior in
+  `crates/ak-vis/src/viewer/app.rs`, and added the offscreen export pipeline in
+  `crates/ak-vis/src/viewer/headless.rs` plus the Rust example in
+  `crates/ak-vis/examples/headless_scene.rs`. Exposed the feature through PyO3 in
+  `crates/ak-py/src/pyfunctions/py_viewer.rs` and the Python session facade in
+  `python/atomic_kernels/viewer/_session.py` and
+  `python/atomic_kernels/viewer/__init__.py`, with the scriptable demo in
+  `scripts/py_headless_render.py` and real integration coverage in
+  `tests/test_headless_render.py`.
+- Difficulty: Several iterations were needed before camera scripting behaved like the
+  interactive viewer. Headless sessions queue commands before `save()`, so camera state
+  was initially being lost during app startup and `PanOrbitCamera` initialization. The
+  final fix was to apply queued commands before inserting the Bevy resources, drive only
+  the plugin `target_*` fields after initialization, and delay capture until after the
+  camera/transform update path had produced a fresh rendered frame.
+- Constraints: The public Python workflow is now `headless_viewer_session(...).save()`;
+  the one-shot `render_image()` helper was intentionally removed because it did not offer
+  a better long-term path for scripted sequences. The CI job definition was added but
+  explicitly disabled pending environment configuration, and local Rust tests still skip
+  gracefully when no GPU/backend is available.
+- Follow-up: When sequence rendering becomes a priority, build it on top of a persistent
+  headless session/app rather than reusing the current one-shot export path per frame.
+  Re-enable the CI job once the software-rendering environment is settled, and consider
+  adding an image-difference assertion on top of the existing camera regression test if
+  byte inequality proves too weak.
