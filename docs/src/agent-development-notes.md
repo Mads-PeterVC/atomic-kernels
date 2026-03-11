@@ -6,9 +6,12 @@ and format defined in
 
 ## Existing notes
 
+Entries are listed newest first.
+
 ## 2026-03-10 - Documentation build workflow in GitHub Actions
 
 - Commits: `e3ad597`, `adf8e27`
+- Agent: `Codex (GPT-5, OpenAI)`
 - Context: The documentation setup needed CI coverage so docs configuration and content
   changes are validated automatically instead of only when someone runs the site
   locally.
@@ -35,6 +38,7 @@ and format defined in
 ## 2026-03-10 - Documentation system introduced
 
 - Commit: `TBD`
+- Agent: `Codex (GPT-5, OpenAI)`
 - Context: The repository had reached a size where architecture and workflow knowledge
   was no longer recoverable from source layout alone, and the top-level README did not
   provide a usable entry point.
@@ -54,6 +58,7 @@ and format defined in
 ## 2026-03-10 - Selection-aware ball-and-stick rendering
 
 - Commit: `7d5cd23`
+- Agent: `Codex (GPT-5, OpenAI)`
 - Context: The Python viewer API needed a second rendering mode beyond space-filling so
   scripts could highlight subsets such as adsorbates, alloy species, or coordination
   environments without replacing the full-scene representation.
@@ -81,6 +86,7 @@ and format defined in
 ## 2026-03-10 - Structure-space camera semantics and orientation widget
 
 - Commit: `acf843f`
+- Agent: `Codex (GPT-5, OpenAI)`
 - Context: Camera control and orientation cues initially felt wrong for chemistry
   workflows because the viewer internals followed Bevy/world conventions while scripts
   and structures assume structure-space `z` is up.
@@ -106,6 +112,7 @@ and format defined in
 ## 2026-03-10 - Python test harness and viewer readiness handshake
 
 - Commit: `1d65f52`
+- Agent: `Codex (GPT-5, OpenAI)`
 - Context: The Python package had wrapper code for neighbor-list utilities and live
   viewer control, but almost no automated coverage and no reliable way to assert that a
   spawned Bevy viewer session had actually reached a usable state.
@@ -136,6 +143,7 @@ and format defined in
 ## 2026-03-10 - Explicit face overlays for polyhedra-style viewer rendering
 
 - Commit: `002fdf3`
+- Agent: `Codex (GPT-5, OpenAI)`
 - Context: The viewer already supported explicit bonds plus selection-scoped
   ball-and-stick styling, but that abstraction did not extend cleanly to
   polyhedra-style surfaces because faces are explicit scene elements rather than a
@@ -167,6 +175,7 @@ and format defined in
 ## 2026-03-10 - Windowless headless viewer rendering
 
 - Commit: `6a9e216`
+- Agent: `Codex (GPT-5, OpenAI)`
 - Context: The viewer needed a fully windowless render path both for non-interactive
   scripting workflows and for CI coverage that exercises the real Bevy scene/render
   stack without relying on a display server or window screenshot hooks.

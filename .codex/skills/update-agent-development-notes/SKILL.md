@@ -25,7 +25,7 @@ Follow the repository workflow for durable agent-development logging. Prefer tri
    - otherwise ask the user whether you should create the feature commit before continuing
    - do not abandon the task only because the skill was invoked before the commit step
 5. Inspect the feature commit with `git show --stat --summary <hash>` and read the relevant touched files if the summary is not enough.
-6. Append a new note to `docs/agent-development-notes.md` in chronological order unless you are correcting a factually wrong existing entry.
+6. Insert a new note near the top of `docs/agent-development-notes.md` so the file stays in reverse chronological order (newest notes first), unless you are correcting a factually wrong existing entry.
 7. Commit the documentation update separately from the feature commit.
 
 Do not guess commit hashes. If you must create the feature commit first, finish that step before writing the log entry so the note can reference the real hash.
@@ -50,7 +50,7 @@ Prefer a short hash. Use concrete file, module, crate, script, and behavior refe
 ## Writing Guidance
 
 - Derive the note from the committed diff and surrounding source, not from vague memory.
-- Keep the notes page append-only and chronological unless an existing entry is factually wrong.
+- Keep the notes page in reverse chronological order (newest notes first) unless an existing entry is factually wrong.
 - Preserve the repository’s current Markdown style and line wrapping.
 - Treat pre-commit invocation as a recoverable workflow state: create the implementation commit when allowed, or explicitly ask the user whether to do that next.
 - Call out constraints that matter to future implementation work, especially temporary workflow decisions and script-led behavior.

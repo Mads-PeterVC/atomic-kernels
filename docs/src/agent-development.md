@@ -46,6 +46,7 @@ using this structure:
 ## YYYY-MM-DD - Feature or Decision
 
 - Commit: `abcdef1`
+- Agent: `Codex (GPT-5, OpenAI)`
 - Context: What changed and why.
 - Implementation: Which modules, scripts, or crates were affected.
 - Difficulty: Where the work was unexpectedly hard, required several iterations, or
@@ -58,12 +59,15 @@ Use a short hash unless there is a reason to prefer the full hash.
 
 ## Working conventions
 
+- State which model/provider produced the work, using a dedicated `Agent` field in each
+  entry.
 - Prefer concrete file and module references over vague summaries.
 - Document behavior changes, not just that files were edited.
 - Record where the implementation was painful, especially when multiple attempts were
   needed before the final approach worked.
 - Record constraints while they are still known, especially when a feature is script-led
   before it becomes formal API.
-- Keep the notes page chronological and append-only unless an entry is factually wrong.
+- Keep the notes page in reverse chronological order, with newest notes first, unless
+  an entry is factually wrong.
 - If a feature commit is intentionally left undocumented, that should be a conscious
   exception rather than the default.
