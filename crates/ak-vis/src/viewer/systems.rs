@@ -337,9 +337,9 @@ pub fn setup_camera(
             radius: Some(camera.radius),
             focus: camera.focus,
             axis: [Vec3::X, Vec3::Y, Vec3::Z],
-            orbit_smoothness: if is_headless { 0.0 } else { 0.8 },
-            pan_smoothness: if is_headless { 0.0 } else { 0.6 },
-            zoom_smoothness: if is_headless { 0.0 } else { 0.8 },
+            orbit_smoothness: if is_headless { 0.0 } else { 0.1 },
+            pan_smoothness: if is_headless { 0.0 } else { 0.02 },
+            zoom_smoothness: if is_headless { 0.0 } else { 0.1 },
             ..default()
         },
     ));
