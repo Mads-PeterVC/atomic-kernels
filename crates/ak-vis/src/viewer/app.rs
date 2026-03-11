@@ -38,10 +38,13 @@ fn build_app(
 ) -> App {
     let mut app = App::new();
     app.add_plugins((
-        DefaultPlugins.set(AssetPlugin {
-            file_path: asset_root(),
-            ..default()
-        }),
+        DefaultPlugins
+            .build()
+            .disable::<bevy::audio::AudioPlugin>()
+            .set(AssetPlugin {
+                file_path: asset_root(),
+                ..default()
+            }),
         MeshPickingPlugin,
         PanOrbitCameraPlugin,
     ));
