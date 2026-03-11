@@ -1,0 +1,45 @@
+name: Rust Build POC
+
+on:
+  push:
+    branches:
+      - codex/cache-ci
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rust-build-poc:
+    runs-on: ubuntu-latest
+    env:
+      CARGO_INCREMENTAL: "0"
+      CARGO_TERM_COLOR: always
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-workspace-crates: "true"
+
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libasound2-dev \
+            libegl1-mesa-dev \
+            libudev-dev \
+            libwayland-dev \
+            libx11-dev \
+            libxcursor-dev \
+            libxi-dev \
+            libxinerama-dev \
+            libxkbcommon-dev \
+            libxrandr-dev \
+            mesa-vulkan-drivers \
+            pkg-config
+
+      - name: Build Rust workspace
+        run: cargo build --workspace --locked
