@@ -20,7 +20,11 @@ use bevy_panorbit_camera::{PanOrbitCameraPlugin, PanOrbitCameraSystemSet};
 use crossbeam_channel::{Receiver, Sender};
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex, mpsc};
+use std::sync::{
+    Arc, Mutex,
+    atomic::{AtomicBool, Ordering},
+    mpsc,
+};
 use std::thread;
 use std::time::Duration;
 
@@ -115,6 +119,11 @@ impl CaptureResult {
 #[derive(Resource, Deref)]
 struct MainWorldReceiver(Receiver<Vec<u8>>);
 
+#[derive(Resource, Clone)]
+struct SessionDriverState {
+    complete: Arc<AtomicBool>,
+}
+
 #[derive(Resource, Deref)]
 struct RenderWorldSender(Sender<Vec<u8>>);
 
@@ -203,7 +212,7 @@ pub fn export_image(
     config: ViewerConfig,
     export: HeadlessRenderConfig,
 ) -> Result<(), HeadlessRenderError> {
-    run_headless(trajectory, config, export, None)
+    run_headless(trajectory, config, export, None, None)
 }
 
 pub fn export_structure_image(
@@ -225,12 +234,23 @@ where
 {
     let (sender, receiver) = mpsc::channel();
     let handle = ViewerSessionHandle::new(sender);
+    let driver_complete = Arc::new(AtomicBool::new(false));
+    let driver_complete_thread = driver_complete.clone();
     let driver_thread = thread::Builder::new()
         .name("ak-headless-session-driver".to_string())
-        .spawn(move || driver(handle))
+        .spawn(move || {
+            driver(handle);
+            driver_complete_thread.store(true, Ordering::Release);
+        })
         .map_err(|err| HeadlessRenderError::new(format!("failed to spawn driver: {err}")))?;
 
-    let result = run_headless(trajectory, config, export, Some(receiver));
+    let result = run_headless(
+        trajectory,
+        config,
+        export,
+        Some(receiver),
+        Some(driver_complete),
+    );
     let _ = driver_thread.join();
     result
 }
@@ -241,7 +261,7 @@ pub fn export_prepared_image(
     export: HeadlessRenderConfig,
     receiver: mpsc::Receiver<ViewerCommand>,
 ) -> Result<(), HeadlessRenderError> {
-    run_headless(trajectory, config, export, Some(receiver))
+    run_headless(trajectory, config, export, Some(receiver), None)
 }
 
 fn run_headless(
@@ -249,6 +269,7 @@ fn run_headless(
     mut config: ViewerConfig,
     export: HeadlessRenderConfig,
     receiver: Option<mpsc::Receiver<ViewerCommand>>,
+    session_driver_complete: Option<Arc<AtomicBool>>,
 ) -> Result<(), HeadlessRenderError> {
     config.render.show_ui = false;
     config.render.show_orientation_widget = false;
@@ -257,7 +278,14 @@ fn run_headless(
         value: Arc::new(Mutex::new(None)),
     };
     let render_result = catch_unwind(AssertUnwindSafe(|| -> Result<(), HeadlessRenderError> {
-        let mut app = build_app(trajectory, config, export, result.clone(), receiver)?;
+        let mut app = build_app(
+            trajectory,
+            config,
+            export,
+            result.clone(),
+            receiver,
+            session_driver_complete,
+        )?;
         app.run();
         result.take().unwrap_or_else(|| {
             Err(HeadlessRenderError::new(
@@ -287,6 +315,7 @@ fn build_app(
     export: HeadlessRenderConfig,
     result: CaptureResult,
     receiver: Option<mpsc::Receiver<ViewerCommand>>,
+    session_driver_complete: Option<Arc<AtomicBool>>,
 ) -> Result<App, HeadlessRenderError> {
     if export.width == 0 || export.height == 0 {
         return Err(HeadlessRenderError::new(
@@ -331,6 +360,10 @@ fn build_app(
         request_delay_remaining: 0,
     })
     .insert_resource(result);
+
+    if let Some(complete) = session_driver_complete {
+        app.insert_resource(SessionDriverState { complete });
+    }
 
     configure_shared_app(&mut app, trajectory, config, receiver);
     app.add_systems(
@@ -433,8 +466,16 @@ fn queue_capture(
     settings: Res<CaptureSettings>,
     viewer: Res<super::ViewerState>,
     camera: Res<super::CameraState>,
+    session_driver_state: Option<Res<SessionDriverState>>,
 ) {
     if state.requested {
+        return;
+    }
+
+    if let Some(session_driver_state) = session_driver_state
+        && !session_driver_state.complete.load(Ordering::Acquire)
+    {
+        state.stable_frames = 0;
         return;
     }
 
