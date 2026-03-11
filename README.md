@@ -1,6 +1,6 @@
 # atomic-kernels
 
-`atomic-kernels` is a mixed Rust/Python project for atomistic structure tooling.
+`atomic-kernels` (`ak`) is a mixed Rust/Python project for atomistic structure tooling.
 The current codebase combines:
 
 - Rust crates for core geometry, visualization, and Python bindings

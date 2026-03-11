@@ -116,19 +116,19 @@ pub fn read_xyz<R: std::io::BufRead>(r: R) -> Structure {
 
 #[cfg(test)]
 mod tests {
-
-    use std::fs::File;
-    use std::io::BufReader;
+    use std::io::{BufReader, Cursor};
 
     use crate::io::read_xyz;
 
     #[test]
     fn simple_test() {
-        let file = File::open(
-            "/Users/au616397/Repositories/atomic-kernels/crates/ak-core/src/io/example.xyz",
-        )
-        .unwrap();
-        let reader = BufReader::new(file);
+        let xyz = r#"3
+Lattice="10.0 0.0 0.0 0.0 10.0 0.0 0.0 0.0 10.0" Properties=species:S:1:pos:R:3 pbc="F F F"
+O        5.00000000       5.00000000       5.29815450
+H        5.00000000       5.76323900       4.70184550
+H        5.00000000       4.23676100       4.70184550
+"#;
+        let reader = BufReader::new(Cursor::new(xyz));
         let _s = read_xyz(reader);
     }
 }

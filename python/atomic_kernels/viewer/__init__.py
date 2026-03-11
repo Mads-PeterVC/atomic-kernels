@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import sys
 from typing import Optional
 
@@ -25,6 +26,12 @@ from ._process import spawn_process_viewer_session
 from ._render import RenderController
 from ._session import PreparedHeadlessRenderFacade, ViewerSessionFacade
 from ._utils import normalize_atoms
+
+
+def _viewer_session_requires_process() -> bool:
+    if sys.platform == "darwin":
+        return True
+    return sys.platform.startswith("linux") and os.environ.get("CI") == "true"
 
 
 def bevy_viewer(atoms: Atoms | list[Atoms], config: Optional[ViewerConfig] = None) -> None:
@@ -59,10 +66,10 @@ def viewer_session(
     """Launch a high-level live viewer session with camera and color controllers."""
     frames = normalize_atoms(atoms)
 
-    if sys.platform != "darwin":
-        return ViewerSessionFacade(_launch_viewer(frames, config), frames)
+    if _viewer_session_requires_process():
+        return ViewerSessionFacade(spawn_process_viewer_session(frames, config), frames)
 
-    return ViewerSessionFacade(spawn_process_viewer_session(frames, config), frames)
+    return ViewerSessionFacade(_launch_viewer(frames, config), frames)
 
 
 def headless_viewer_session(
