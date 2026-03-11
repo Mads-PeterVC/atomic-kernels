@@ -51,3 +51,39 @@ jobs:
 
       - name: Run Rust tests
         run: cargo test --workspace --locked
+
+  python-maturin-test-poc:
+    runs-on: ubuntu-latest
+    env:
+      CARGO_INCREMENTAL: "0"
+      CARGO_TERM_COLOR: always
+      ATOMIC_KERNELS_USE_REAL_EXTENSION: "1"
+      ATOMIC_KERNELS_RUN_VIEWER_TESTS: "1"
+      WGPU_BACKEND: vulkan
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - uses: astral-sh/setup-uv@v7
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: ubuntu-stable-workspace
+          cache-workspace-crates: "true"
+          save-if: "false"
+
+      - uses: ./.github/actions/install-linux-build-deps
+
+      - name: Install Python test dependencies
+        run: uv sync --group test
+
+      - name: Build extension in-place
+        run: uv run maturin develop
+
+      - name: Run Python tests
+        run: uv run --group test pytest tests
