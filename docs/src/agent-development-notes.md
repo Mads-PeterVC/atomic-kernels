@@ -8,6 +8,43 @@ and format defined in
 
 Entries are listed newest first.
 
+## 2026-03-11 - Branch-scoped CI cache proof of concept
+
+- Commits: `662b848`, `4c02ab9`, `ea9e247`, `5517065`, `f93a691`, `dadb642`
+- Agent: `Codex (GPT-5, OpenAI)`
+- Context: The repository needed a low-risk way to start exercising the Rust workspace in
+  GitHub Actions without paying a full cold compile cost on every run. The goal was to
+  validate a branch-only CI shape first, then extend it later into the main workflow
+  once caching behavior and test environment constraints were better understood.
+- Implementation: Added `.github/workflows/rust-build-poc.yml` scoped to the
+  `codex/cache-ci` branch, plus the reusable
+  `.github/actions/install-linux-build-deps/action.yml` composite action so Linux build
+  packages are defined once and reused across jobs. The workflow now uses
+  `Swatinem/rust-cache@v2` with a shared cache key for a Rust build job, a Rust test
+  job, and a Python integration job that syncs dependencies with
+  `uv sync --group test --no-install-project`, installs `maturin`, runs
+  `maturin develop`, and then executes the pytest suite against the real extension. The
+  `target`-artifact experiment was tried and then removed after measuring that upload
+  and download time was worse than relying on the Rust cache alone. Supporting fixes
+  also made the Rust `xyz` parser test self-contained in
+  `crates/ak-core/src/io/xyz.rs`.
+- Difficulty: The hard part was not wiring the action syntax but sorting out which
+  reuse layer was actually worth keeping. A naive "build once, upload `target`, reuse it
+  everywhere" design looked clean on paper but was slower in practice. The branch also
+  exposed that headless Bevy rendering remains flaky in CI even when compilation and
+  dependency caching work, so several iterations were spent separating cache behavior
+  from runtime/test-environment failures.
+- Constraints: This workflow is intentionally a branch-only proof of concept and should
+  not be treated as the final production CI shape yet. The current note only records
+  the caching and job-structure decision; headless viewer stability in CI is still an
+  open problem, and ALSA/audio-related stderr noise was not fully eliminated by simply
+  disabling Bevy audio.
+- Follow-up: Once the headless viewer behavior is settled, add a separate note for the
+  CI/runtime constraints discovered there and then decide how much of
+  `rust-build-poc.yml` should migrate into the real CI workflow. If Python jobs expand,
+  preserve the `uv sync --no-install-project` plus explicit `maturin develop` pattern
+  so dependency installation and local package build remain distinct.
+
 ## 2026-03-10 - Documentation build workflow in GitHub Actions
 
 - Commits: `e3ad597`, `adf8e27`
