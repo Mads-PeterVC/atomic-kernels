@@ -82,6 +82,9 @@ jobs:
       - name: Install Python test dependencies
         run: uv sync --group test --no-install-project
 
+      - name: Install maturin
+        run: uv tool install maturin
+
       - name: Build extension in-place
         run: uv run --no-sync maturin develop
 
