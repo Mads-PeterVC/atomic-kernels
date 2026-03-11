@@ -543,9 +543,13 @@ mod tests {
     use super::*;
     use crate::{BondList, Face, FaceList};
     use image::GenericImageView;
-    use std::sync::atomic::{AtomicU64, Ordering};
+    use std::sync::{
+        Mutex,
+        atomic::{AtomicU64, Ordering},
+    };
 
     static UNIQUE_ID: AtomicU64 = AtomicU64::new(0);
+    static HEADLESS_TEST_LOCK: Mutex<()> = Mutex::new(());
 
     fn fixture_structure() -> Structure {
         Structure::new(
@@ -564,6 +568,15 @@ mod tests {
     fn temp_png(name: &str) -> PathBuf {
         let id = UNIQUE_ID.fetch_add(1, Ordering::Relaxed);
         std::env::temp_dir().join(format!("ak-headless-{name}-{id}.png"))
+    }
+
+    fn test_render_config(path: &Path) -> HeadlessRenderConfig {
+        let mut config = HeadlessRenderConfig::new(path, 320, 240);
+        if std::env::var_os("CI").is_some() {
+            config.preroll_frames = 12;
+            config.stable_frames = 4;
+        }
+        config
     }
 
     fn assert_image_has_content(path: &Path, width: u32, height: u32) {
@@ -585,13 +598,10 @@ mod tests {
 
     #[test]
     fn exports_default_scene_to_png() {
+        let _guard = HEADLESS_TEST_LOCK.lock().unwrap();
         let path = temp_png("default");
         let config = ViewerConfig::default();
-        match export_structure_image(
-            fixture_structure(),
-            config,
-            HeadlessRenderConfig::new(&path, 320, 240),
-        ) {
+        match export_structure_image(fixture_structure(), config, test_render_config(&path)) {
             Ok(()) => {}
             Err(err) if err.to_string().contains("Unable to find a GPU") => return,
             Err(err) => panic!("headless export should succeed: {err}"),
@@ -602,6 +612,7 @@ mod tests {
 
     #[test]
     fn exports_scripted_scene_with_shared_session_commands() {
+        let _guard = HEADLESS_TEST_LOCK.lock().unwrap();
         let path = temp_png("scripted");
         let trajectory = Trajectory::new(vec![fixture_structure()]);
         let mut config = ViewerConfig::default();
@@ -610,7 +621,7 @@ mod tests {
         let result = export_image_with_session(
             trajectory,
             config,
-            HeadlessRenderConfig::new(&path, 320, 240),
+            test_render_config(&path),
             |session| {
                 session
                     .set_bonds(BondList::new([(0, 1), (0, 2), (0, 3)]), Some(0))
