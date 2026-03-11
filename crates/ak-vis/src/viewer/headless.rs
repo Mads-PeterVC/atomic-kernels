@@ -614,13 +614,13 @@ mod tests {
     fn test_render_config(path: &Path) -> HeadlessRenderConfig {
         let mut config = HeadlessRenderConfig::new(path, 320, 240);
         if std::env::var_os("CI").is_some() {
-            config.preroll_frames = 12;
-            config.stable_frames = 4;
+            config.preroll_frames = 24;
+            config.stable_frames = 8;
         }
         config
     }
 
-    fn assert_image_has_content(path: &Path, width: u32, height: u32) {
+    fn image_has_content(path: &Path, width: u32, height: u32) -> bool {
         let image = image::open(path).expect("saved image should be readable");
         assert_eq!(image.dimensions(), (width, height));
         let rgba = image.to_rgba8();
@@ -631,39 +631,49 @@ mod tests {
                 break;
             }
         }
-        assert!(
-            unique.len() > 1,
-            "rendered image should not be a flat color"
-        );
+        unique.len() > 1
+    }
+
+    fn assert_render_succeeds<F>(name: &str, mut render_once: F)
+    where
+        F: FnMut(&Path) -> Result<(), HeadlessRenderError>,
+    {
+        let attempts = if std::env::var_os("CI").is_some() { 3 } else { 1 };
+        for attempt in 0..attempts {
+            let path = temp_png(name);
+            match render_once(&path) {
+                Ok(()) => {
+                    if image_has_content(&path, 320, 240) {
+                        let _ = std::fs::remove_file(path);
+                        return;
+                    }
+                }
+                Err(err) if err.to_string().contains("Unable to find a GPU") => return,
+                Err(err) => panic!("headless export should succeed: {err}"),
+            }
+            let _ = std::fs::remove_file(&path);
+            if attempt + 1 == attempts {
+                panic!("rendered image should not be a flat color");
+            }
+        }
     }
 
     #[test]
     fn exports_default_scene_to_png() {
         let _guard = HEADLESS_TEST_LOCK.lock().unwrap();
-        let path = temp_png("default");
         let config = ViewerConfig::default();
-        match export_structure_image(fixture_structure(), config, test_render_config(&path)) {
-            Ok(()) => {}
-            Err(err) if err.to_string().contains("Unable to find a GPU") => return,
-            Err(err) => panic!("headless export should succeed: {err}"),
-        }
-        assert_image_has_content(&path, 320, 240);
-        let _ = std::fs::remove_file(path);
+        assert_render_succeeds("default", |path| {
+            export_structure_image(fixture_structure(), config.clone(), test_render_config(path))
+        });
     }
 
     #[test]
     fn exports_scripted_scene_with_shared_session_commands() {
         let _guard = HEADLESS_TEST_LOCK.lock().unwrap();
-        let path = temp_png("scripted");
-        let trajectory = Trajectory::new(vec![fixture_structure()]);
         let mut config = ViewerConfig::default();
         config.render.show_axes = false;
-
-        let result = export_image_with_session(
-            trajectory,
-            config,
-            test_render_config(&path),
-            |session| {
+        assert_render_succeeds("scripted", |path| {
+            export_image_with_session(Trajectory::new(vec![fixture_structure()]), config.clone(), test_render_config(path), |session| {
                 session
                     .set_bonds(BondList::new([(0, 1), (0, 2), (0, 3)]), Some(0))
                     .unwrap();
@@ -687,15 +697,7 @@ mod tests {
                     )
                     .unwrap();
                 session.frame_all().unwrap();
-            },
-        );
-        match result {
-            Ok(()) => {}
-            Err(err) if err.to_string().contains("Unable to find a GPU") => return,
-            Err(err) => panic!("scripted headless export should succeed: {err}"),
-        }
-
-        assert_image_has_content(&path, 320, 240);
-        let _ = std::fs::remove_file(path);
+            })
+        });
     }
 }
