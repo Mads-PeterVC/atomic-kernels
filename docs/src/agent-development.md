@@ -1,4 +1,4 @@
-# Agent Development
+# Agentic Development
 
 This page defines how agent-driven work should be documented in this repository.
 

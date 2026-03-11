@@ -1,4 +1,4 @@
-# Agent Development Notes
+# Agentic Development Notes
 
 This page is the running log for agent-driven development updates. Follow the workflow
 and format defined in

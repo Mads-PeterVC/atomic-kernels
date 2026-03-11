@@ -15,7 +15,7 @@ headless-test:
     ATOMIC_KERNELS_USE_REAL_EXTENSION=1 ATOMIC_KERNELS_RUN_VIEWER_TESTS=1 uv run --group test pytest tests/test_headless_render.py -m viewer_integration
 
 docs-serve:
-    uv run zensical serve --config-file docs/zensical.toml
+    uv run zensical serve --config-file docs/zensical.toml -o 
 
 docs-build:
     uv run zensical build --config-file docs/zensical.toml
