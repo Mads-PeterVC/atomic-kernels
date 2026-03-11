@@ -8,6 +8,31 @@ and format defined in
 
 Entries are listed newest first.
 
+## 2026-03-11 - Live viewer camera smoothing restored to PanOrbit defaults
+
+- Commit: `f65ff89`
+- Agent: `Codex (GPT-5, OpenAI)`
+- Context: A recent viewer change made the interactive camera feel less sensitive even
+  though the keyboard orbit and zoom increments had not changed. The regression came
+  from stronger live-mode smoothing in the Bevy `PanOrbitCamera` setup rather than from
+  the explicit camera control constants.
+- Implementation: Updated `crates/ak-vis/src/viewer/systems.rs` so the live viewer now
+  sets `orbit_smoothness`, `pan_smoothness`, and `zoom_smoothness` to the
+  `bevy_panorbit_camera` defaults (`0.1`, `0.02`, `0.1`) explicitly, while keeping the
+  headless-render path at `0.0` smoothing for deterministic camera state application.
+- Difficulty: The misleading part of this regression was that the obvious camera input
+  code in `crates/ak-vis/src/viewer/controls/camera.rs` still used the same per-frame
+  orbit and zoom deltas as before. The behavior change came from interpolation settings
+  added later in camera setup, so the investigation had to compare the input layer,
+  session-state refactor, and the upstream `PanOrbitCamera` defaults before touching
+  anything.
+- Constraints: This restores the previous feel for live interactive viewing only. It
+  does not change the headless camera path, which still disables smoothing on purpose,
+  and it does not yet expose camera smoothing as a viewer config option or Python API.
+- Follow-up: If camera feel becomes something users need to tune intentionally, add a
+  viewer config surface for smoothing rather than relying on hard-coded crate defaults
+  buried in the Bevy camera spawn path.
+
 ## 2026-03-11 - Rust headless render tests disabled in default CI
 
 - Commit: `e599547`
