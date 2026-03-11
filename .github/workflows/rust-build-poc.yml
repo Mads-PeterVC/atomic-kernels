@@ -80,10 +80,10 @@ jobs:
       - uses: ./.github/actions/install-linux-build-deps
 
       - name: Install Python test dependencies
-        run: uv sync --group test
+        run: uv sync --group test --no-install-project
 
       - name: Build extension in-place
-        run: uv run maturin develop
+        run: uv run --no-sync maturin develop
 
       - name: Run Python tests
-        run: uv run --group test pytest tests
+        run: .venv/bin/pytest tests
