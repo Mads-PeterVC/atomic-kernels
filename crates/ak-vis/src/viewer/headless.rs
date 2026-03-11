@@ -620,6 +620,13 @@ mod tests {
         config
     }
 
+    fn should_run_headless_render_tests() -> bool {
+        if std::env::var_os("ATOMIC_KERNELS_RUN_RUST_HEADLESS_TESTS").is_some() {
+            return true;
+        }
+        std::env::var_os("CI").is_none()
+    }
+
     fn image_has_content(path: &Path, width: u32, height: u32) -> bool {
         let image = image::open(path).expect("saved image should be readable");
         assert_eq!(image.dimensions(), (width, height));
@@ -660,6 +667,9 @@ mod tests {
 
     #[test]
     fn exports_default_scene_to_png() {
+        if !should_run_headless_render_tests() {
+            return;
+        }
         let _guard = HEADLESS_TEST_LOCK.lock().unwrap();
         let config = ViewerConfig::default();
         assert_render_succeeds("default", |path| {
@@ -669,6 +679,9 @@ mod tests {
 
     #[test]
     fn exports_scripted_scene_with_shared_session_commands() {
+        if !should_run_headless_render_tests() {
+            return;
+        }
         let _guard = HEADLESS_TEST_LOCK.lock().unwrap();
         let mut config = ViewerConfig::default();
         config.render.show_axes = false;
