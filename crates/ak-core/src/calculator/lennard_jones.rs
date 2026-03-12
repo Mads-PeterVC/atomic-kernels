@@ -41,7 +41,7 @@ impl PairPotential for LennardJones {
 #[cfg(test)]
 mod test {
     use crate::Structure;
-    use crate::calculator::prelude::*;
+    use crate::calculator::{Calculator, LennardJones, PairPotential};
 
     fn test_structure_2atoms(sigma: f64) -> Structure {
         let rmin: f64 = 2.0_f64.powf(1.0 / 6.0) * sigma;

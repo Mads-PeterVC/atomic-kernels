@@ -15,3 +15,30 @@ pub fn toggle_ui_visibility(
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::toggle_ui_visibility;
+    use crate::components::ToggleableUI;
+    use bevy::prelude::*;
+
+    #[test]
+    fn toggle_ui_visibility_flips_visibility_on_u_press() {
+        let mut app = App::new();
+        let entity = app.world_mut().spawn((ToggleableUI, Visibility::Visible)).id();
+
+        let mut keys = ButtonInput::<KeyCode>::default();
+        keys.press(KeyCode::KeyU);
+        app.insert_resource(keys);
+        app.add_systems(Update, toggle_ui_visibility);
+
+        app.update();
+        assert_eq!(*app.world().get::<Visibility>(entity).unwrap(), Visibility::Hidden);
+
+        let mut keys = ButtonInput::<KeyCode>::default();
+        keys.press(KeyCode::KeyU);
+        app.insert_resource(keys);
+        app.update();
+        assert_eq!(*app.world().get::<Visibility>(entity).unwrap(), Visibility::Visible);
+    }
+}

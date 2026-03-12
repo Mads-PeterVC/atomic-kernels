@@ -192,7 +192,7 @@ impl render_graph::Node for ImageCopyDriver {
                     buffer: &image_copier.buffer,
                     layout: TexelCopyBufferLayout {
                         offset: 0,
-                        bytes_per_row: Some((padded_bytes_per_row as u32).into()),
+                        bytes_per_row: Some(padded_bytes_per_row as u32),
                         rows_per_image: None,
                     },
                 },
