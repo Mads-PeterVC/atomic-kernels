@@ -65,9 +65,8 @@ pub fn naive_neighbor_list_pbc(view: &StructureView, cutoff: f64) -> NeighborLis
 
 #[cfg(test)]
 mod test {
-
-    use super::*;
     use crate::Structure;
+    use crate::geometry::neighbor_list::naive_neighbor_list_pbc;
 
     fn test_structure() -> Structure {
         let positions = vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]];

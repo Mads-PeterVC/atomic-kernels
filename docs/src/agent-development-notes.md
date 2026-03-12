@@ -8,6 +8,40 @@ and format defined in
 
 Entries are listed newest first.
 
+## 2026-03-12 - Core and viewer coverage expansion with structure-view fix
+
+- Commit: `73deb24`
+- Agent: `Codex (GPT-5, OpenAI)`
+- Context: The `codex/quality-improvements` branch packages the code-only results from a
+  broader quality pass. The highest-value functional fix in that batch was correcting
+  `StructureView::is_empty()` in `crates/ak-core/src/geometry/structure_view.rs`, which
+  had been returning `true` for non-empty views. The rest of the change raises
+  confidence in the Rust crates by adding direct coverage around core geometry helpers,
+  XYZ parsing, Bevy viewer controls, and render helpers.
+- Implementation: Added `crates/ak-core/tests/core_module_coverage.rs` to exercise
+  `ak-core` module surfaces including calculator behavior, geometry helpers, periodic
+  neighbor lists, periodic-table lookup, and XYZ loading. Added
+  `crates/ak-vis/tests/visual_module_coverage.rs` plus new unit tests in
+  `crates/ak-vis/src/components.rs` and
+  `crates/ak-vis/src/viewer/controls/{camera,navigation,screenshot,ui}.rs` to verify
+  viewer control behavior, render helper spawning, and component wiring. Also fixed
+  uppercase and word-form PBC parsing in `crates/ak-core/src/io/xyz.rs` and applied two
+  small cleanup changes in `crates/ak-vis/src/viewer/headless.rs` and
+  `crates/ak-vis/src/viewer/session.rs`.
+- Difficulty: The awkward part was not the domain logic but Bevy test ergonomics.
+  Systems using `Commands`, `Local<Timer>`, `Single<...>`, and generic `Time<T>` needed
+  tests that matched Bevy 0.18's exact ECS APIs instead of the more obvious app-level
+  setup. The work also confirmed that broad static "untested module" signals needed to
+  be answered with real behavior coverage, not just crate-root imports.
+- Constraints: This branch intentionally excludes the `desloppify` workspace artifacts
+  and dependency changes so it can be reviewed as a normal code PR into `development`.
+  The Python bridge coverage work was left out of this branch because the first clean
+  extraction target was the Rust-only improvement set.
+- Follow-up: If the Python crate needs the same treatment, mirror this branch's
+  strategy by adding Rust-side unit tests around `ak-py` conversion helpers and binding
+  surfaces, then document that separately once it lands as its own implementation
+  commit.
+
 ## 2026-03-11 - Live viewer camera smoothing restored to PanOrbit defaults
 
 - Commit: `f65ff89`

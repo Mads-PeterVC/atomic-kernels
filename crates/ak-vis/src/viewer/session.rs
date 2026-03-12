@@ -461,6 +461,12 @@ impl ViewerReadiness {
     }
 }
 
+impl Default for ViewerReadiness {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[derive(Resource)]
 pub struct ViewerState {
     pub traj: Trajectory,
@@ -803,12 +809,12 @@ impl FaceList {
     }
 
     pub fn validated_for_atom_count(&self, atom_count: usize) -> Self {
-        Self::new(self.faces.iter().filter_map(|face| {
-            face.atoms
+        Self::new(
+            self.faces
                 .iter()
-                .all(|&index| index < atom_count)
-                .then(|| face.clone())
-        }))
+                .filter(|face| face.atoms.iter().all(|&index| index < atom_count))
+                .cloned(),
+        )
     }
 }
 
