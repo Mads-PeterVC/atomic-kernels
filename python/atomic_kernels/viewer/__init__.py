@@ -1,3 +1,5 @@
+"""High-level Python viewer helpers and controller facades."""
+
 from __future__ import annotations
 
 import os

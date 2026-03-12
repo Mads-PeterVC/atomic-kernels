@@ -3,13 +3,21 @@ name: Docs
 on:
   pull_request:
     paths:
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "crates/**"
       - "docs/**"
       - "pyproject.toml"
+      - "scripts/stage_rustdoc.py"
       - ".github/workflows/docs.yml"
   push:
     paths:
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "crates/**"
       - "docs/**"
       - "pyproject.toml"
+      - "scripts/stage_rustdoc.py"
       - ".github/workflows/docs.yml"
   workflow_dispatch:
 
@@ -33,6 +41,8 @@ jobs:
         with:
           python-version: "3.13"
 
+      - uses: dtolnay/rust-toolchain@stable
+
       - uses: astral-sh/setup-uv@v7
 
       - name: Configure GitHub Pages
@@ -43,6 +53,12 @@ jobs:
 
       - name: Build docs
         run: .venv/bin/zensical build --config-file docs/zensical.toml
+
+      - name: Build Rust API docs
+        run: cargo doc --no-deps -p ak-core -p ak-vis
+
+      - name: Stage Rust API docs
+        run: .venv/bin/python scripts/stage_rustdoc.py
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4

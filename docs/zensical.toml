@@ -2,6 +2,7 @@
 site_name = "atomic-kernels"
 docs_dir = "src"
 site_dir = "site"
+use_directory_urls = false
 nav = [
   {"Home" = [
     {"Overview" = "index.md"},
@@ -18,7 +19,44 @@ nav = [
     {"Notes" = "agent-development-notes.md"},
     {"Features" = "agent-development-features.md"},
   ]},
+  {"Python API" = [
+    {"Overview" = "api/python.md"},
+    {"Neighbor Lists" = "api/python-neighbor-list.md"},
+    {"Viewer" = "api/python-viewer.md"},
+    {"Sessions" = "api/python-sessions.md"},
+    {"Controllers" = "api/python-controllers.md"},
+  ]},
+  {"Rust API" = [
+    {"Overview" = "api/rust.md"},
+    {"Documentation" = "api/documentation.md"},
+  ]}
 ]
+
+[project.plugins.mkdocstrings.handlers.python]
+inventories = ["https://docs.python.org/3/objects.inv"]
+paths = ["../python"]
+
+[project.plugins.mkdocstrings.handlers.python.options]
+docstring_style = "numpy"
+docstring_section_style = "list"
+filters = ["!^_"]
+heading_level = 2
+inherited_members = true
+merge_init_into_class = true
+parameter_headings = false
+separate_signature = false
+show_root_full_path = false
+show_root_heading = true
+show_root_toc_entry = false
+show_signature_annotations = true
+show_source = false
+show_symbol_type_heading = true
+show_symbol_type_toc = false
+signature_crossrefs = true
+summary = false
+
+[project.plugins.mkdocstrings.handlers.python.options.docstring_options]
+ignore_init_summary = false
 
 [project.theme]
 features = [

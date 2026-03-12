@@ -15,7 +15,10 @@ headless-test:
     ATOMIC_KERNELS_USE_REAL_EXTENSION=1 ATOMIC_KERNELS_RUN_VIEWER_TESTS=1 uv run --group test pytest tests/test_headless_render.py -m viewer_integration
 
 docs-serve:
+    cargo doc --no-deps -p ak-core -p ak-vis
     uv run zensical serve --config-file docs/zensical.toml -o 
 
 docs-build:
+    cargo doc --no-deps -p ak-core -p ak-vis
     uv run zensical build --config-file docs/zensical.toml
+    python3 scripts/stage_rustdoc.py

@@ -1,16 +1,36 @@
+"""Neighbor-list helpers exposed by the Python package."""
+
 import numpy as np
-from ._atomic_kernels import neighborlist as rust_neighborlist
 from ase import Atoms
 from dataclasses import dataclass
 
+from ._atomic_kernels import neighborlist as rust_neighborlist
+
+
 @dataclass
 class NeighborList:
+    """Neighbor-list arrays returned by :func:`neighbor_list`.
+
+    Attributes:
+        i: Source atom indices.
+        j: Neighbor atom indices.
+        S: Cell-shift vectors for periodic images.
+    """
+
     i: list[int]
     j: list[int]
     S: list[float]
 
 
 def neighbor_list(atoms: Atoms, cutoff: float, symmetrize: bool = True, sort: bool = False) -> NeighborList:
+    """Compute a neighbor list for an ASE structure.
+
+    Args:
+        atoms: Input structure.
+        cutoff: Pair cutoff distance in angstrom.
+        symmetrize: Duplicate each edge in reverse order.
+        sort: Sort the result lexicographically by ``(i, j)``.
+    """
     i, j, S = rust_neighborlist(atoms, cutoff)
 
     if symmetrize:
@@ -27,10 +47,4 @@ def neighbor_list(atoms: Atoms, cutoff: float, symmetrize: bool = True, sort: bo
         S = S[sorted_indices]
 
 
-    
     return NeighborList(i, j, S)
-
-
-
-
-
