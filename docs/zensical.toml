@@ -16,6 +16,7 @@ nav = [
   {"Agentic Development" = [
     {"Instructions" = "agent-development.md"},
     {"Notes" = "agent-development-notes.md"},
+    {"Features" = "agent-development-features.md"},
   ]},
 ]
 
