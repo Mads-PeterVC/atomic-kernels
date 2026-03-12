@@ -8,6 +8,38 @@ and format defined in
 
 Entries are listed newest first.
 
+## 2026-03-12 - Python and Rust API documentation added to docs site
+
+- Commit: `9a78507`
+- Agent: `Codex (GPT-5, OpenAI)`
+- Context: The docs site had an explicit feature placeholder for Rust and Python API
+  reference pages, but users still had to infer public entry points from source files
+  and local tooling. This change adds first-class API navigation to the docs so the
+  Python facade and Rust crate surfaces are reachable from the published site.
+- Implementation: Added new API pages under `docs/src/api/` and split the Python
+  reference into focused pages for neighbor lists, viewer launch helpers, session
+  facades, and controller classes. Enabled `mkdocstrings-python` in
+  `docs/zensical.toml` and `pyproject.toml`, added docstrings in
+  `python/atomic_kernels/neighbor_list.py` and `python/atomic_kernels/viewer/__init__.py`
+  to improve generated output, and updated the docs nav to separate `Python API` and
+  `Rust API` sections. For Rust, added `scripts/stage_rustdoc.py`, updated `justfile`,
+  and extended `.github/workflows/docs.yml` so `cargo doc --no-deps -p ak-core -p
+  ak-vis` is staged into the published docs site under `api/rustdoc/`.
+- Difficulty: The awkward part was not generating the content but making it usable in
+  both deployed and local-file browsing modes. Directory-style MkDocs URLs produced
+  local index listings instead of pages, and the first Rust links were wrong because
+  the final HTML layout under `use_directory_urls = false` changes how relative links
+  resolve from `api/rust.html` to the staged `rustdoc` subtree.
+- Constraints: The Python reference is intentionally curated rather than a full module
+  dump; pages use selected `members:` blocks to keep the docs readable. Rust remains
+  documented through native `rustdoc` instead of being re-rendered inside MkDocs, so
+  the docs workflow now depends on preserving the rustdoc staging step in both local
+  builds and the Pages workflow.
+- Follow-up: If the Python API grows further, keep splitting reference pages by user
+  task rather than expanding `api/python.html` into another monolithic generated page.
+  If live docs preview becomes important, consider wrapping `zensical serve` with the
+  rustdoc staging step so local iteration reflects Rust API changes automatically.
+
 ## 2026-03-12 - Core and viewer coverage expansion with structure-view fix
 
 - Commit: `73deb24`
