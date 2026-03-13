@@ -43,7 +43,14 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: ubuntu-stable-workspace
+          cache-workspace-crates: "true"
+
       - uses: astral-sh/setup-uv@v7
+
+      - uses: ./.github/actions/install-linux-build-deps
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
