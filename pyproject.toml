@@ -21,6 +21,7 @@ dependencies = [
 
 [dependency-groups]
 docs = [
+    "mkdocstrings-python",
     "zensical",
 ]
 test = [
