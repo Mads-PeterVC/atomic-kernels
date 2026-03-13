@@ -6,14 +6,25 @@ from ._utils import selection_mask
 
 
 class ScalarRangeTracker:
-    """Track a running scalar range across multiple arrays or frames."""
+    """Track a scalar range across multiple arrays or frames."""
 
     def __init__(self) -> None:
         self._min: float | None = None
         self._max: float | None = None
 
     def update(self, values) -> tuple[float, float]:
-        """Expand the tracked range with the finite values in ``values``."""
+        """Expand the tracked range with finite values from an array.
+
+        Parameters
+        ----------
+        values
+            Array-like scalar values.
+
+        Returns
+        -------
+        tuple[float, float]
+            Updated ``(min, max)`` limits.
+        """
         array = np.asarray(values, dtype=np.float32)
         finite = array[np.isfinite(array)]
         if finite.size == 0:
@@ -42,7 +53,17 @@ class ColorController:
     def set_atom_scalars(
         self, name: str, values, frame_index: int | None = None
     ) -> None:
-        """Store a per-atom scalar field for a specific frame or the current frame."""
+        """Store a per-atom scalar field.
+
+        Parameters
+        ----------
+        name : str
+            Scalar field name.
+        values
+            Per-atom scalar values for the target frame.
+        frame_index : int or None, optional
+            Frame index to update. ``None`` uses the current frame.
+        """
         values = np.asarray(values, dtype=np.float32)
         self._session._backend.set_atom_scalars(
             name, values.tolist(), frame_index=frame_index
@@ -57,7 +78,23 @@ class ColorController:
         max: float | None = None,
         append: bool = False,
     ) -> None:
-        """Color atoms by a named scalar field using a built-in or sampled colormap."""
+        """Color atoms by a named scalar field.
+
+        Parameters
+        ----------
+        name : str
+            Scalar field name to visualize.
+        palette : str, default="viridis"
+            Built-in colormap name.
+        colors : sequence, optional
+            Explicit sampled colors used instead of a built-in palette.
+        min : float or None, optional
+            Lower bound for scalar normalization.
+        max : float or None, optional
+            Upper bound for scalar normalization.
+        append : bool, default=False
+            If ``True``, append the rule instead of replacing existing color rules.
+        """
         self._session._backend.color_by_scalar(
             name,
             palette=palette,
@@ -72,7 +109,13 @@ class ColorController:
         self._session._backend.reset_atom_colors()
 
     def range_tracker(self) -> ScalarRangeTracker:
-        """Create a helper for keeping a fixed scalar range across frames."""
+        """Create a helper for keeping a fixed scalar range across frames.
+
+        Returns
+        -------
+        ScalarRangeTracker
+            Tracker for accumulating global scalar limits.
+        """
         return ScalarRangeTracker()
 
 
@@ -99,7 +142,25 @@ class ViewerSelection:
     def set_atom_scalars(
         self, name: str, values, frame_index: int | None = None
     ) -> "ViewerSessionFacade":
-        """Store a scalar field for the selection and mask all other atoms with ``NaN``."""
+        """Store a scalar field for the selection.
+
+        Unselected atoms are masked with ``NaN`` so later scalar coloring can
+        leave them visually unchanged.
+
+        Parameters
+        ----------
+        name : str
+            Scalar field name.
+        values
+            Scalar value, full-length array, or selection-length array.
+        frame_index : int or None, optional
+            Frame index to update. ``None`` uses the selection's default frame.
+
+        Returns
+        -------
+        ViewerSessionFacade
+            Session facade to support fluent scripting.
+        """
         frame_index, mask = self._resolve(frame_index)
         atoms = self._session._frame(frame_index)
         scalar_values = np.full(len(atoms), np.nan, dtype=np.float32)
@@ -131,7 +192,30 @@ class ViewerSelection:
         max: float | None = None,
         frame_index: int | None = None,
     ) -> "ViewerSessionFacade":
-        """Color the selection by scalar values while leaving unselected atoms unchanged."""
+        """Color the selection by scalar values while leaving other atoms unchanged.
+
+        Parameters
+        ----------
+        name : str
+            Scalar field name.
+        values
+            Scalar value, full-length array, or selection-length array.
+        palette : str, default="viridis"
+            Built-in colormap name.
+        colors : sequence, optional
+            Explicit sampled colors used instead of a built-in palette.
+        min : float or None, optional
+            Lower bound for scalar normalization.
+        max : float or None, optional
+            Upper bound for scalar normalization.
+        frame_index : int or None, optional
+            Frame index to update. ``None`` uses the selection's default frame.
+
+        Returns
+        -------
+        ViewerSessionFacade
+            Session facade to support fluent scripting.
+        """
         self.set_atom_scalars(name, values, frame_index=frame_index)
         self._session.colors().by_scalar(
             name,
@@ -151,7 +235,26 @@ class ViewerSelection:
         bond_scope: str = "both_selected",
         frame_index: int | None = None,
     ) -> "ViewerSessionFacade":
-        """Render the selection in ball-and-stick style and leave other atoms unchanged."""
+        """Apply ball-and-stick rendering to the selection.
+
+        Parameters
+        ----------
+        atom_scale : float, default=0.45
+            Relative atom radius for selected atoms.
+        bond_radius : float, default=0.08
+            Radius of rendered bonds.
+        bond_color : tuple, default=(0.7, 0.7, 0.7)
+            Bond color as RGB values.
+        bond_scope : str, default="both_selected"
+            Bond-selection rule passed to the render backend.
+        frame_index : int or None, optional
+            Frame index to update. ``None`` uses the selection's default frame.
+
+        Returns
+        -------
+        ViewerSessionFacade
+            Session facade to support fluent scripting.
+        """
         self._session.render().ball_and_stick(
             selection=self._selection,
             atom_scale=atom_scale,

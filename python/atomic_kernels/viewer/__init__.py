@@ -37,35 +37,92 @@ def _viewer_session_requires_process() -> bool:
 
 
 def bevy_viewer(atoms: Atoms | list[Atoms], config: Optional[ViewerConfig] = None) -> None:
-    """Open the Bevy viewer in blocking mode for one structure or trajectory."""
+    """Open the interactive Bevy viewer and block until it closes.
+
+    Parameters
+    ----------
+    atoms : ase.Atoms or list[ase.Atoms]
+        Single structure or trajectory to display.
+    config : ViewerConfig, optional
+        Viewer configuration passed to the Rust backend.
+    """
     trajectory_viewer(normalize_atoms(atoms), config)
 
 
 def launch_viewer(
     atoms: Atoms | list[Atoms], config: Optional[ViewerConfig] = None
 ) -> ViewerSession:
-    """Launch a low-level live viewer session backed directly by Rust bindings."""
+    """Launch a low-level live viewer session.
+
+    Parameters
+    ----------
+    atoms : ase.Atoms or list[ase.Atoms]
+        Single structure or trajectory to display.
+    config : ViewerConfig, optional
+        Viewer configuration passed to the Rust backend.
+
+    Returns
+    -------
+    ViewerSession
+        Low-level Rust-backed session object.
+    """
     return _launch_viewer(normalize_atoms(atoms), config)
 
 
 def run_viewer_session(
     atoms: Atoms | list[Atoms], callback, config: Optional[ViewerConfig] = None
 ) -> None:
-    """Run the viewer on the main thread and invoke ``callback`` with a low-level session."""
+    """Run a viewer session on the main thread and invoke a callback.
+
+    Parameters
+    ----------
+    atoms : ase.Atoms or list[ase.Atoms]
+        Single structure or trajectory to display.
+    callback : callable
+        Callback that receives the low-level session handle while the viewer is running.
+    config : ViewerConfig, optional
+        Viewer configuration passed to the Rust backend.
+    """
     _run_viewer_session(normalize_atoms(atoms), callback, config)
 
 
 def prepare_viewer_session(
     atoms: Atoms | list[Atoms], config: Optional[ViewerConfig] = None
 ) -> PreparedViewerSession:
-    """Prepare a low-level session object that can be started later."""
+    """Prepare a low-level session that can be started later.
+
+    Parameters
+    ----------
+    atoms : ase.Atoms or list[ase.Atoms]
+        Single structure or trajectory to display.
+    config : ViewerConfig, optional
+        Viewer configuration passed to the Rust backend.
+
+    Returns
+    -------
+    PreparedViewerSession
+        Prepared session object that can be launched later.
+    """
     return _prepare_viewer_session(normalize_atoms(atoms), config)
 
 
 def viewer_session(
     atoms: Atoms | list[Atoms], config: Optional[ViewerConfig] = None
 ) -> ViewerSessionFacade:
-    """Launch a high-level live viewer session with camera and color controllers."""
+    """Launch a high-level live viewer session.
+
+    Parameters
+    ----------
+    atoms : ase.Atoms or list[ase.Atoms]
+        Single structure or trajectory to display.
+    config : ViewerConfig, optional
+        Viewer configuration passed to the Rust backend.
+
+    Returns
+    -------
+    ViewerSessionFacade
+        Python facade exposing camera, color, render, and frame controls.
+    """
     frames = normalize_atoms(atoms)
 
     if _viewer_session_requires_process():
@@ -81,7 +138,26 @@ def headless_viewer_session(
     height: int = 600,
     config: Optional[ViewerConfig] = None,
 ) -> PreparedHeadlessRenderFacade:
-    """Prepare a scriptable headless session; call ``save()`` when ready."""
+    """Prepare a headless render session that can be scripted before saving.
+
+    Parameters
+    ----------
+    atoms : ase.Atoms or list[ase.Atoms]
+        Single structure or trajectory to render.
+    path : str
+        Output PNG path.
+    width : int, default=800
+        Output image width in pixels.
+    height : int, default=600
+        Output image height in pixels.
+    config : ViewerConfig, optional
+        Viewer configuration passed to the Rust backend.
+
+    Returns
+    -------
+    PreparedHeadlessRenderFacade
+        Scriptable facade whose :meth:`save` method performs the final render.
+    """
     frames = normalize_atoms(atoms)
     prepared = _prepare_render_viewer_image(
         frames,

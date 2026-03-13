@@ -11,10 +11,14 @@ from ._atomic_kernels import neighborlist as rust_neighborlist
 class NeighborList:
     """Neighbor-list arrays returned by :func:`neighbor_list`.
 
-    Attributes:
-        i: Source atom indices.
-        j: Neighbor atom indices.
-        S: Cell-shift vectors for periodic images.
+    Attributes
+    ----------
+    i : list[int]
+        Source atom indices.
+    j : list[int]
+        Neighbor atom indices paired with ``i``.
+    S : list[float]
+        Periodic-image shift vectors for each edge.
     """
 
     i: list[int]
@@ -25,11 +29,21 @@ class NeighborList:
 def neighbor_list(atoms: Atoms, cutoff: float, symmetrize: bool = True, sort: bool = False) -> NeighborList:
     """Compute a neighbor list for an ASE structure.
 
-    Args:
-        atoms: Input structure.
-        cutoff: Pair cutoff distance in angstrom.
-        symmetrize: Duplicate each edge in reverse order.
-        sort: Sort the result lexicographically by ``(i, j)``.
+    Parameters
+    ----------
+    atoms : ase.Atoms
+        Input structure.
+    cutoff : float
+        Pair cutoff distance in angstrom.
+    symmetrize : bool, default=True
+        If ``True``, return both ``i -> j`` and ``j -> i`` entries for each pair.
+    sort : bool, default=False
+        If ``True``, sort the output lexicographically by ``(i, j)``.
+
+    Returns
+    -------
+    NeighborList
+        Neighbor indices and periodic-image shifts for all pairs within the cutoff.
     """
     i, j, S = rust_neighborlist(atoms, cutoff)
 
