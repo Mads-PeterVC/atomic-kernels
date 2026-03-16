@@ -1,6 +1,18 @@
 default:
     @just --list
 
+bump version:
+    cargo set-version --workspace {{version}}
+
+bump-patch:
+    cargo set-version --workspace patch
+
+bump-minor:
+    cargo set-version --workspace minor
+
+bump-major:
+    cargo set-version --workspace major
+
 test:
     uv run --group test pytest tests -m "not viewer_integration"
 
