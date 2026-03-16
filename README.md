@@ -41,13 +41,16 @@ just viewer-test
 
 ## Installing prebuilt wheels
 
-Prebuilt wheels are currently published only for macOS Apple Silicon (`arm64`) on
-Python 3.12.
+Prebuilt wheels are currently published for:
+
+- macOS Apple Silicon (`arm64`)
+- Linux `x86_64`
+- Python 3.12 and 3.13
 
 Install from a GitHub Release asset:
 
 ```bash
-pip install "https://github.com/au616397/atomic-kernels/releases/download/vX.Y.Z/atomic_kernels-X.Y.Z-cp312-cp312-macosx_14_0_arm64.whl"
+pip install "https://github.com/au616397/atomic-kernels/releases/download/vX.Y.Z/atomic_kernels-X.Y.Z-cp313-cp313-macosx_14_0_arm64.whl"
 ```
 
 If your platform or Python version is not covered by that wheel, use the source-based

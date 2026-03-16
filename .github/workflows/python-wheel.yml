@@ -11,13 +11,30 @@ permissions:
 
 jobs:
   build-wheel:
-    name: Build macOS arm64 wheel
-    runs-on: macos-14
-    permissions:
-      contents: write
+    name: Build ${{ matrix.platform.label }} wheel (Python ${{ matrix.python.version }})
+    runs-on: ${{ matrix.platform.runs-on }}
     env:
       CARGO_INCREMENTAL: "0"
       CARGO_TERM_COLOR: always
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - label: macOS arm64
+            runs-on: macos-14
+            artifact-suffix: macos-arm64
+            wheel-pattern: macosx*_arm64.whl
+            install-linux-build-deps: false
+          - label: Linux x86_64
+            runs-on: ubuntu-24.04
+            artifact-suffix: linux-x86_64
+            wheel-pattern: linux*x86_64.whl
+            install-linux-build-deps: true
+        python:
+          - version: "3.12"
+            tag: cp312
+          - version: "3.13"
+            tag: cp313
     steps:
       - uses: actions/checkout@v6
 
@@ -25,18 +42,21 @@ jobs:
 
       - uses: actions/setup-python@v6
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python.version }}
 
       - uses: Swatinem/rust-cache@v2
         with:
-          shared-key: macos-14-wheel
+          shared-key: ${{ matrix.platform.runs-on }}-wheel
           cache-workspace-crates: "true"
+
+      - uses: ./.github/actions/install-linux-build-deps
+        if: ${{ matrix.platform.install-linux-build-deps }}
 
       - name: Install build tooling
         run: python -m pip install --upgrade pip maturin
 
       - name: Build wheel
-        run: maturin build --release --interpreter python3.12 --out dist
+        run: maturin build --release --interpreter python${{ matrix.python.version }} --out dist
 
       - name: Verify wheel output
         run: |
@@ -50,9 +70,9 @@ jobs:
           wheel_name="$(basename "${wheels[0]}")"
           echo "Built wheel: ${wheel_name}"
           case "${wheel_name}" in
-            *cp312*macosx*_arm64.whl) ;;
+            *"${{ matrix.python.tag }}"*${{ matrix.platform.wheel-pattern }}) ;;
             *)
-              echo "Wheel tag does not match the expected cp312 macOS arm64 target"
+              echo "Wheel tag does not match the expected ${{ matrix.python.tag }} ${{ matrix.platform.artifact-suffix }} target"
               exit 1
               ;;
           esac
@@ -69,12 +89,36 @@ jobs:
       - name: Upload wheel artifact
         uses: actions/upload-artifact@v4
         with:
-          name: atomic-kernels-wheel-macos-arm64-cp312
+          name: atomic-kernels-wheel-${{ matrix.platform.artifact-suffix }}-${{ matrix.python.tag }}
           path: dist/*.whl
           if-no-files-found: error
 
+  publish-release:
+    name: Publish GitHub Release assets
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build-wheel
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download wheel artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: atomic-kernels-wheel-*
+          merge-multiple: true
+
+      - name: Verify release asset count
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          wheels=(dist/*.whl)
+          if [ "${#wheels[@]}" -ne 4 ]; then
+            echo "Expected 4 wheel assets, found ${#wheels[@]}"
+            exit 1
+          fi
+
       - name: Publish GitHub Release asset
-        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           files: dist/*.whl
