@@ -34,10 +34,7 @@ Prebuilt wheels are currently available via GitHub Releases for:
     pip install "https://github.com/Mads-PeterVC/atomic-kernels/releases/download/vX.Y.Z/atomic_kernels-X.Y.Z-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl"
     ```
 
-GitHub supports a stable [latest release page](https://github.com/Mads-PeterVC/atomic-kernels/releases/latest),
-but not a version-agnostic direct wheel URL here, because the wheel asset filename
-itself includes the package version. Use the latest release page to copy the current
-wheel URL for your platform and Python version.
+See [GitHub latest release page](https://github.com/Mads-PeterVC/atomic-kernels/releases/latest) for the newest versions (replacing `X.Y.Z` in the above).
 
 If you are on a different platform or Python version, build from source instead.
 
