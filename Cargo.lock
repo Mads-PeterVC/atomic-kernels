@@ -105,11 +105,11 @@ dependencies = [
 
 [[package]]
 name = "ak-cli"
-version = "0.1.0"
+version = "0.1.2"
 
 [[package]]
 name = "ak-core"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "nalgebra",
  "once_cell",
@@ -117,7 +117,7 @@ dependencies = [
 
 [[package]]
 name = "ak-py"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "ak-core",
  "ak-vis",
@@ -128,7 +128,7 @@ dependencies = [
 
 [[package]]
 name = "ak-vis"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "ak-core",
  "bevy",
