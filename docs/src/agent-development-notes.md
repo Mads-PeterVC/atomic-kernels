@@ -8,6 +8,32 @@ and format defined in
 
 Entries are listed newest first.
 
+## 2026-03-16 - Intel macOS wheels added to the release matrix
+
+- Commit: `87c72c8`
+- Agent: `Codex (GPT-5, OpenAI)`
+- Context: The release workflow already covered Apple Silicon macOS, Linux x86_64, and
+  two Python versions, but Intel macOS users were still excluded from the prebuilt
+  wheel path. This change extends the current release matrix so both supported macOS
+  architectures get binary builds from the same GitHub Release flow.
+- Implementation: Added a `macos-13` x86_64 entry to the platform matrix in
+  `.github/workflows/python-wheel.yml`, verified wheel filenames against the expected
+  `macosx*_x86_64` tag, and updated the release asset-count check from four to six
+  wheels to reflect the extra macOS platform across both Python versions. Updated
+  `README.md` and `docs/src/getting-started.md` so the documented wheel support now
+  includes Intel macOS, while correcting a malformed sample install command in the
+  getting-started page that lived in the same edited section.
+- Difficulty: The workflow change itself was straightforward because the matrix was
+  already structured for platform growth. The subtle part was keeping the release-phase
+  integrity check aligned with the new total wheel count so tag builds would fail
+  loudly if any platform-specific artifact went missing.
+- Constraints: The wheel matrix still targets only macOS arm64, macOS x86_64, and
+  Linux x86_64 for CPython 3.12 and 3.13. It still does not add Windows, Linux
+  aarch64, an sdist, or PyPI publishing.
+- Follow-up: If macOS support grows further, consider whether the sample install docs
+  should point users to the Releases page generically instead of embedding one example
+  wheel filename per architecture.
+
 ## 2026-03-16 - Workspace version became the single release source of truth
 
 - Commit: `90afb85`
