@@ -60,6 +60,7 @@ ignore_init_summary = false
 
 [project.theme]
 features = [
+  "content.code.copy",
   "navigation.instant",
   "navigation.tabs",
   "navigation.sections",
