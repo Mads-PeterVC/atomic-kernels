@@ -12,11 +12,12 @@
 Prebuilt wheels are currently available via GitHub Releases for:
 
 - macOS Apple Silicon (`arm64`)
+- macOS Intel (`x86_64`)
 - Linux `x86_64`
 - Python 3.12 and 3.13
 
 ```bash
-pip install "https://github.com/au616397/atomic-kernels/releases/download/vX.Y.Z/atomic_kernels-X.Y.Z-cp313-cp313-macosx_14_0_arm64.whl"
+pip install "https://github.com/Mads-PeterVC/atomic-kernels/releases/download/vX.Y.Z/atomic_kernels-X.Y.Z-cp312-cp312-macosx_11_0_x86_64.whl"
 ```
 
 If you are on a different platform or Python version, build from source instead.

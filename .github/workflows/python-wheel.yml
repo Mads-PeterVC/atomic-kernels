@@ -25,6 +25,11 @@ jobs:
             artifact-suffix: macos-arm64
             wheel-pattern: macosx*_arm64.whl
             install-linux-build-deps: false
+          - label: macOS x86_64
+            runs-on: macos-13
+            artifact-suffix: macos-x86_64
+            wheel-pattern: macosx*_x86_64.whl
+            install-linux-build-deps: false
           - label: Linux x86_64
             runs-on: ubuntu-24.04
             artifact-suffix: linux-x86_64
@@ -113,8 +118,8 @@ jobs:
           set -euo pipefail
           shopt -s nullglob
           wheels=(dist/*.whl)
-          if [ "${#wheels[@]}" -ne 4 ]; then
-            echo "Expected 4 wheel assets, found ${#wheels[@]}"
+          if [ "${#wheels[@]}" -ne 6 ]; then
+            echo "Expected 6 wheel assets, found ${#wheels[@]}"
             exit 1
           fi
 

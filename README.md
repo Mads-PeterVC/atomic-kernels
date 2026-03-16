@@ -44,6 +44,7 @@ just viewer-test
 Prebuilt wheels are currently published for:
 
 - macOS Apple Silicon (`arm64`)
+- macOS Intel (`x86_64`)
 - Linux `x86_64`
 - Python 3.12 and 3.13
 
