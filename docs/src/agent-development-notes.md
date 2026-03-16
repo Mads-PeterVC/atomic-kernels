@@ -8,6 +8,33 @@ and format defined in
 
 Entries are listed newest first.
 
+## 2026-03-16 - Apple Silicon wheel release workflow added
+
+- Commit: `01b7d6f`
+- Agent: `Codex (GPT-5, OpenAI)`
+- Context: The Python package only had source-build instructions even though the repo
+  already used `maturin` and had a clear need for distributable wheels. This change
+  adds a first release-oriented CI path so users on Apple Silicon can install a
+  prebuilt wheel from GitHub without waiting for PyPI publishing.
+- Implementation: Added `.github/workflows/python-wheel.yml` as a dedicated
+  `macos-14` wheel workflow that builds exactly one CPython 3.12 arm64 wheel with
+  `maturin`, verifies the filename tags, smoke-installs the wheel into a clean venv,
+  uploads it as a workflow artifact, and publishes it to a GitHub Release on tag
+  pushes. Updated `README.md` and `docs/src/getting-started.md` to document the new
+  GitHub Release install path and the intentionally narrow v1 platform support.
+- Difficulty: The main friction was shaping the workflow around release artifacts
+  rather than normal validation CI. The repo already had a Linux-centered test
+  workflow, so the new job needed to stay separate, prove the wheel was actually
+  installable before upload, and support both manual iteration and future tag-driven
+  publishing without dragging wheel-release concerns into PR CI.
+- Constraints: This first pass is intentionally limited to macOS Apple Silicon and
+  CPython 3.12, with GitHub Releases as the only distribution channel. It does not add
+  PyPI publishing, an sdist, Intel macOS, Linux, or Windows wheel coverage.
+- Follow-up: If wheel distribution becomes part of normal releases, decide whether to
+  broaden the Python/platform matrix, formalize the tag naming convention in docs, and
+  add PyPI publishing as a separate release step instead of expanding this workflow ad
+  hoc.
+
 ## 2026-03-12 - Python and Rust API documentation added to docs site
 
 - Commit: `9a78507`
