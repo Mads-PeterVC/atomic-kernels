@@ -8,6 +8,55 @@ and format defined in
 
 Entries are listed newest first.
 
+## 2026-03-16 - Wheel workflow switched to uv-managed Python setup
+
+- Commit: `3ffc69b`
+- Agent: `Codex (GPT-5, OpenAI)`
+- Context: After broadening the wheel matrix, the workflow still used direct
+  `pip`/`venv` setup for build tooling and smoke-test environments even though the repo
+  standardizes on `uv` for Python environment management. This follow-up aligns the
+  release workflow with that convention.
+- Implementation: Updated `.github/workflows/python-wheel.yml` to install `uv` via
+  `astral-sh/setup-uv`, install `maturin` with `uv tool install`, and create the
+  smoke-test virtual environment plus wheel install through `uv venv` and `uv pip`
+  instead of raw `python -m venv` and `pip`.
+- Difficulty: The change itself was small, but it landed immediately after the matrix
+  expansion, so the workflow still needed to preserve the same per-platform interpreter
+  targeting and release behavior while swapping out the Python environment bootstrap.
+- Constraints: This updates the workflow's Python environment management only. It does
+  not change the supported wheel matrix, Linux build strategy, or the GitHub
+  release-artifact flow added in the preceding commits.
+- Follow-up: If more Python-side release automation is added, keep it on the same `uv`
+  toolchain path instead of reintroducing ad hoc `pip` environment setup in new jobs.
+
+## 2026-03-16 - Wheel matrix expanded to Linux and Python 3.13
+
+- Commit: `b84b0a4`
+- Agent: `Codex (GPT-5, OpenAI)`
+- Context: The initial wheel workflow proved out the GitHub Release path, but it was
+  too narrow to be useful beyond one Apple Silicon / Python 3.12 environment. This
+  change broadens binary distribution so tagged releases can ship a small but practical
+  matrix instead of a single platform-specific wheel.
+- Implementation: Reworked `.github/workflows/python-wheel.yml` into a matrix build
+  that now produces macOS arm64 and Linux x86_64 wheels for CPython 3.12 and 3.13,
+  reuses the existing Linux native dependency action on Ubuntu, uploads each matrix
+  build as a separate artifact, and adds a follow-up release job that downloads all
+  wheel artifacts and publishes them together on tag pushes. Updated `pyproject.toml`
+  to declare `requires-python = ">=3.12"` and adjusted `README.md` plus
+  `docs/src/getting-started.md` so the documented binary support matches the new build
+  matrix and Python floor.
+- Difficulty: The awkward part was not adding extra matrix rows but avoiding a broken
+  release flow once more than one wheel exists. The original one-job workflow could let
+  multiple matrix jobs race to publish the same GitHub Release, so the workflow had to
+  be split into build and publish phases before widening support safely.
+- Constraints: Linux wheels are still built natively on GitHub's Ubuntu runner with the
+  repo's apt-installed graphics and input dependencies, not from a manylinux container.
+  The matrix remains intentionally small: no Windows, no Intel macOS, no aarch64
+  Linux, no sdist, and no PyPI publishing yet.
+- Follow-up: If Linux wheel portability becomes a support issue, revisit the build path
+  and decide whether the project can move to a manylinux-compatible environment or
+  needs a more explicit platform-support policy in the release docs.
+
 ## 2026-03-16 - Apple Silicon wheel release workflow added
 
 - Commit: `01b7d6f`
