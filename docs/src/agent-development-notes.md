@@ -8,6 +8,33 @@ and format defined in
 
 Entries are listed newest first.
 
+## 2026-03-16 - Workspace version became the single release source of truth
+
+- Commit: `90afb85`
+- Agent: `Codex (GPT-5, OpenAI)`
+- Context: The mixed Rust/Python project needed one shared version number across the
+  Rust crates and the Python package, but the repository had been repeating `0.1.0` in
+  each crate manifest while the Python package version was derived indirectly through
+  `maturin`. This change makes version control explicit and centralized so future
+  release bumps are less error-prone.
+- Implementation: Added `[workspace.package] version = "0.1.0"` to `Cargo.toml`,
+  switched all workspace crates to `version.workspace = true`, and added `just`
+  recipes in `justfile` for `bump`, `bump-patch`, `bump-minor`, and `bump-major`, all
+  delegating to `cargo set-version --workspace ...`. The existing dynamic Python
+  version flow in `pyproject.toml` remains intact, so `maturin` continues exposing the
+  workspace-controlled Cargo version to the Python package.
+- Difficulty: The main design choice was picking the correct source of truth rather
+  than the mechanics of editing manifests. Because Python already derives its version
+  from the Rust packaging path, using a Python-first bump tool such as `uv version`
+  would have introduced competing authority instead of simplifying the release flow.
+- Constraints: The new `just bump*` commands assume `cargo set-version` is available in
+  the developer environment, typically via `cargo-edit`. This change does not add tag
+  creation or release publishing automation; it only makes the shared version bump
+  itself consistent.
+- Follow-up: If release hygiene matters further, add a higher-level `just release`
+  helper that validates the worktree, runs the relevant checks, and creates the `vX.Y.Z`
+  tag after a successful version bump.
+
 ## 2026-03-16 - Wheel workflow switched to uv-managed Python setup
 
 - Commit: `3ffc69b`
