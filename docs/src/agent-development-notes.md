@@ -8,31 +8,37 @@ and format defined in
 
 Entries are listed newest first.
 
-## 2026-03-16 - Intel macOS wheels added to the release matrix
+## 2026-03-16 - Wheel build and release workflow consolidated
 
-- Commit: `87c72c8`
+- Commits: `01b7d6f`, `b84b0a4`, `3ffc69b`, `87c72c8`, `e164e0f`, `5c55fa2`,
+  `9b5929a`
 - Agent: `Codex (GPT-5, OpenAI)`
-- Context: The release workflow already covered Apple Silicon macOS, Linux x86_64, and
-  two Python versions, but Intel macOS users were still excluded from the prebuilt
-  wheel path. This change extends the current release matrix so both supported macOS
-  architectures get binary builds from the same GitHub Release flow.
-- Implementation: Added a `macos-13` x86_64 entry to the platform matrix in
-  `.github/workflows/python-wheel.yml`, verified wheel filenames against the expected
-  `macosx*_x86_64` tag, and updated the release asset-count check from four to six
-  wheels to reflect the extra macOS platform across both Python versions. Updated
-  `README.md` and `docs/src/getting-started.md` so the documented wheel support now
-  includes Intel macOS, while correcting a malformed sample install command in the
-  getting-started page that lived in the same edited section.
-- Difficulty: The workflow change itself was straightforward because the matrix was
-  already structured for platform growth. The subtle part was keeping the release-phase
-  integrity check aligned with the new total wheel count so tag builds would fail
-  loudly if any platform-specific artifact went missing.
-- Constraints: The wheel matrix still targets only macOS arm64, macOS x86_64, and
-  Linux x86_64 for CPython 3.12 and 3.13. It still does not add Windows, Linux
-  aarch64, an sdist, or PyPI publishing.
-- Follow-up: If macOS support grows further, consider whether the sample install docs
-  should point users to the Releases page generically instead of embedding one example
-  wheel filename per architecture.
+- Context: The Python package started with source-build instructions only. This work
+  introduced a GitHub Release-based wheel distribution path, then expanded it into a
+  practical binary install workflow with broader platform coverage and improved docs.
+- Implementation: Added `.github/workflows/python-wheel.yml` for release-oriented
+  wheel builds, then expanded it from a single Apple Silicon CPython 3.12 wheel to a
+  matrix covering macOS arm64, macOS x86_64, and Linux x86_64 for CPython 3.12 and
+  3.13. The workflow now builds with `maturin`, smoke-installs each wheel, uploads
+  artifacts per matrix job, and publishes all wheel assets together on tag pushes.
+  Follow-up changes moved the workflow's Python environment setup to `uv`, updated the
+  Intel macOS runner label to a supported GitHub-hosted runner, and refreshed
+  `README.md`, `docs/src/getting-started.md`, and `docs/zensical.toml` so the install
+  docs reflect the supported platforms, use platform tabs, and expose copy buttons.
+- Difficulty: The hard part was keeping the release flow coherent while broadening
+  support. Once the workflow moved beyond one wheel, it needed a separate publish
+  phase to avoid matrix jobs racing each other, target-specific filename verification,
+  and runner labels that matched GitHub's supported Intel macOS offerings.
+- Constraints: The current wheel matrix is intentionally limited to macOS arm64,
+  macOS x86_64, and Linux x86_64 for CPython 3.12 and 3.13. Linux still builds on the
+  native Ubuntu runner rather than manylinux, and the project still does not publish
+  an sdist or PyPI release. The docs can link to the latest release page, but they
+  cannot provide a truly version-agnostic direct wheel URL because wheel filenames
+  embed the package version.
+- Follow-up: If wheel distribution becomes a primary install path, decide whether to
+  add Windows and Linux aarch64 builds, revisit Linux portability versus manylinux,
+  and consider whether the docs should move from explicit asset examples toward a
+  helper flow that resolves the latest matching wheel automatically.
 
 ## 2026-03-16 - Workspace version became the single release source of truth
 
@@ -60,82 +66,6 @@ Entries are listed newest first.
 - Follow-up: If release hygiene matters further, add a higher-level `just release`
   helper that validates the worktree, runs the relevant checks, and creates the `vX.Y.Z`
   tag after a successful version bump.
-
-## 2026-03-16 - Wheel workflow switched to uv-managed Python setup
-
-- Commit: `3ffc69b`
-- Agent: `Codex (GPT-5, OpenAI)`
-- Context: After broadening the wheel matrix, the workflow still used direct
-  `pip`/`venv` setup for build tooling and smoke-test environments even though the repo
-  standardizes on `uv` for Python environment management. This follow-up aligns the
-  release workflow with that convention.
-- Implementation: Updated `.github/workflows/python-wheel.yml` to install `uv` via
-  `astral-sh/setup-uv`, install `maturin` with `uv tool install`, and create the
-  smoke-test virtual environment plus wheel install through `uv venv` and `uv pip`
-  instead of raw `python -m venv` and `pip`.
-- Difficulty: The change itself was small, but it landed immediately after the matrix
-  expansion, so the workflow still needed to preserve the same per-platform interpreter
-  targeting and release behavior while swapping out the Python environment bootstrap.
-- Constraints: This updates the workflow's Python environment management only. It does
-  not change the supported wheel matrix, Linux build strategy, or the GitHub
-  release-artifact flow added in the preceding commits.
-- Follow-up: If more Python-side release automation is added, keep it on the same `uv`
-  toolchain path instead of reintroducing ad hoc `pip` environment setup in new jobs.
-
-## 2026-03-16 - Wheel matrix expanded to Linux and Python 3.13
-
-- Commit: `b84b0a4`
-- Agent: `Codex (GPT-5, OpenAI)`
-- Context: The initial wheel workflow proved out the GitHub Release path, but it was
-  too narrow to be useful beyond one Apple Silicon / Python 3.12 environment. This
-  change broadens binary distribution so tagged releases can ship a small but practical
-  matrix instead of a single platform-specific wheel.
-- Implementation: Reworked `.github/workflows/python-wheel.yml` into a matrix build
-  that now produces macOS arm64 and Linux x86_64 wheels for CPython 3.12 and 3.13,
-  reuses the existing Linux native dependency action on Ubuntu, uploads each matrix
-  build as a separate artifact, and adds a follow-up release job that downloads all
-  wheel artifacts and publishes them together on tag pushes. Updated `pyproject.toml`
-  to declare `requires-python = ">=3.12"` and adjusted `README.md` plus
-  `docs/src/getting-started.md` so the documented binary support matches the new build
-  matrix and Python floor.
-- Difficulty: The awkward part was not adding extra matrix rows but avoiding a broken
-  release flow once more than one wheel exists. The original one-job workflow could let
-  multiple matrix jobs race to publish the same GitHub Release, so the workflow had to
-  be split into build and publish phases before widening support safely.
-- Constraints: Linux wheels are still built natively on GitHub's Ubuntu runner with the
-  repo's apt-installed graphics and input dependencies, not from a manylinux container.
-  The matrix remains intentionally small: no Windows, no Intel macOS, no aarch64
-  Linux, no sdist, and no PyPI publishing yet.
-- Follow-up: If Linux wheel portability becomes a support issue, revisit the build path
-  and decide whether the project can move to a manylinux-compatible environment or
-  needs a more explicit platform-support policy in the release docs.
-
-## 2026-03-16 - Apple Silicon wheel release workflow added
-
-- Commit: `01b7d6f`
-- Agent: `Codex (GPT-5, OpenAI)`
-- Context: The Python package only had source-build instructions even though the repo
-  already used `maturin` and had a clear need for distributable wheels. This change
-  adds a first release-oriented CI path so users on Apple Silicon can install a
-  prebuilt wheel from GitHub without waiting for PyPI publishing.
-- Implementation: Added `.github/workflows/python-wheel.yml` as a dedicated
-  `macos-14` wheel workflow that builds exactly one CPython 3.12 arm64 wheel with
-  `maturin`, verifies the filename tags, smoke-installs the wheel into a clean venv,
-  uploads it as a workflow artifact, and publishes it to a GitHub Release on tag
-  pushes. Updated `README.md` and `docs/src/getting-started.md` to document the new
-  GitHub Release install path and the intentionally narrow v1 platform support.
-- Difficulty: The main friction was shaping the workflow around release artifacts
-  rather than normal validation CI. The repo already had a Linux-centered test
-  workflow, so the new job needed to stay separate, prove the wheel was actually
-  installable before upload, and support both manual iteration and future tag-driven
-  publishing without dragging wheel-release concerns into PR CI.
-- Constraints: This first pass is intentionally limited to macOS Apple Silicon and
-  CPython 3.12, with GitHub Releases as the only distribution channel. It does not add
-  PyPI publishing, an sdist, Intel macOS, Linux, or Windows wheel coverage.
-- Follow-up: If wheel distribution becomes part of normal releases, decide whether to
-  broaden the Python/platform matrix, formalize the tag naming convention in docs, and
-  add PyPI publishing as a separate release step instead of expanding this workflow ad
-  hoc.
 
 ## 2026-03-12 - Python and Rust API documentation added to docs site
 
