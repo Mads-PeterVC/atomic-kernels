@@ -26,7 +26,7 @@ jobs:
             wheel-pattern: macosx*_arm64.whl
             install-linux-build-deps: false
           - label: macOS x86_64
-            runs-on: macos-13
+            runs-on: macos-15-intel
             artifact-suffix: macos-x86_64
             wheel-pattern: macosx*_x86_64.whl
             install-linux-build-deps: false
