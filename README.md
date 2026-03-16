@@ -39,6 +39,20 @@ just viewer-test
 `just test` runs the default Python-side suite without GUI viewer integration tests.
 `just viewer-test` runs the real viewer smoke test with the required environment flags.
 
+## Installing prebuilt wheels
+
+Prebuilt wheels are currently published only for macOS Apple Silicon (`arm64`) on
+Python 3.12.
+
+Install from a GitHub Release asset:
+
+```bash
+pip install "https://github.com/au616397/atomic-kernels/releases/download/vX.Y.Z/atomic_kernels-X.Y.Z-cp312-cp312-macosx_14_0_arm64.whl"
+```
+
+If your platform or Python version is not covered by that wheel, use the source-based
+development setup with `maturin`.
+
 ## Current docs scope
 
 The initial docs focus on:
