@@ -136,7 +136,7 @@ jobs:
         run: cargo test -p ak-vis viewer::headless::tests --locked
 
       - name: Run Python viewer integration tests
-        run: xvfb-run -a .venv/bin/pytest tests/test_viewer_integration.py -m viewer_integration
+        run: xvfb-run -a --server-args="-screen 0 1280x1024x24" .venv/bin/pytest tests/test_viewer_integration.py -m viewer_integration
 
       - name: Run Python headless integration tests
         run: .venv/bin/pytest tests/test_headless_render.py -m viewer_integration
