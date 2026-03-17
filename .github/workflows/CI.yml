@@ -62,7 +62,6 @@ jobs:
       CARGO_INCREMENTAL: "0"
       CARGO_TERM_COLOR: always
       ATOMIC_KERNELS_USE_REAL_EXTENSION: "1"
-      ATOMIC_KERNELS_RUN_VIEWER_TESTS: "1"
       WGPU_BACKEND: vulkan
     steps:
       - uses: actions/checkout@v6
@@ -94,3 +93,50 @@ jobs:
 
       - name: Run Python tests
         run: .venv/bin/pytest tests
+
+  viewer-integration:
+    name: Viewer Integration
+    runs-on: ubuntu-latest
+    env:
+      CARGO_INCREMENTAL: "0"
+      CARGO_TERM_COLOR: always
+      ATOMIC_KERNELS_USE_REAL_EXTENSION: "1"
+      ATOMIC_KERNELS_RUN_VIEWER_TESTS: "1"
+      ATOMIC_KERNELS_RUN_RUST_HEADLESS_TESTS: "1"
+      WGPU_BACKEND: vulkan
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - uses: astral-sh/setup-uv@v7
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: ubuntu-stable-workspace
+          cache-workspace-crates: "true"
+          save-if: "false"
+
+      - uses: ./.github/actions/install-linux-build-deps
+
+      - name: Install Python test dependencies
+        run: uv sync --group test --no-install-project
+
+      - name: Install maturin
+        run: uv tool install maturin
+
+      - name: Build extension in-place
+        run: uv run --no-sync maturin develop
+
+      - name: Run Rust headless integration tests
+        run: cargo test -p ak-vis viewer::headless::tests --locked
+
+      - name: Run Python viewer integration tests
+        run: xvfb-run -a .venv/bin/pytest tests/test_viewer_integration.py -m viewer_integration
+
+      - name: Run Python headless integration tests
+        run: .venv/bin/pytest tests/test_headless_render.py -m viewer_integration
