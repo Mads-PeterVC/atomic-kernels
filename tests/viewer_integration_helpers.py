@@ -14,7 +14,7 @@ REPO_ROOT: Final[Path] = Path(__file__).resolve().parents[1]
 PYTHON_SRC: Final[Path] = REPO_ROOT / "python"
 XVFB_SCREEN_WIDTH: Final[int] = 1280
 XVFB_SCREEN_HEIGHT: Final[int] = 1024
-XVFB_CLICK_TARGET: Final[tuple[int, int]] = (
+VIEWER_WINDOW_CLICK_TARGET: Final[tuple[int, int]] = (
     XVFB_SCREEN_WIDTH // 2,
     XVFB_SCREEN_HEIGHT // 2,
 )
@@ -48,9 +48,9 @@ def single_center_atom_scene() -> ViewerClickScene:
         ),
         focus=focus,
         radius=12.0,
-        click_target=ClickTarget(*XVFB_CLICK_TARGET),
+        click_target=ClickTarget(*VIEWER_WINDOW_CLICK_TARGET),
         expected_selection=[0],
-        description="single atom centered inside an 8x8x8 cell in a 1280x1024 viewer window",
+        description="single atom centered inside an 8x8x8 cell; click at the viewer-window center",
     )
 
 
@@ -93,8 +93,54 @@ def has_xdotool() -> bool:
     return shutil.which("xdotool") is not None
 
 
-def click_viewer_at(target: ClickTarget) -> None:
+def _viewer_process_id(session) -> int | None:
+    backend = getattr(session, "_backend", None)
+    process = getattr(backend, "_process", None)
+    return getattr(process, "pid", None)
+
+
+def _viewer_window_id(session) -> str:
+    pid = _viewer_process_id(session)
+    if pid is not None:
+        result = subprocess.run(
+            ["xdotool", "search", "--sync", "--onlyvisible", "--pid", str(pid)],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        window_ids = [line.strip() for line in result.stdout.splitlines() if line.strip()]
+        if window_ids:
+            return window_ids[-1]
+
+    result = subprocess.run(
+        ["xdotool", "search", "--sync", "--onlyvisible", "--name", "python3"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    window_ids = [line.strip() for line in result.stdout.splitlines() if line.strip()]
+    if not window_ids:
+        raise AssertionError("could not find a visible viewer window for xdotool input")
+    return window_ids[-1]
+
+
+def click_viewer_at(session, target: ClickTarget) -> None:
+    window_id = _viewer_window_id(session)
     subprocess.run(
-        ["xdotool", "mousemove", str(target.x), str(target.y), "click", "1"],
+        [
+            "xdotool",
+            "windowactivate",
+            "--sync",
+            window_id,
+            "mousemove",
+            "--window",
+            window_id,
+            str(target.x),
+            str(target.y),
+            "click",
+            "--window",
+            window_id,
+            "1",
+        ],
         check=True,
     )
