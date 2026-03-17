@@ -51,6 +51,21 @@ pub enum ViewerCommand {
         append: bool,
     },
     ResetRenderStyle,
+    ReplaceSelection {
+        selection: Vec<bool>,
+        frame_index: Option<usize>,
+    },
+    AddSelection {
+        selection: Vec<bool>,
+        frame_index: Option<usize>,
+    },
+    RemoveSelection {
+        selection: Vec<bool>,
+        frame_index: Option<usize>,
+    },
+    ClearSelection {
+        frame_index: Option<usize>,
+    },
     SetCameraView {
         focus: Option<[f32; 3]>,
         radius: Option<f32>,
@@ -81,6 +96,7 @@ pub enum ViewerCommand {
 pub struct ViewerSessionHandle {
     sender: Sender<ViewerCommand>,
     readiness: Arc<ViewerReadiness>,
+    snapshot: Arc<Mutex<ViewerSnapshot>>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -94,6 +110,17 @@ enum ViewerLifecycleState {
 pub struct ViewerReadiness {
     state: Mutex<ViewerLifecycleState>,
     changed: Condvar,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SelectionFrames {
+    frames: Vec<Vec<bool>>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ViewerSnapshot {
+    pub current_frame: usize,
+    pub selection: SelectionFrames,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -197,11 +224,16 @@ impl ViewerSessionHandle {
         Self {
             sender,
             readiness: Arc::new(ViewerReadiness::new()),
+            snapshot: Arc::new(Mutex::new(ViewerSnapshot::default())),
         }
     }
 
     pub fn with_readiness(sender: Sender<ViewerCommand>, readiness: Arc<ViewerReadiness>) -> Self {
-        Self { sender, readiness }
+        Self {
+            sender,
+            readiness,
+            snapshot: Arc::new(Mutex::new(ViewerSnapshot::default())),
+        }
     }
 
     pub fn wait_until_ready(&self, timeout: Option<Duration>) -> bool {
@@ -210,6 +242,10 @@ impl ViewerSessionHandle {
 
     pub fn readiness(&self) -> &Arc<ViewerReadiness> {
         &self.readiness
+    }
+
+    pub fn snapshot(&self) -> &Arc<Mutex<ViewerSnapshot>> {
+        &self.snapshot
     }
 
     pub fn load_trajectory(
@@ -324,6 +360,59 @@ impl ViewerSessionHandle {
         self.sender
             .send(ViewerCommand::ResetRenderStyle)
             .map_err(|_| ViewerSessionClosed)
+    }
+
+    pub fn replace_selection(
+        &self,
+        selection: Vec<bool>,
+        frame_index: Option<usize>,
+    ) -> Result<(), ViewerSessionClosed> {
+        self.sender
+            .send(ViewerCommand::ReplaceSelection {
+                selection,
+                frame_index,
+            })
+            .map_err(|_| ViewerSessionClosed)
+    }
+
+    pub fn add_selection(
+        &self,
+        selection: Vec<bool>,
+        frame_index: Option<usize>,
+    ) -> Result<(), ViewerSessionClosed> {
+        self.sender
+            .send(ViewerCommand::AddSelection {
+                selection,
+                frame_index,
+            })
+            .map_err(|_| ViewerSessionClosed)
+    }
+
+    pub fn remove_selection(
+        &self,
+        selection: Vec<bool>,
+        frame_index: Option<usize>,
+    ) -> Result<(), ViewerSessionClosed> {
+        self.sender
+            .send(ViewerCommand::RemoveSelection {
+                selection,
+                frame_index,
+            })
+            .map_err(|_| ViewerSessionClosed)
+    }
+
+    pub fn clear_selection(&self, frame_index: Option<usize>) -> Result<(), ViewerSessionClosed> {
+        self.sender
+            .send(ViewerCommand::ClearSelection { frame_index })
+            .map_err(|_| ViewerSessionClosed)
+    }
+
+    pub fn selected_atoms(&self, frame_index: Option<usize>) -> Vec<usize> {
+        let Ok(snapshot) = self.snapshot.lock() else {
+            return Vec::new();
+        };
+        let target_frame = frame_index.unwrap_or(snapshot.current_frame);
+        snapshot.selection.selected_indices(target_frame)
     }
 
     pub fn set_camera_view(
@@ -477,6 +566,7 @@ pub struct ViewerState {
     pub bonds: BondFrames,
     pub faces: FaceFrames,
     pub render_style_rules: Vec<RenderStyleRule>,
+    pub selection: SelectionFrames,
     pub needs_render: bool,
     pub needs_camera_reset: bool,
 }
@@ -485,6 +575,7 @@ impl ViewerState {
     pub fn new(traj: Trajectory, initial_frame: usize) -> Self {
         let frame_count = traj.len();
         let current = clamp_frame(initial_frame, traj.len());
+        let selection = SelectionFrames::new(&traj);
         Self {
             traj,
             current,
@@ -494,6 +585,7 @@ impl ViewerState {
             bonds: BondFrames::new(frame_count),
             faces: FaceFrames::new(frame_count),
             render_style_rules: Vec::new(),
+            selection,
             needs_render: true,
             needs_camera_reset: true,
         }
@@ -520,6 +612,7 @@ impl ViewerState {
                 self.bonds = BondFrames::new(frame_count);
                 self.faces = FaceFrames::new(frame_count);
                 self.render_style_rules.clear();
+                self.selection = SelectionFrames::new(&self.traj);
                 self.needs_render = true;
                 self.needs_camera_reset = true;
                 CommandOutcome::default()
@@ -530,6 +623,9 @@ impl ViewerState {
                 self.traj.append(frame);
                 self.bonds.resize(self.traj.len());
                 self.faces.resize(self.traj.len());
+                self.selection.append_empty_for_atom_count(
+                    self.traj.view(self.traj.len() - 1).positions.len(),
+                );
                 if was_empty {
                     self.current = 0;
                     self.needs_render = true;
@@ -643,6 +739,47 @@ impl ViewerState {
                 self.needs_render = true;
                 CommandOutcome::default()
             }
+            ViewerCommand::ReplaceSelection {
+                selection,
+                frame_index,
+            } => {
+                let target_frame = frame_index.unwrap_or(self.current);
+                if self.validate_selection(target_frame, &selection) {
+                    self.selection.replace(target_frame, selection);
+                    self.needs_render = self.current == target_frame;
+                }
+                CommandOutcome::default()
+            }
+            ViewerCommand::AddSelection {
+                selection,
+                frame_index,
+            } => {
+                let target_frame = frame_index.unwrap_or(self.current);
+                if self.validate_selection(target_frame, &selection) {
+                    self.selection.add(target_frame, &selection);
+                    self.needs_render = self.current == target_frame;
+                }
+                CommandOutcome::default()
+            }
+            ViewerCommand::RemoveSelection {
+                selection,
+                frame_index,
+            } => {
+                let target_frame = frame_index.unwrap_or(self.current);
+                if self.validate_selection(target_frame, &selection) {
+                    self.selection.remove(target_frame, &selection);
+                    self.needs_render = self.current == target_frame;
+                }
+                CommandOutcome::default()
+            }
+            ViewerCommand::ClearSelection { frame_index } => {
+                let target_frame = frame_index.unwrap_or(self.current);
+                if target_frame < self.traj.len() {
+                    self.selection.clear(target_frame);
+                    self.needs_render = self.current == target_frame;
+                }
+                CommandOutcome::default()
+            }
             ViewerCommand::SetCameraView { .. }
             | ViewerCommand::PanCamera { .. }
             | ViewerCommand::ZoomCamera { .. }
@@ -674,6 +811,22 @@ impl ViewerState {
         self.needs_render = true;
         self.needs_camera_reset = self.cell_changed(previous, self.current);
         true
+    }
+
+    pub fn selected_atoms(&self, frame_index: usize) -> Vec<usize> {
+        self.selection.selected_indices(frame_index)
+    }
+
+    pub fn current_selection(&self) -> &[bool] {
+        self.selection.get(self.current).unwrap_or(&[])
+    }
+
+    pub fn replace_atom_selection(&mut self, atom_index: usize) -> bool {
+        self.selection.replace_single(self.current, atom_index)
+    }
+
+    pub fn toggle_atom_selection(&mut self, atom_index: usize) -> bool {
+        self.selection.toggle(self.current, atom_index)
     }
 
     fn cell_changed(&self, old_index: usize, new_index: usize) -> bool {
@@ -842,6 +995,102 @@ impl FaceFrames {
     }
 }
 
+impl SelectionFrames {
+    pub fn new(traj: &Trajectory) -> Self {
+        Self {
+            frames: (0..traj.len())
+                .map(|index| vec![false; traj.view(index).positions.len()])
+                .collect(),
+        }
+    }
+
+    pub fn get(&self, frame_index: usize) -> Option<&[bool]> {
+        self.frames.get(frame_index).map(Vec::as_slice)
+    }
+
+    pub fn replace(&mut self, frame_index: usize, selection: Vec<bool>) {
+        if frame_index < self.frames.len() && self.frames[frame_index].len() == selection.len() {
+            self.frames[frame_index] = selection;
+        }
+    }
+
+    pub fn add(&mut self, frame_index: usize, selection: &[bool]) {
+        if let Some(current) = self.frames.get_mut(frame_index) {
+            if current.len() != selection.len() {
+                return;
+            }
+            for (slot, selected) in current.iter_mut().zip(selection.iter().copied()) {
+                *slot |= selected;
+            }
+        }
+    }
+
+    pub fn remove(&mut self, frame_index: usize, selection: &[bool]) {
+        if let Some(current) = self.frames.get_mut(frame_index) {
+            if current.len() != selection.len() {
+                return;
+            }
+            for (slot, selected) in current.iter_mut().zip(selection.iter().copied()) {
+                if selected {
+                    *slot = false;
+                }
+            }
+        }
+    }
+
+    pub fn clear(&mut self, frame_index: usize) {
+        if let Some(current) = self.frames.get_mut(frame_index) {
+            current.fill(false);
+        }
+    }
+
+    pub fn append_empty_for_atom_count(&mut self, atom_count: usize) {
+        self.frames.push(vec![false; atom_count]);
+    }
+
+    pub fn selected_indices(&self, frame_index: usize) -> Vec<usize> {
+        self.frames
+            .get(frame_index)
+            .map(|selection| {
+                selection
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(index, selected)| selected.then_some(index))
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
+    fn replace_single(&mut self, frame_index: usize, atom_index: usize) -> bool {
+        let Some(selection) = self.frames.get_mut(frame_index) else {
+            return false;
+        };
+        if atom_index >= selection.len() {
+            return false;
+        }
+        let changed = selection
+            .iter()
+            .enumerate()
+            .any(|(index, selected)| *selected != (index == atom_index));
+        if changed {
+            selection.fill(false);
+            selection[atom_index] = true;
+        }
+        changed
+    }
+
+    fn toggle(&mut self, frame_index: usize, atom_index: usize) -> bool {
+        let Some(selection) = self.frames.get_mut(frame_index) else {
+            return false;
+        };
+        if atom_index >= selection.len() {
+            return false;
+        }
+        selection[atom_index] = !selection[atom_index];
+        true
+    }
+}
+
 impl BallAndStickStyle {
     pub fn bond_color(self) -> bevy::color::Color {
         bevy::color::Color::srgba(
@@ -960,6 +1209,15 @@ impl CameraState {
 #[derive(Default)]
 pub struct CommandOutcome {
     pub should_close: bool,
+}
+
+impl Default for ViewerSnapshot {
+    fn default() -> Self {
+        Self {
+            current_frame: 0,
+            selection: SelectionFrames { frames: Vec::new() },
+        }
+    }
 }
 
 fn clamp_frame(index: usize, len: usize) -> usize {
@@ -1272,6 +1530,63 @@ mod tests {
                 ..
             })
         ));
+    }
+
+    #[test]
+    fn selection_commands_update_current_frame_state() {
+        let mut state = ViewerState::new(Trajectory::new(vec![test_structure(0.0)]), 0);
+
+        state.apply_command(ViewerCommand::ReplaceSelection {
+            selection: vec![true, false],
+            frame_index: None,
+        });
+        state.apply_command(ViewerCommand::AddSelection {
+            selection: vec![false, true],
+            frame_index: None,
+        });
+        state.apply_command(ViewerCommand::RemoveSelection {
+            selection: vec![true, false],
+            frame_index: None,
+        });
+
+        assert_eq!(state.selected_atoms(0), vec![1]);
+    }
+
+    #[test]
+    fn selection_state_is_frame_scoped() {
+        let mut state = ViewerState::new(
+            Trajectory::new(vec![test_structure(0.0), test_structure(1.0)]),
+            0,
+        );
+
+        state.apply_command(ViewerCommand::ReplaceSelection {
+            selection: vec![true, false],
+            frame_index: Some(0),
+        });
+        state.apply_command(ViewerCommand::ReplaceSelection {
+            selection: vec![false, true],
+            frame_index: Some(1),
+        });
+
+        assert_eq!(state.selected_atoms(0), vec![0]);
+        assert_eq!(state.selected_atoms(1), vec![1]);
+    }
+
+    #[test]
+    fn load_trajectory_resets_selection_state() {
+        let mut state = ViewerState::new(Trajectory::new(vec![test_structure(0.0)]), 0);
+        state.apply_command(ViewerCommand::ReplaceSelection {
+            selection: vec![true, false],
+            frame_index: None,
+        });
+
+        state.apply_command(ViewerCommand::LoadTrajectory {
+            frames: vec![test_structure4()],
+            initial_frame: 0,
+        });
+
+        assert!(state.selected_atoms(0).is_empty());
+        assert_eq!(state.current_selection().len(), 4);
     }
 
     #[test]

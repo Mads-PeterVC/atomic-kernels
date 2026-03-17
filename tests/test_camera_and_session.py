@@ -10,6 +10,7 @@ from atomic_kernels.viewer._session import ViewerSessionFacade
 class BackendSpy:
     def __init__(self):
         self.calls = []
+        self.selection = []
 
     def append_frame(self, frame):
         self.calls.append(("append_frame", frame))
@@ -22,6 +23,22 @@ class BackendSpy:
 
     def close(self):
         self.calls.append(("close",))
+
+    def selected_atoms(self, frame_index=None):
+        self.calls.append(("selected_atoms", frame_index))
+        return list(self.selection)
+
+    def set_selection(self, selection, frame_index=None):
+        self.calls.append(("set_selection", selection, frame_index))
+
+    def add_selection(self, selection, frame_index=None):
+        self.calls.append(("add_selection", selection, frame_index))
+
+    def remove_selection(self, selection, frame_index=None):
+        self.calls.append(("remove_selection", selection, frame_index))
+
+    def clear_selection(self, frame_index=None):
+        self.calls.append(("clear_selection", frame_index))
 
     def set_camera_view(self, focus, radius, yaw, pitch):
         self.calls.append(("set_camera_view", focus, radius, yaw, pitch))
@@ -103,3 +120,25 @@ def test_viewer_session_facade_wait_until_ready_delegates_to_backend():
 
     assert facade.wait_until_ready(timeout=1.5) is True
     assert backend.calls == [("wait_until_ready", 1.5)]
+
+
+def test_viewer_session_facade_selection_methods_normalize_masks():
+    atoms = Atoms("H2O")
+    backend = BackendSpy()
+    backend.selection = [2]
+    facade = ViewerSessionFacade(backend, [atoms])
+
+    assert facade.selected_atoms() == [2]
+
+    facade.set_selection([0, 2])
+    facade.add_selection(lambda frame: [atom.symbol == "O" for atom in frame])
+    facade.remove_selection([2])
+    facade.clear_selection()
+
+    assert backend.calls == [
+        ("selected_atoms", 0),
+        ("set_selection", [True, False, True], 0),
+        ("add_selection", [False, False, True], 0),
+        ("remove_selection", [False, False, True], 0),
+        ("clear_selection", 0),
+    ]

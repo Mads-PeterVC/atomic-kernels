@@ -365,7 +365,13 @@ fn build_app(
         app.insert_resource(SessionDriverState { complete });
     }
 
-    configure_shared_app(&mut app, trajectory, config, receiver);
+    configure_shared_app(
+        &mut app,
+        trajectory,
+        config,
+        receiver,
+        Arc::new(Mutex::new(super::session::ViewerSnapshot::default())),
+    );
     app.add_systems(
         Startup,
         setup_headless_target.before(super::systems::setup_camera),
@@ -645,7 +651,11 @@ mod tests {
     where
         F: FnMut(&Path) -> Result<(), HeadlessRenderError>,
     {
-        let attempts = if std::env::var_os("CI").is_some() { 5 } else { 1 };
+        let attempts = if std::env::var_os("CI").is_some() {
+            5
+        } else {
+            1
+        };
         for attempt in 0..attempts {
             let path = temp_png(name);
             match render_once(&path) {
@@ -673,7 +683,11 @@ mod tests {
         let _guard = HEADLESS_TEST_LOCK.lock().unwrap();
         let config = ViewerConfig::default();
         assert_render_succeeds("default", |path| {
-            export_structure_image(fixture_structure(), config.clone(), test_render_config(path))
+            export_structure_image(
+                fixture_structure(),
+                config.clone(),
+                test_render_config(path),
+            )
         });
     }
 
@@ -686,31 +700,38 @@ mod tests {
         let mut config = ViewerConfig::default();
         config.render.show_axes = false;
         assert_render_succeeds("scripted", |path| {
-            export_image_with_session(Trajectory::new(vec![fixture_structure()]), config.clone(), test_render_config(path), |session| {
-                session
-                    .set_bonds(BondList::new([(0, 1), (0, 2), (0, 3)]), Some(0))
-                    .unwrap();
-                session
-                    .set_faces(
-                        FaceList::new([Face::new([1, 2, 3], [0.2, 0.6, 0.9, 0.35]).unwrap()]),
-                        Some(0),
-                    )
-                    .unwrap();
-                session
-                    .set_render_style(
-                        super::super::RenderStyle::BallAndStick(super::super::BallAndStickStyle {
-                            atom_scale: 0.5,
-                            bond_radius: 0.06,
-                            bond_color: [0.5, 0.5, 0.5, 1.0],
-                            bond_scope: super::super::BondScope::TouchSelection,
-                        }),
-                        vec![true, true, true, true],
-                        Some(0),
-                        false,
-                    )
-                    .unwrap();
-                session.frame_all().unwrap();
-            })
+            export_image_with_session(
+                Trajectory::new(vec![fixture_structure()]),
+                config.clone(),
+                test_render_config(path),
+                |session| {
+                    session
+                        .set_bonds(BondList::new([(0, 1), (0, 2), (0, 3)]), Some(0))
+                        .unwrap();
+                    session
+                        .set_faces(
+                            FaceList::new([Face::new([1, 2, 3], [0.2, 0.6, 0.9, 0.35]).unwrap()]),
+                            Some(0),
+                        )
+                        .unwrap();
+                    session
+                        .set_render_style(
+                            super::super::RenderStyle::BallAndStick(
+                                super::super::BallAndStickStyle {
+                                    atom_scale: 0.5,
+                                    bond_radius: 0.06,
+                                    bond_color: [0.5, 0.5, 0.5, 1.0],
+                                    bond_scope: super::super::BondScope::TouchSelection,
+                                },
+                            ),
+                            vec![true, true, true, true],
+                            Some(0),
+                            false,
+                        )
+                        .unwrap();
+                    session.frame_all().unwrap();
+                },
+            )
         });
     }
 }

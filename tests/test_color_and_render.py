@@ -54,6 +54,22 @@ class BackendSpy:
     def reset_render_style(self):
         self.calls.append(("reset_render_style",))
 
+    def selected_atoms(self, frame_index=None):
+        self.calls.append(("selected_atoms", frame_index))
+        return []
+
+    def set_selection(self, selection, frame_index=None):
+        self.calls.append(("set_selection", selection, frame_index))
+
+    def add_selection(self, selection, frame_index=None):
+        self.calls.append(("add_selection", selection, frame_index))
+
+    def remove_selection(self, selection, frame_index=None):
+        self.calls.append(("remove_selection", selection, frame_index))
+
+    def clear_selection(self, frame_index=None):
+        self.calls.append(("clear_selection", frame_index))
+
 
 def make_session():
     atoms = Atoms("H2O")

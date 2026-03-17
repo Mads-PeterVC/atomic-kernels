@@ -1,10 +1,10 @@
 use std::io::{BufReader, Cursor};
 
+use ak_core::calculator::{Calculator, LennardJones, PairPotential};
 use ak_core::{
     AtomicNumber, Cell, PERIODIC_TABLE, Pbc, Structure, Trajectory, distance_matrix,
     naive_neighbor_list, naive_neighbor_list_pbc,
 };
-use ak_core::calculator::{Calculator, LennardJones, PairPotential};
 use nalgebra::Vector3;
 
 fn example_structure() -> Structure {

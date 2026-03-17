@@ -55,6 +55,23 @@ def viewer_process_main(
                 session.set_ball_and_stick_style(*payload)
             elif command == "reset_render_style":
                 session.reset_render_style()
+            elif command == "selected_atoms":
+                try:
+                    selected = session.selected_atoms(payload)
+                except RuntimeError:
+                    selected = []
+                try:
+                    connection.send(("selected_atoms", selected))
+                except (BrokenPipeError, EOFError, OSError):
+                    break
+            elif command == "set_selection":
+                session.set_selection(*payload)
+            elif command == "add_selection":
+                session.add_selection(*payload)
+            elif command == "remove_selection":
+                session.remove_selection(*payload)
+            elif command == "clear_selection":
+                session.clear_selection(payload)
             elif command == "set_camera_view":
                 session.set_camera_view(*payload)
             elif command == "pan_camera":
@@ -174,6 +191,29 @@ class ViewerSessionProxy:
 
     def reset_render_style(self) -> None:
         self._send("reset_render_style")
+
+    def selected_atoms(self, frame_index: int | None = None) -> list[int]:
+        self._send("selected_atoms", frame_index)
+        while True:
+            if not self._process.is_alive() and not self._connection.poll():
+                return []
+            if not self._connection.poll(0.1):
+                continue
+            message, payload = self._connection.recv()
+            if message == "selected_atoms":
+                return list(payload)
+
+    def set_selection(self, selection, frame_index: int | None = None) -> None:
+        self._send("set_selection", (list(selection), frame_index))
+
+    def add_selection(self, selection, frame_index: int | None = None) -> None:
+        self._send("add_selection", (list(selection), frame_index))
+
+    def remove_selection(self, selection, frame_index: int | None = None) -> None:
+        self._send("remove_selection", (list(selection), frame_index))
+
+    def clear_selection(self, frame_index: int | None = None) -> None:
+        self._send("clear_selection", frame_index)
 
     def set_camera_view(
         self,

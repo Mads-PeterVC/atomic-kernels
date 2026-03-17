@@ -53,11 +53,8 @@ mod tests {
         input.press(KeyCode::Space);
         world.insert_resource(input);
 
-        let mut system_state: SystemState<(
-            Commands,
-            Res<ButtonInput<KeyCode>>,
-            Local<u32>,
-        )> = SystemState::new(&mut world);
+        let mut system_state: SystemState<(Commands, Res<ButtonInput<KeyCode>>, Local<u32>)> =
+            SystemState::new(&mut world);
 
         let (commands, input, counter) = system_state.get_mut(&mut world);
         screenshot_on_spacebar(commands, input, counter);

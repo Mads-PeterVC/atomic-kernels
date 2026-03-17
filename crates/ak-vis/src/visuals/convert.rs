@@ -22,6 +22,7 @@ pub fn convert_structure<C: ColorScheme>(view: &StructureView, scheme: &C) -> Ve
         let radius: f32 = 0.9 * PERIODIC_TABLE.get(view.numbers[i]).covalent_radius as f32;
         let color = scheme.color(view, i);
         let atom_visual = AtomVisual {
+            atom_index: i,
             position: structure_position_to_world(view.positions[i]).to_array(),
             color,
             radius,

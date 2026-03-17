@@ -91,3 +91,31 @@ def test_viewer_session_proxy_wait_until_ready_uses_explicit_response_outside_ci
 
     assert proxy.wait_until_ready(timeout=1.0) is True
     assert connection.messages == [("wait_until_ready", 1.0)]
+
+
+def test_viewer_session_proxy_selected_atoms_round_trips_response():
+    connection = ConnectionSpy()
+    connection._responses.append(("selected_atoms", [1, 3]))
+    process = ProcessSpy(alive=True)
+    proxy = ViewerSessionProxy(connection, process)
+
+    assert proxy.selected_atoms(frame_index=2) == [1, 3]
+    assert connection.messages == [("selected_atoms", 2)]
+
+
+def test_viewer_session_proxy_selection_commands_forward_payloads():
+    connection = ConnectionSpy()
+    process = ProcessSpy(alive=True)
+    proxy = ViewerSessionProxy(connection, process)
+
+    proxy.set_selection([True, False], frame_index=0)
+    proxy.add_selection([False, True], frame_index=1)
+    proxy.remove_selection([True, False], frame_index=1)
+    proxy.clear_selection(frame_index=2)
+
+    assert connection.messages == [
+        ("set_selection", ([True, False], 0)),
+        ("add_selection", ([False, True], 1)),
+        ("remove_selection", ([True, False], 1)),
+        ("clear_selection", 2),
+    ]
