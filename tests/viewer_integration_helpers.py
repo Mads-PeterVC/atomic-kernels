@@ -129,14 +129,17 @@ def click_viewer_at(session, target: ClickTarget) -> None:
     subprocess.run(
         [
             "xdotool",
-            "windowactivate",
-            "--sync",
-            window_id,
             "mousemove",
             "--window",
             window_id,
             str(target.x),
             str(target.y),
+        ],
+        check=True,
+    )
+    subprocess.run(
+        [
+            "xdotool",
             "click",
             "--window",
             window_id,
