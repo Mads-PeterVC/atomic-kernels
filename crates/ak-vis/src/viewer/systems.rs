@@ -3,8 +3,8 @@ use crate::visuals::{BondVisual, FaceVisual};
 use crate::{JMOL, convert_axis, convert_cell, convert_structure, structure_position_to_world};
 
 use crate::components::{
-    AtomIndex, FrameAtom, FrameAxis, FrameBond, FrameCell, FrameFace, FrameSelectionHighlight,
-    MainSceneCamera, MarqueeSelectionOverlay,
+    AtomIndex, FrameAtom, FrameAxis, FrameBond, FrameCell, FrameFace, FrameMeasurementCue,
+    FrameSelectionHighlight, MainSceneCamera, MarqueeSelectionOverlay,
 };
 use crate::viewer::ViewerConfig;
 use crate::viewer::controls::default_camera_state;
@@ -14,12 +14,24 @@ use crate::viewer::{
     AtomColorRule, BallAndStickStyle, BondList, BondScope, CameraState, RenderStyle, ViewerState,
 };
 use bevy::ecs::system::SystemParam;
+use bevy::light::{NotShadowCaster, NotShadowReceiver};
 use bevy::picking::prelude::{Click, Pickable, Pointer, PointerButton};
 use bevy::prelude::*;
 use bevy_panorbit_camera::PanOrbitCamera;
 use std::collections::HashMap;
 
 const MARQUEE_DRAG_THRESHOLD: f32 = 6.0;
+const ANGLE_CUE_RADIUS_FACTOR: f32 = 0.35;
+const ANGLE_CUE_RADIUS_MIN: f32 = 0.20;
+const ANGLE_CUE_RADIUS_MAX: f32 = 0.75;
+const ANGLE_CUE_RAY_LENGTH_FACTOR: f32 = 1.32;
+const ANGLE_CUE_RAY_START_FACTOR: f32 = 0.88;
+const ANGLE_CUE_RAY_RADIUS: f32 = 0.05;
+const ANGLE_CUE_ARC_RADIUS: f32 = 0.042;
+const ANGLE_CUE_ARC_SEGMENTS: usize = 12;
+const ANGLE_CUE_MIN_ANGLE_RAD: f32 = 2.0_f32.to_radians();
+const ANGLE_CUE_COLOR: Color = Color::srgba(1.0, 0.84, 0.22, 0.98);
+const ANGLE_VERTEX_HIGHLIGHT_COLOR: Color = Color::srgba(1.0, 0.86, 0.24, 0.56);
 
 #[derive(Resource, Debug, Default, Clone)]
 pub struct MarqueeSelectionState {
@@ -27,6 +39,16 @@ pub struct MarqueeSelectionState {
     drag_current: Option<Vec2>,
     drag_active: bool,
     suppress_click_once: bool,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+struct AngleMeasurementCue {
+    atoms: [usize; 3],
+    vertex: Vec3,
+    first_direction: Vec3,
+    second_direction: Vec3,
+    radius: f32,
+    angle_radians: f32,
 }
 
 fn scalar_colors_for_rule(
@@ -213,14 +235,16 @@ fn selection_highlight_visuals_for_current_frame(viewer: &ViewerState) -> Vec<cr
         return Vec::new();
     }
 
+    let emphasized_vertex = angle_measurement_cue_for_current_frame(viewer).map(|cue| cue.atoms[1]);
     convert_structure(&viewer.traj.view(viewer.current), &JMOL)
         .into_iter()
         .filter_map(|mut visual| {
             if !selection.get(visual.atom_index).copied().unwrap_or(false) {
                 return None;
             }
-            visual.radius = selection_highlight_radius(visual.radius);
-            visual.color = selection_highlight_color();
+            let is_vertex = emphasized_vertex == Some(visual.atom_index);
+            visual.radius = selection_highlight_radius(visual.radius, is_vertex);
+            visual.color = selection_highlight_color(is_vertex);
             Some(visual)
         })
         .collect()
@@ -279,12 +303,78 @@ fn projected_selection_for_rect(
     selection_mask_for_projected_positions(view.positions.len(), projected, rect)
 }
 
-fn selection_highlight_radius(atom_radius: f32) -> f32 {
-    atom_radius + 0.08 + atom_radius * 0.12
+fn angle_measurement_cue_for_current_frame(viewer: &ViewerState) -> Option<AngleMeasurementCue> {
+    let selected = viewer.selected_atoms(viewer.current);
+    let view = viewer.traj.view(viewer.current);
+    let vertex_atom_radius = convert_structure(&view, &JMOL)
+        .into_iter()
+        .find(|visual| Some(visual.atom_index) == selected.get(1).copied())
+        .map(|visual| visual.radius)
+        .unwrap_or(0.0);
+    angle_measurement_cue_from_positions(view.positions, &selected, vertex_atom_radius)
 }
 
-fn selection_highlight_color() -> Color {
-    Color::srgba(1.0, 0.55, 0.08, 0.42)
+fn angle_measurement_cue_from_positions(
+    positions: &[[f64; 3]],
+    selected_indices: &[usize],
+    vertex_atom_radius: f32,
+) -> Option<AngleMeasurementCue> {
+    let &[a, b, c] = selected_indices else {
+        return None;
+    };
+
+    let pa = structure_position_to_world(*positions.get(a)?);
+    let pb = structure_position_to_world(*positions.get(b)?);
+    let pc = structure_position_to_world(*positions.get(c)?);
+
+    let first = pa - pb;
+    let second = pc - pb;
+    let first_length = first.length();
+    let second_length = second.length();
+    if first_length <= f32::EPSILON || second_length <= f32::EPSILON {
+        return None;
+    }
+
+    let first_direction = first / first_length;
+    let second_direction = second / second_length;
+    let angle_radians = first_direction
+        .dot(second_direction)
+        .clamp(-1.0, 1.0)
+        .acos();
+    if !angle_radians.is_finite() || angle_radians < ANGLE_CUE_MIN_ANGLE_RAD {
+        return None;
+    }
+
+    let geometry_radius = (first_length.min(second_length) * ANGLE_CUE_RADIUS_FACTOR)
+        .clamp(ANGLE_CUE_RADIUS_MIN, ANGLE_CUE_RADIUS_MAX);
+    let minimum_visible_radius = selection_highlight_radius(vertex_atom_radius, true) + 0.14;
+    let radius = geometry_radius.max(minimum_visible_radius);
+
+    Some(AngleMeasurementCue {
+        atoms: [a, b, c],
+        vertex: pb,
+        first_direction,
+        second_direction,
+        radius,
+        angle_radians,
+    })
+}
+
+fn selection_highlight_radius(atom_radius: f32, is_vertex: bool) -> f32 {
+    let base = atom_radius + 0.08 + atom_radius * 0.12;
+    if is_vertex {
+        base + 0.06 + atom_radius * 0.06
+    } else {
+        base
+    }
+}
+
+fn selection_highlight_color(is_vertex: bool) -> Color {
+    if is_vertex {
+        ANGLE_VERTEX_HIGHLIGHT_COLOR
+    } else {
+        Color::srgba(1.0, 0.55, 0.08, 0.42)
+    }
 }
 
 fn render_selection_highlights(
@@ -314,6 +404,98 @@ fn render_selection_highlights(
             Transform::from_translation(Vec3::new(visual.x(), visual.y(), visual.z())),
             FrameSelectionHighlight,
             Pickable::IGNORE,
+        ));
+    }
+}
+
+fn arc_points(cue: &AngleMeasurementCue) -> Option<Vec<Vec3>> {
+    let normal = cue.first_direction.cross(cue.second_direction).normalize_or_zero();
+    if normal.length_squared() <= f32::EPSILON {
+        return None;
+    }
+
+    let steps = ANGLE_CUE_ARC_SEGMENTS.max(2);
+    Some(
+        (0..=steps)
+            .map(|step| {
+                let fraction = step as f32 / steps as f32;
+                let rotation = Quat::from_axis_angle(normal, cue.angle_radians * fraction);
+                cue.vertex + rotation * cue.first_direction * cue.radius
+            })
+            .collect(),
+    )
+}
+
+fn cylinder_transform_between(p0: Vec3, p1: Vec3, radius: f32) -> Option<Transform> {
+    let delta = p1 - p0;
+    let length = delta.length();
+    if length <= f32::EPSILON {
+        return None;
+    }
+
+    let midpoint = (p0 + p1) * 0.5;
+    let direction = delta / length;
+    Some(Transform {
+        translation: midpoint,
+        rotation: Quat::from_rotation_arc(Vec3::Y, direction),
+        scale: Vec3::new(radius, length * 0.5, radius),
+    })
+}
+
+fn render_angle_measurement_cue(
+    cue: &AngleMeasurementCue,
+    commands: &mut Commands,
+    materials: &mut ResMut<Assets<StandardMaterial>>,
+    meshes: &mut ResMut<Assets<Mesh>>,
+) {
+    let material = materials.add(StandardMaterial {
+        base_color: ANGLE_CUE_COLOR,
+        emissive: LinearRgba::from(ANGLE_CUE_COLOR) * 0.15,
+        alpha_mode: AlphaMode::Blend,
+        unlit: true,
+        cull_mode: None,
+        ..default()
+    });
+    let cylinder_mesh = meshes.add(Cylinder::new(1.0, 2.0));
+
+    let ray_length = cue.radius * ANGLE_CUE_RAY_LENGTH_FACTOR;
+    for direction in [cue.first_direction, cue.second_direction] {
+        let start = cue.vertex + direction * (cue.radius * ANGLE_CUE_RAY_START_FACTOR);
+        let Some(transform) = cylinder_transform_between(
+            start,
+            cue.vertex + direction * ray_length,
+            ANGLE_CUE_RAY_RADIUS,
+        ) else {
+            continue;
+        };
+        commands.spawn((
+            Mesh3d(cylinder_mesh.clone()),
+            MeshMaterial3d(material.clone()),
+            transform,
+            FrameMeasurementCue,
+            Pickable::IGNORE,
+            NotShadowCaster,
+            NotShadowReceiver,
+        ));
+    }
+
+    let Some(points) = arc_points(cue) else {
+        return;
+    };
+    for segment in points.windows(2) {
+        let Some(transform) =
+            cylinder_transform_between(segment[0], segment[1], ANGLE_CUE_ARC_RADIUS)
+        else {
+            continue;
+        };
+        commands.spawn((
+            Mesh3d(cylinder_mesh.clone()),
+            MeshMaterial3d(material.clone()),
+            transform,
+            FrameMeasurementCue,
+            Pickable::IGNORE,
+            NotShadowCaster,
+            NotShadowReceiver,
         ));
     }
 }
@@ -410,6 +592,10 @@ fn render_frame(
             meshes,
             config.render.ico_subdiv,
         );
+    }
+
+    if let Some(cue) = angle_measurement_cue_for_current_frame(viewer) {
+        render_angle_measurement_cue(&cue, commands, materials, meshes);
     }
 
     let bond_visuals = bond_visuals_for_current_frame(viewer);
@@ -759,6 +945,7 @@ pub fn apply_viewer_commands(
 pub struct RenderFrameQueries<'w, 's> {
     atoms: Query<'w, 's, Entity, With<FrameAtom>>,
     selection_highlights: Query<'w, 's, Entity, With<FrameSelectionHighlight>>,
+    measurement_cues: Query<'w, 's, Entity, With<FrameMeasurementCue>>,
     cells: Query<'w, 's, Entity, With<FrameCell>>,
     axes: Query<'w, 's, Entity, With<FrameAxis>>,
     bonds: Query<'w, 's, Entity, With<FrameBond>>,
@@ -787,6 +974,7 @@ pub fn rerender_if_dirty(
         &mut commands,
         queries.atoms,
         queries.selection_highlights,
+        queries.measurement_cues,
         queries.cells,
         queries.axes,
         queries.bonds,
@@ -833,17 +1021,20 @@ pub fn apply_camera_state(
 #[cfg(test)]
 mod tests {
     use super::{
-        MarqueeSelectionState, marquee_drag_exceeded, selection_highlight_color,
-        selection_highlight_radius, selection_mask_for_projected_positions, sync_marquee_overlay,
+        ANGLE_CUE_RADIUS_MAX, MarqueeSelectionState,
+        angle_measurement_cue_from_positions, marquee_drag_exceeded, render_angle_measurement_cue,
+        selection_highlight_color, selection_highlight_radius,
+        selection_mask_for_projected_positions, sync_marquee_overlay,
     };
-    use crate::components::{MainSceneCamera, MarqueeSelectionOverlay};
+    use crate::components::{FrameMeasurementCue, MainSceneCamera, MarqueeSelectionOverlay};
     use bevy::ecs::system::SystemState;
+    use bevy::picking::prelude::Pickable;
     use bevy::prelude::*;
 
     #[test]
     fn selection_highlight_radius_keeps_a_minimum_extra_shell() {
-        let small = selection_highlight_radius(0.25);
-        let medium = selection_highlight_radius(0.5);
+        let small = selection_highlight_radius(0.25, false);
+        let medium = selection_highlight_radius(0.5, false);
 
         assert!((small - 0.25) > 0.10);
         assert!((medium - 0.5) > 0.13);
@@ -851,20 +1042,131 @@ mod tests {
 
     #[test]
     fn selection_highlight_radius_grows_sublinearly_relative_to_atom_size() {
-        let small_extra = selection_highlight_radius(0.3) - 0.3;
-        let large_extra = selection_highlight_radius(1.2) - 1.2;
+        let small_extra = selection_highlight_radius(0.3, false) - 0.3;
+        let large_extra = selection_highlight_radius(1.2, false) - 1.2;
 
         assert!(large_extra > small_extra);
-        assert!(selection_highlight_radius(1.2) < 1.2 * 1.2);
+        assert!(selection_highlight_radius(1.2, false) < 1.2 * 1.2);
     }
 
     #[test]
     fn selection_highlight_color_is_more_pronounced() {
-        let color = selection_highlight_color().to_srgba();
+        let color = selection_highlight_color(false).to_srgba();
 
         assert!(color.red >= 0.99);
         assert!(color.green < 0.6);
         assert!(color.alpha >= 0.4);
+    }
+
+    #[test]
+    fn vertex_selection_highlight_is_more_emphasized() {
+        assert!(
+            selection_highlight_radius(0.6, true) > selection_highlight_radius(0.6, false)
+        );
+        assert!(
+            selection_highlight_color(true).to_srgba().alpha
+                > selection_highlight_color(false).to_srgba().alpha
+        );
+    }
+
+    #[test]
+    fn angle_measurement_cue_uses_second_selected_atom_as_vertex() {
+        let cue = angle_measurement_cue_from_positions(
+            &[[1.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 2.0, 0.0]],
+            &[0, 1, 2],
+            0.0,
+        )
+        .unwrap();
+
+        assert_eq!(cue.atoms, [0, 1, 2]);
+        assert_eq!(cue.vertex, Vec3::ZERO);
+        assert!((cue.first_direction.length() - 1.0).abs() < 1e-6);
+        assert!((cue.second_direction.length() - 1.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn angle_measurement_cue_radius_clamps_for_short_and_long_spans() {
+        let short = angle_measurement_cue_from_positions(
+            &[[0.05, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.05, 0.0]],
+            &[0, 1, 2],
+            0.0,
+        )
+        .unwrap();
+        let long = angle_measurement_cue_from_positions(
+            &[[10.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 10.0, 0.0]],
+            &[0, 1, 2],
+            0.0,
+        )
+        .unwrap();
+
+        assert_eq!(short.radius, selection_highlight_radius(0.0, true) + 0.14);
+        assert_eq!(long.radius, ANGLE_CUE_RADIUS_MAX);
+    }
+
+    #[test]
+    fn angle_measurement_cue_returns_none_for_degenerate_geometry() {
+        assert!(
+            angle_measurement_cue_from_positions(
+                &[[1.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+                &[0, 1, 2],
+                0.0,
+            )
+            .is_none()
+        );
+        assert!(
+            angle_measurement_cue_from_positions(
+                &[[1.0, 0.0, 0.0], [0.0, 0.0, 0.0], [2.0, 0.0, 0.0]],
+                &[0, 1, 2],
+                0.0,
+            )
+            .is_none()
+        );
+    }
+
+    #[test]
+    fn angle_measurement_cue_radius_clears_emphasized_vertex_shell() {
+        let vertex_atom_radius = 0.62;
+        let cue = angle_measurement_cue_from_positions(
+            &[[1.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+            &[0, 1, 2],
+            vertex_atom_radius,
+        )
+        .unwrap();
+
+        assert!(cue.radius > selection_highlight_radius(vertex_atom_radius, true));
+    }
+
+    #[test]
+    fn render_angle_measurement_cue_spawns_non_pickable_entities() {
+        let cue = angle_measurement_cue_from_positions(
+            &[[1.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+            &[0, 1, 2],
+            0.0,
+        )
+        .unwrap();
+        let mut app = App::new();
+        app.init_resource::<Assets<Mesh>>();
+        app.init_resource::<Assets<StandardMaterial>>();
+
+        let mut system_state: SystemState<(
+            Commands,
+            ResMut<Assets<Mesh>>,
+            ResMut<Assets<StandardMaterial>>,
+        )> = SystemState::new(app.world_mut());
+
+        let (mut commands, mut meshes, mut materials) = system_state.get_mut(app.world_mut());
+        render_angle_measurement_cue(&cue, &mut commands, &mut materials, &mut meshes);
+        system_state.apply(app.world_mut());
+
+        let entities: Vec<Entity> = app
+            .world_mut()
+            .query_filtered::<Entity, With<FrameMeasurementCue>>()
+            .iter(app.world())
+            .collect();
+        assert!(entities.len() >= 3);
+        assert!(entities
+            .iter()
+            .all(|entity| app.world().get::<Pickable>(*entity) == Some(&Pickable::IGNORE)));
     }
 
     #[test]

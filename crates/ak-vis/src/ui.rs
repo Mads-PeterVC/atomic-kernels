@@ -3,7 +3,7 @@ use bevy::picking::prelude::Pickable;
 use bevy::prelude::*;
 
 use crate::components::{
-    InspectorHintsBody, InspectorHintsToggle, InspectorMeasurementBody,
+    InspectorHintsContainer, InspectorHintsToggle, InspectorMeasurementBody,
     InspectorMeasurementSection, InspectorPanelRoot, InspectorPanelSurface,
     InspectorSelectionBody, InspectorSelectionSection, MainSceneCamera, ToggleableUI,
 };
@@ -14,6 +14,106 @@ const SECTION_BACKGROUND: Color = Color::srgba(0.10, 0.11, 0.14, 0.54);
 const PANEL_BORDER: Color = Color::srgba(1.0, 1.0, 1.0, 0.08);
 const BODY_COLOR: Color = Color::srgb(0.76, 0.79, 0.83);
 const ACCENT_COLOR: Color = Color::srgb(0.72, 0.86, 0.96);
+const KEYCAP_BACKGROUND: Color = Color::srgba(0.19, 0.21, 0.25, 0.82);
+const KEYCAP_BORDER: Color = Color::srgba(1.0, 1.0, 1.0, 0.08);
+const KEYCAP_TEXT: Color = Color::srgb(0.89, 0.91, 0.95);
+const HINT_LABEL_COLOR: Color = Color::srgb(0.70, 0.74, 0.79);
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum ShortcutToken {
+    Key(&'static str),
+    Separator(&'static str),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct ShortcutHint {
+    tokens: &'static [ShortcutToken],
+    label: &'static str,
+}
+
+const CLICK_REPLACE_SELECTION_TOKENS: &[ShortcutToken] = &[ShortcutToken::Key("click")];
+const SHIFT_CLICK_TOKENS: &[ShortcutToken] = &[
+    ShortcutToken::Key("Shift"),
+    ShortcutToken::Separator("+"),
+    ShortcutToken::Key("click"),
+];
+const SHIFT_DRAG_TOKENS: &[ShortcutToken] = &[
+    ShortcutToken::Key("Shift"),
+    ShortcutToken::Separator("+"),
+    ShortcutToken::Key("drag"),
+];
+const FRAME_STEP_TOKENS: &[ShortcutToken] = &[
+    ShortcutToken::Key("A"),
+    ShortcutToken::Separator("/"),
+    ShortcutToken::Key("D"),
+];
+const ZOOM_TOKENS: &[ShortcutToken] = &[
+    ShortcutToken::Key("W"),
+    ShortcutToken::Separator("/"),
+    ShortcutToken::Key("S"),
+];
+const ORBIT_TOKENS: &[ShortcutToken] = &[
+    ShortcutToken::Key("←"),
+    ShortcutToken::Separator("/"),
+    ShortcutToken::Key("→"),
+    ShortcutToken::Separator("/"),
+    ShortcutToken::Key("↑"),
+    ShortcutToken::Separator("/"),
+    ShortcutToken::Key("↓"),
+];
+const SNAP_VIEW_TOKENS: &[ShortcutToken] = &[
+    ShortcutToken::Key("X"),
+    ShortcutToken::Separator("/"),
+    ShortcutToken::Key("Y"),
+    ShortcutToken::Separator("/"),
+    ShortcutToken::Key("Z"),
+];
+const SCREENSHOT_TOKENS: &[ShortcutToken] = &[ShortcutToken::Key("Space")];
+const TOGGLE_INSPECTOR_TOKENS: &[ShortcutToken] = &[ShortcutToken::Key("U")];
+const TOGGLE_HINTS_TOKENS: &[ShortcutToken] = &[ShortcutToken::Key("H")];
+
+const SHORTCUT_HINTS: &[ShortcutHint] = &[
+    ShortcutHint {
+        tokens: CLICK_REPLACE_SELECTION_TOKENS,
+        label: "replace selection",
+    },
+    ShortcutHint {
+        tokens: SHIFT_CLICK_TOKENS,
+        label: "toggle atom",
+    },
+    ShortcutHint {
+        tokens: SHIFT_DRAG_TOKENS,
+        label: "marquee replace",
+    },
+    ShortcutHint {
+        tokens: FRAME_STEP_TOKENS,
+        label: "step frames",
+    },
+    ShortcutHint {
+        tokens: ZOOM_TOKENS,
+        label: "zoom",
+    },
+    ShortcutHint {
+        tokens: ORBIT_TOKENS,
+        label: "orbit camera",
+    },
+    ShortcutHint {
+        tokens: SNAP_VIEW_TOKENS,
+        label: "snap to axes",
+    },
+    ShortcutHint {
+        tokens: SCREENSHOT_TOKENS,
+        label: "save screenshot",
+    },
+    ShortcutHint {
+        tokens: TOGGLE_INSPECTOR_TOKENS,
+        label: "toggle inspector",
+    },
+    ShortcutHint {
+        tokens: TOGGLE_HINTS_TOKENS,
+        label: "toggle keybindings",
+    },
+];
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum MeasurementStatus {
@@ -83,6 +183,7 @@ pub fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                 .insert(Pickable::IGNORE)
                 .insert(InspectorPanelSurface)
                 .with_children(|panel| {
+                    spawn_hints_section(panel, &font);
                     spawn_section(
                         panel,
                         &font,
@@ -99,7 +200,6 @@ pub fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                         Some(InspectorMeasurementSection),
                         Some(InspectorMeasurementBody),
                     );
-                    spawn_hints_section(panel, &font);
                 });
         });
 }
@@ -174,34 +274,130 @@ fn spawn_hints_section(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font
         .insert(BackgroundColor(SECTION_BACKGROUND))
         .insert(Pickable::IGNORE)
         .with_children(|section| {
-            section.spawn((
-                Text::new("Hints (press H to expand)"),
-                TextFont {
-                    font: font.clone(),
-                    font_size: 12.0,
+            section
+                .spawn_empty()
+                .insert(Node {
+                    align_items: AlignItems::Center,
+                    column_gap: px(6),
+                    flex_wrap: FlexWrap::Wrap,
                     ..default()
-                },
-                TextColor(ACCENT_COLOR),
-                InspectorHintsToggle,
-            ));
-            section.spawn((
-                Node {
+                })
+                .insert(Pickable::IGNORE)
+                .with_children(|header| {
+                    header.spawn(section_title_bundle("Keybindings", font));
+                    header.spawn(hint_action_bundle("(press", font));
+                    spawn_keycap(header, font, "H");
+                    header.spawn((
+                        Text::new("to expand)"),
+                        TextFont {
+                            font: font.clone(),
+                            font_size: 11.0,
+                            ..default()
+                        },
+                        TextColor(HINT_LABEL_COLOR),
+                        InspectorHintsToggle,
+                    ));
+                });
+            section
+                .spawn_empty()
+                .insert(Node {
                     display: Display::None,
+                    flex_direction: FlexDirection::Column,
+                    row_gap: px(6),
                     ..default()
-                },
-                Text::new(
-                    "Click: replace selection\nShift-click: toggle atom\nShift-drag: marquee replace\nU: toggle inspector\nH: toggle hints",
-                ),
+                })
+                .insert(Pickable::IGNORE)
+                .insert(InspectorHintsContainer)
+                .with_children(|container| {
+                    for hint in shortcut_hints() {
+                        spawn_hint_row(container, font, hint);
+                    }
+                });
+        });
+}
+
+fn spawn_hint_row(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font>, hint: &ShortcutHint) {
+    parent
+        .spawn_empty()
+        .insert(Node {
+            align_items: AlignItems::Center,
+            column_gap: px(8),
+            ..default()
+        })
+        .insert(Pickable::IGNORE)
+        .with_children(|row| {
+            row.spawn_empty()
+                .insert(Node {
+                    align_items: AlignItems::Center,
+                    column_gap: px(4),
+                    ..default()
+                })
+                .insert(Pickable::IGNORE)
+                .with_children(|tokens_parent| {
+                    for token in hint.tokens {
+                        match token {
+                            ShortcutToken::Key(text) => spawn_keycap(tokens_parent, font, text),
+                            ShortcutToken::Separator(text) => {
+                                tokens_parent.spawn(hint_separator_bundle(text, font));
+                            }
+                        }
+                    }
+                });
+            row.spawn(hint_action_bundle(hint.label, font));
+        });
+}
+
+fn shortcut_hints() -> &'static [ShortcutHint] {
+    SHORTCUT_HINTS
+}
+
+fn spawn_keycap(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font>, text: &str) {
+    parent
+        .spawn_empty()
+        .insert(Node {
+            padding: UiRect::axes(px(7), px(3)),
+            border: UiRect::all(px(1)),
+            border_radius: BorderRadius::all(px(8)),
+            ..default()
+        })
+        .insert(BackgroundColor(KEYCAP_BACKGROUND))
+        .insert(BorderColor::all(KEYCAP_BORDER))
+        .insert(Pickable::IGNORE)
+        .with_children(|keycap| {
+            keycap.spawn((
+                Text::new(text),
                 TextFont {
                     font: font.clone(),
-                    font_size: 11.0,
+                    font_size: 10.5,
                     ..default()
                 },
-                TextColor(BODY_COLOR),
-                Pickable::IGNORE,
-                InspectorHintsBody,
+                TextColor(KEYCAP_TEXT),
             ));
         });
+}
+
+fn hint_separator_bundle(text: &str, font: &Handle<Font>) -> impl Bundle {
+    (
+        Text::new(text),
+        TextFont {
+            font: font.clone(),
+            font_size: 10.5,
+            ..default()
+        },
+        TextColor(HINT_LABEL_COLOR),
+    )
+}
+
+fn hint_action_bundle(text: &str, font: &Handle<Font>) -> impl Bundle {
+    (
+        Text::new(text),
+        TextFont {
+            font: font.clone(),
+            font_size: 11.0,
+            ..default()
+        },
+        TextColor(HINT_LABEL_COLOR),
+    )
 }
 
 pub fn sync_inspector_state(viewer: Res<ViewerState>, mut inspector: ResMut<InspectorState>) {
@@ -390,9 +586,9 @@ fn measurement_text(inspector: &InspectorState) -> String {
 
 fn hints_toggle_text(inspector: &InspectorState) -> String {
     if inspector.hints_expanded {
-        "Hints (press H to collapse)".to_string()
+        "to collapse)".to_string()
     } else {
-        "Hints (press H to expand)".to_string()
+        "to expand)".to_string()
     }
 }
 
@@ -406,7 +602,7 @@ fn shows_measurement(inspector: &InspectorState) -> bool {
 pub fn toggle_hints_visibility(
     keys: Res<ButtonInput<KeyCode>>,
     mut inspector: ResMut<InspectorState>,
-    mut hint_bodies: Query<&mut Node, With<InspectorHintsBody>>,
+    mut hint_bodies: Query<&mut Node, With<InspectorHintsContainer>>,
 ) {
     if !keys.just_pressed(KeyCode::KeyH) {
         return;
@@ -426,10 +622,11 @@ pub fn toggle_hints_visibility(
 #[cfg(test)]
 mod tests {
     use super::{
-        InspectorHintsBody, InspectorHintsToggle, InspectorMeasurementBody, InspectorPanelRoot,
+        InspectorHintsContainer, InspectorHintsToggle, InspectorMeasurementBody,
+        InspectorPanelRoot,
         InspectorMeasurementSection, InspectorSelectionBody, InspectorSelectionSection,
-        InspectorState, MeasurementStatus, derive_inspector_state, sync_inspector_camera,
-        sync_inspector_text, toggle_hints_visibility,
+        InspectorState, MeasurementStatus, derive_inspector_state, shortcut_hints,
+        sync_inspector_camera, sync_inspector_text, toggle_hints_visibility,
     };
     use crate::components::MainSceneCamera;
     use crate::viewer::ViewerState;
@@ -526,6 +723,22 @@ mod tests {
     }
 
     #[test]
+    fn shortcut_hints_cover_current_viewer_controls() {
+        let labels: Vec<&str> = shortcut_hints().iter().map(|hint| hint.label).collect();
+
+        assert!(labels.contains(&"replace selection"));
+        assert!(labels.contains(&"toggle atom"));
+        assert!(labels.contains(&"marquee replace"));
+        assert!(labels.contains(&"step frames"));
+        assert!(labels.contains(&"zoom"));
+        assert!(labels.contains(&"orbit camera"));
+        assert!(labels.contains(&"snap to axes"));
+        assert!(labels.contains(&"save screenshot"));
+        assert!(labels.contains(&"toggle inspector"));
+        assert!(labels.contains(&"toggle keybindings"));
+    }
+
+    #[test]
     fn sync_inspector_text_updates_all_sections() {
         let mut app = App::new();
         app.insert_resource(InspectorState {
@@ -597,7 +810,7 @@ mod tests {
         );
         assert_eq!(
             app.world().get::<Text>(hints_toggle).unwrap().0,
-            "Hints (press H to collapse)"
+            "to collapse)"
         );
     }
 
@@ -687,7 +900,7 @@ mod tests {
         let entity = app
             .world_mut()
             .spawn((
-                InspectorHintsBody,
+                InspectorHintsContainer,
                 Node {
                     display: Display::None,
                     ..default()

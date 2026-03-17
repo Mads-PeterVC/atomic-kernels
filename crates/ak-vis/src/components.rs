@@ -7,6 +7,9 @@ pub struct FrameAtom;
 pub struct FrameSelectionHighlight;
 
 #[derive(Component)]
+pub struct FrameMeasurementCue;
+
+#[derive(Component)]
 pub struct FrameBond;
 
 #[derive(Component)]
@@ -40,7 +43,7 @@ pub struct InspectorMeasurementBody;
 pub struct InspectorMeasurementSection;
 
 #[derive(Component)]
-pub struct InspectorHintsBody;
+pub struct InspectorHintsContainer;
 
 #[derive(Component)]
 pub struct InspectorHintsToggle;
@@ -70,10 +73,11 @@ pub struct OrientationWidgetLetterStroke {
 #[cfg(test)]
 mod tests {
     use super::{
-        AtomIndex, FrameAtom, FrameAxis, FrameBond, FrameCell, FrameFace, FrameSelectionHighlight,
-        InspectorHintsBody, InspectorHintsToggle, InspectorMeasurementBody, InspectorPanelRoot,
-        InspectorMeasurementSection, InspectorPanelSurface, InspectorSelectionBody,
-        InspectorSelectionSection, MainSceneCamera, MarqueeSelectionOverlay,
+        AtomIndex, FrameAtom, FrameAxis, FrameBond, FrameCell, FrameFace, FrameMeasurementCue,
+        FrameSelectionHighlight, InspectorHintsContainer, InspectorHintsToggle,
+        InspectorMeasurementBody, InspectorMeasurementSection, InspectorPanelRoot,
+        InspectorPanelSurface, InspectorSelectionBody, InspectorSelectionSection, MainSceneCamera,
+        MarqueeSelectionOverlay,
         OrientationWidgetCamera, OrientationWidgetLetterStroke, OrientationWidgetRoot,
         ToggleableUI,
     };
@@ -88,6 +92,7 @@ mod tests {
             .insert((
                 FrameAtom,
                 FrameSelectionHighlight,
+                FrameMeasurementCue,
                 FrameBond,
                 FrameFace,
                 FrameCell,
@@ -101,7 +106,7 @@ mod tests {
                 InspectorSelectionBody,
                 InspectorMeasurementSection,
                 InspectorMeasurementBody,
-                InspectorHintsBody,
+                InspectorHintsContainer,
                 InspectorHintsToggle,
                 InspectorPanelSurface,
                 AtomIndex(3),
@@ -122,6 +127,7 @@ mod tests {
         assert_eq!(stroke.end, Vec2::new(0.5, 0.0));
         assert!(world.get::<FrameAtom>(entity).is_some());
         assert!(world.get::<FrameSelectionHighlight>(entity).is_some());
+        assert!(world.get::<FrameMeasurementCue>(entity).is_some());
         assert!(world.get::<FrameBond>(entity).is_some());
         assert!(world.get::<FrameFace>(entity).is_some());
         assert!(world.get::<FrameCell>(entity).is_some());
@@ -133,7 +139,7 @@ mod tests {
         assert!(world.get::<InspectorSelectionBody>(entity).is_some());
         assert!(world.get::<InspectorMeasurementSection>(entity).is_some());
         assert!(world.get::<InspectorMeasurementBody>(entity).is_some());
-        assert!(world.get::<InspectorHintsBody>(entity).is_some());
+        assert!(world.get::<InspectorHintsContainer>(entity).is_some());
         assert!(world.get::<InspectorHintsToggle>(entity).is_some());
         assert!(world.get::<InspectorPanelSurface>(entity).is_some());
         assert_eq!(world.get::<AtomIndex>(entity).unwrap().0, 3);

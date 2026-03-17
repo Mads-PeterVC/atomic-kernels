@@ -2,7 +2,8 @@ use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
 use crate::components::{
-    FrameAtom, FrameAxis, FrameBond, FrameCell, FrameFace, FrameSelectionHighlight,
+    FrameAtom, FrameAxis, FrameBond, FrameCell, FrameFace, FrameMeasurementCue,
+    FrameSelectionHighlight,
 };
 use crate::viewer::ViewerState;
 
@@ -17,6 +18,7 @@ pub fn despawn_current_frame(
     commands: &mut Commands,
     atoms: Query<Entity, With<FrameAtom>>,
     selection_highlights: Query<Entity, With<FrameSelectionHighlight>>,
+    measurement_cues: Query<Entity, With<FrameMeasurementCue>>,
     cells: Query<Entity, With<FrameCell>>,
     axes: Query<Entity, With<FrameAxis>>,
     bonds: Query<Entity, With<FrameBond>>,
@@ -26,6 +28,9 @@ pub fn despawn_current_frame(
         commands.entity(entity).despawn();
     }
     for entity in selection_highlights.iter() {
+        commands.entity(entity).despawn();
+    }
+    for entity in measurement_cues.iter() {
         commands.entity(entity).despawn();
     }
     for entity in cells.iter() {
@@ -66,7 +71,8 @@ pub fn navigate_frames(mut timer: Local<Timer>, mut resources: RenderResources) 
 mod tests {
     use super::{despawn_current_frame, navigate_frames};
     use crate::components::{
-        FrameAtom, FrameAxis, FrameBond, FrameCell, FrameFace, FrameSelectionHighlight,
+        FrameAtom, FrameAxis, FrameBond, FrameCell, FrameFace, FrameMeasurementCue,
+        FrameSelectionHighlight,
     };
     use crate::viewer::ViewerState;
     use ak_core::{Structure, Trajectory};
@@ -97,6 +103,7 @@ mod tests {
         let mut world = World::new();
         let atom = world.spawn(FrameAtom).id();
         let highlight = world.spawn(FrameSelectionHighlight).id();
+        let measurement = world.spawn(FrameMeasurementCue).id();
         let cell = world.spawn(FrameCell).id();
         let axis = world.spawn(FrameAxis).id();
         let bond = world.spawn(FrameBond).id();
@@ -106,18 +113,29 @@ mod tests {
             Commands,
             Query<Entity, With<FrameAtom>>,
             Query<Entity, With<FrameSelectionHighlight>>,
+            Query<Entity, With<FrameMeasurementCue>>,
             Query<Entity, With<FrameCell>>,
             Query<Entity, With<FrameAxis>>,
             Query<Entity, With<FrameBond>>,
             Query<Entity, With<FrameFace>>,
         )> = SystemState::new(&mut world);
 
-        let (mut commands, atoms, selection_highlights, cells, axes, bonds, faces) =
+        let (
+            mut commands,
+            atoms,
+            selection_highlights,
+            measurement_cues,
+            cells,
+            axes,
+            bonds,
+            faces,
+        ) =
             system_state.get_mut(&mut world);
         despawn_current_frame(
             &mut commands,
             atoms,
             selection_highlights,
+            measurement_cues,
             cells,
             axes,
             bonds,
@@ -127,6 +145,7 @@ mod tests {
 
         assert!(world.get_entity(atom).is_err());
         assert!(world.get_entity(highlight).is_err());
+        assert!(world.get_entity(measurement).is_err());
         assert!(world.get_entity(cell).is_err());
         assert!(world.get_entity(axis).is_err());
         assert!(world.get_entity(bond).is_err());
