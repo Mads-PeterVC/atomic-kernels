@@ -52,6 +52,7 @@ class ClickDebugInfo:
     window_id: str
     window_geometry: dict[str, int]
     resolved_points: list[tuple[int, int]]
+    absolute_points: list[tuple[int, int]]
 
 
 def single_center_atom_scene() -> ViewerClickScene:
@@ -108,7 +109,8 @@ def wait_for_selected_atoms(
         debug_suffix = (
             f"; click debug pid={debug_info.process_id} window={debug_info.window_id} "
             f"geometry={debug_info.window_geometry} "
-            f"resolved_clicks={debug_info.resolved_points}"
+            f"resolved_clicks={debug_info.resolved_points} "
+            f"absolute_clicks={debug_info.absolute_points}"
         )
     raise AssertionError(
         f"selection did not become {expected}; current selection is {session.selected_atoms()}"
@@ -198,20 +200,29 @@ def _candidate_click_points(base_x: int, base_y: int, geometry: dict[str, int]) 
     return points
 
 
+def _absolute_click_points(
+    relative_points: list[tuple[int, int]], geometry: dict[str, int]
+) -> list[tuple[int, int]]:
+    origin_x = geometry.get("X")
+    origin_y = geometry.get("Y")
+    if origin_x is None or origin_y is None:
+        raise AssertionError("xdotool did not report X/Y for the viewer window")
+    return [(origin_x + x, origin_y + y) for x, y in relative_points]
+
+
 def click_viewer_at(session, target: ClickTarget) -> ClickDebugInfo:
     window_id = _viewer_window_id(session)
     process_id = _viewer_process_id(session)
     geometry = _window_geometry(window_id)
     resolved_x, resolved_y = _resolve_click_target(window_id, target)
     resolved_points = _candidate_click_points(resolved_x, resolved_y, geometry)
-    for point_x, point_y in resolved_points:
+    absolute_points = _absolute_click_points(resolved_points, geometry)
+    for point_x, point_y in absolute_points:
         subprocess.run(
             [
                 "xdotool",
                 "mousemove",
                 "--sync",
-                "--window",
-                window_id,
                 str(point_x),
                 str(point_y),
             ],
@@ -220,9 +231,16 @@ def click_viewer_at(session, target: ClickTarget) -> ClickDebugInfo:
         subprocess.run(
             [
                 "xdotool",
-                "click",
-                "--window",
-                window_id,
+                "mousedown",
+                "1",
+            ],
+            check=True,
+        )
+        time.sleep(0.05)
+        subprocess.run(
+            [
+                "xdotool",
+                "mouseup",
                 "1",
             ],
             check=True,
@@ -233,4 +251,5 @@ def click_viewer_at(session, target: ClickTarget) -> ClickDebugInfo:
         window_id=window_id,
         window_geometry=geometry,
         resolved_points=resolved_points,
+        absolute_points=absolute_points,
     )
