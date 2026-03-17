@@ -15,6 +15,18 @@ PYTHON_SRC: Final[Path] = REPO_ROOT / "python"
 XVFB_SCREEN_WIDTH: Final[int] = 1280
 XVFB_SCREEN_HEIGHT: Final[int] = 1024
 VIEWER_SETTLE_DELAY_S: Final[float] = 0.75
+VIEWER_POST_CLICK_DELAY_S: Final[float] = 0.2
+CLICK_SEARCH_OFFSETS: Final[tuple[tuple[int, int], ...]] = (
+    (0, 0),
+    (-24, 0),
+    (24, 0),
+    (0, -24),
+    (0, 24),
+    (-16, -16),
+    (16, -16),
+    (-16, 16),
+    (16, 16),
+)
 
 
 @dataclass(frozen=True)
@@ -39,8 +51,7 @@ class ClickDebugInfo:
     process_id: int | None
     window_id: str
     window_geometry: dict[str, int]
-    resolved_x: int
-    resolved_y: int
+    resolved_points: list[tuple[int, int]]
 
 
 def single_center_atom_scene() -> ViewerClickScene:
@@ -79,7 +90,7 @@ def launch_ready_viewer_session(scene: ViewerClickScene, timeout: float):
         session.close()
         raise AssertionError(f"viewer did not become ready within {timeout:.1f}s")
     session.camera().look_at(scene.focus, radius=scene.radius, yaw=0.0, pitch=0.0)
-    time.sleep(VIEWER_SETTLE_DELAY_S)
+    time.sleep(1.5 if timeout >= 60.0 else VIEWER_SETTLE_DELAY_S)
     return session
 
 
@@ -97,7 +108,7 @@ def wait_for_selected_atoms(
         debug_suffix = (
             f"; click debug pid={debug_info.process_id} window={debug_info.window_id} "
             f"geometry={debug_info.window_geometry} "
-            f"resolved_click=({debug_info.resolved_x}, {debug_info.resolved_y})"
+            f"resolved_clicks={debug_info.resolved_points}"
         )
     raise AssertionError(
         f"selection did not become {expected}; current selection is {session.selected_atoms()}"
@@ -171,38 +182,55 @@ def _resolve_click_target(window_id: str, target: ClickTarget) -> tuple[int, int
     return int(round(target.x * width)), int(round(target.y * height))
 
 
+def _candidate_click_points(base_x: int, base_y: int, geometry: dict[str, int]) -> list[tuple[int, int]]:
+    width = geometry.get("WIDTH")
+    height = geometry.get("HEIGHT")
+    if width is None or height is None:
+        return [(base_x, base_y)]
+
+    points: list[tuple[int, int]] = []
+    for dx, dy in CLICK_SEARCH_OFFSETS:
+        x = min(max(base_x + dx, 1), max(width - 2, 1))
+        y = min(max(base_y + dy, 1), max(height - 2, 1))
+        point = (x, y)
+        if point not in points:
+            points.append(point)
+    return points
+
+
 def click_viewer_at(session, target: ClickTarget) -> ClickDebugInfo:
     window_id = _viewer_window_id(session)
     process_id = _viewer_process_id(session)
     geometry = _window_geometry(window_id)
     resolved_x, resolved_y = _resolve_click_target(window_id, target)
-    subprocess.run(
-        [
-            "xdotool",
-            "mousemove",
-            "--sync",
-            "--window",
-            window_id,
-            str(resolved_x),
-            str(resolved_y),
-        ],
-        check=True,
-    )
-    subprocess.run(
-        [
-            "xdotool",
-            "click",
-            "--window",
-            window_id,
-            "1",
-        ],
-        check=True,
-    )
-    time.sleep(0.1)
+    resolved_points = _candidate_click_points(resolved_x, resolved_y, geometry)
+    for point_x, point_y in resolved_points:
+        subprocess.run(
+            [
+                "xdotool",
+                "mousemove",
+                "--sync",
+                "--window",
+                window_id,
+                str(point_x),
+                str(point_y),
+            ],
+            check=True,
+        )
+        subprocess.run(
+            [
+                "xdotool",
+                "click",
+                "--window",
+                window_id,
+                "1",
+            ],
+            check=True,
+        )
+        time.sleep(VIEWER_POST_CLICK_DELAY_S)
     return ClickDebugInfo(
         process_id=process_id,
         window_id=window_id,
         window_geometry=geometry,
-        resolved_x=resolved_x,
-        resolved_y=resolved_y,
+        resolved_points=resolved_points,
     )
