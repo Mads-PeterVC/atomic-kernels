@@ -1,15 +1,6 @@
 name: Docs
 
 on:
-  pull_request:
-    paths:
-      - "Cargo.toml"
-      - "Cargo.lock"
-      - "crates/**"
-      - "docs/**"
-      - "pyproject.toml"
-      - "scripts/stage_rustdoc.py"
-      - ".github/workflows/docs.yml"
   push:
     paths:
       - "Cargo.toml"
