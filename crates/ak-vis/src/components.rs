@@ -25,6 +25,30 @@ pub struct ToggleableUI;
 pub struct MainSceneCamera;
 
 #[derive(Component)]
+pub struct InspectorPanelRoot;
+
+#[derive(Component)]
+pub struct InspectorSelectionBody;
+
+#[derive(Component)]
+pub struct InspectorSelectionSection;
+
+#[derive(Component)]
+pub struct InspectorMeasurementBody;
+
+#[derive(Component)]
+pub struct InspectorMeasurementSection;
+
+#[derive(Component)]
+pub struct InspectorHintsBody;
+
+#[derive(Component)]
+pub struct InspectorHintsToggle;
+
+#[derive(Component)]
+pub struct InspectorPanelSurface;
+
+#[derive(Component)]
 pub struct AtomIndex(pub usize);
 
 #[derive(Component)]
@@ -47,8 +71,11 @@ pub struct OrientationWidgetLetterStroke {
 mod tests {
     use super::{
         AtomIndex, FrameAtom, FrameAxis, FrameBond, FrameCell, FrameFace, FrameSelectionHighlight,
-        MainSceneCamera, MarqueeSelectionOverlay, OrientationWidgetCamera,
-        OrientationWidgetLetterStroke, OrientationWidgetRoot, ToggleableUI,
+        InspectorHintsBody, InspectorHintsToggle, InspectorMeasurementBody, InspectorPanelRoot,
+        InspectorMeasurementSection, InspectorPanelSurface, InspectorSelectionBody,
+        InspectorSelectionSection, MainSceneCamera, MarqueeSelectionOverlay,
+        OrientationWidgetCamera, OrientationWidgetLetterStroke, OrientationWidgetRoot,
+        ToggleableUI,
     };
     use bevy::prelude::*;
 
@@ -57,7 +84,8 @@ mod tests {
         let mut world = World::new();
 
         let entity = world
-            .spawn((
+            .spawn_empty()
+            .insert((
                 FrameAtom,
                 FrameSelectionHighlight,
                 FrameBond,
@@ -66,16 +94,26 @@ mod tests {
                 FrameAxis,
                 ToggleableUI,
                 MainSceneCamera,
+            ))
+            .insert((
+                InspectorPanelRoot,
+                InspectorSelectionSection,
+                InspectorSelectionBody,
+                InspectorMeasurementSection,
+                InspectorMeasurementBody,
+                InspectorHintsBody,
+                InspectorHintsToggle,
+                InspectorPanelSurface,
                 AtomIndex(3),
                 MarqueeSelectionOverlay,
                 OrientationWidgetRoot,
                 OrientationWidgetCamera,
-                OrientationWidgetLetterStroke {
-                    direction: Vec3::Z,
-                    start: Vec2::new(-0.5, 0.0),
-                    end: Vec2::new(0.5, 0.0),
-                },
             ))
+            .insert(OrientationWidgetLetterStroke {
+                direction: Vec3::Z,
+                start: Vec2::new(-0.5, 0.0),
+                end: Vec2::new(0.5, 0.0),
+            })
             .id();
 
         let stroke = world.get::<OrientationWidgetLetterStroke>(entity).unwrap();
@@ -90,6 +128,14 @@ mod tests {
         assert!(world.get::<FrameAxis>(entity).is_some());
         assert!(world.get::<ToggleableUI>(entity).is_some());
         assert!(world.get::<MainSceneCamera>(entity).is_some());
+        assert!(world.get::<InspectorPanelRoot>(entity).is_some());
+        assert!(world.get::<InspectorSelectionSection>(entity).is_some());
+        assert!(world.get::<InspectorSelectionBody>(entity).is_some());
+        assert!(world.get::<InspectorMeasurementSection>(entity).is_some());
+        assert!(world.get::<InspectorMeasurementBody>(entity).is_some());
+        assert!(world.get::<InspectorHintsBody>(entity).is_some());
+        assert!(world.get::<InspectorHintsToggle>(entity).is_some());
+        assert!(world.get::<InspectorPanelSurface>(entity).is_some());
         assert_eq!(world.get::<AtomIndex>(entity).unwrap().0, 3);
         assert!(world.get::<MarqueeSelectionOverlay>(entity).is_some());
         assert!(world.get::<OrientationWidgetRoot>(entity).is_some());

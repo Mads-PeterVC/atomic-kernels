@@ -1,5 +1,5 @@
 use ak_core::{Structure, Trajectory};
-use ak_vis::viewer::run_default;
+use ak_vis::viewer::{RenderConfig, ViewerConfig, run};
 use std::fs;
 use std::path::Path;
 
@@ -25,5 +25,14 @@ fn main() {
     }
 
     let trajectory = Trajectory::new(structures);
-    run_default(trajectory);
+    run(
+        trajectory,
+        ViewerConfig {
+            render: RenderConfig {
+                show_ui: true,
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+    );
 }
