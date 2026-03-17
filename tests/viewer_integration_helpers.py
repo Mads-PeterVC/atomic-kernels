@@ -14,17 +14,14 @@ REPO_ROOT: Final[Path] = Path(__file__).resolve().parents[1]
 PYTHON_SRC: Final[Path] = REPO_ROOT / "python"
 XVFB_SCREEN_WIDTH: Final[int] = 1280
 XVFB_SCREEN_HEIGHT: Final[int] = 1024
-VIEWER_WINDOW_CLICK_TARGET: Final[tuple[int, int]] = (
-    XVFB_SCREEN_WIDTH // 2,
-    XVFB_SCREEN_HEIGHT // 2,
-)
 VIEWER_SETTLE_DELAY_S: Final[float] = 0.75
 
 
 @dataclass(frozen=True)
 class ClickTarget:
-    x: int
-    y: int
+    x: float
+    y: float
+    normalized_to_window: bool = False
 
 
 @dataclass(frozen=True)
@@ -48,7 +45,7 @@ def single_center_atom_scene() -> ViewerClickScene:
         ),
         focus=focus,
         radius=12.0,
-        click_target=ClickTarget(*VIEWER_WINDOW_CLICK_TARGET),
+        click_target=ClickTarget(0.5, 0.5, normalized_to_window=True),
         expected_selection=[0],
         description="single atom centered inside an 8x8x8 cell; click at the viewer-window center",
     )
@@ -124,16 +121,46 @@ def _viewer_window_id(session) -> str:
     return window_ids[-1]
 
 
+def _window_geometry(window_id: str) -> dict[str, int]:
+    result = subprocess.run(
+        ["xdotool", "getwindowgeometry", "--shell", window_id],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    geometry: dict[str, int] = {}
+    for line in result.stdout.splitlines():
+        if "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        if value.isdigit():
+            geometry[key] = int(value)
+    return geometry
+
+
+def _resolve_click_target(window_id: str, target: ClickTarget) -> tuple[int, int]:
+    if not target.normalized_to_window:
+        return int(target.x), int(target.y)
+
+    geometry = _window_geometry(window_id)
+    width = geometry.get("WIDTH")
+    height = geometry.get("HEIGHT")
+    if width is None or height is None:
+        raise AssertionError("xdotool did not report WIDTH/HEIGHT for the viewer window")
+    return int(round(target.x * width)), int(round(target.y * height))
+
+
 def click_viewer_at(session, target: ClickTarget) -> None:
     window_id = _viewer_window_id(session)
+    resolved_x, resolved_y = _resolve_click_target(window_id, target)
     subprocess.run(
         [
             "xdotool",
             "mousemove",
             "--window",
             window_id,
-            str(target.x),
-            str(target.y),
+            str(resolved_x),
+            str(resolved_y),
         ],
         check=True,
     )

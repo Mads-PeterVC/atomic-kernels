@@ -6,7 +6,6 @@ import pytest
 from ase import Atoms
 
 from viewer_integration_helpers import (
-    VIEWER_WINDOW_CLICK_TARGET,
     click_viewer_at,
     has_xdotool,
     launch_ready_viewer_session,
@@ -42,7 +41,8 @@ def test_ui_viewer_config_enables_ui():
 def test_single_center_atom_scene_declares_expected_click_target():
     scene = single_center_atom_scene()
 
-    assert (scene.click_target.x, scene.click_target.y) == VIEWER_WINDOW_CLICK_TARGET
+    assert (scene.click_target.x, scene.click_target.y) == (0.5, 0.5)
+    assert scene.click_target.normalized_to_window is True
     assert scene.expected_selection == [0]
     assert tuple(scene.atoms.cell.lengths()) == (8.0, 8.0, 8.0)
     assert tuple(scene.atoms.positions[0]) == scene.focus
