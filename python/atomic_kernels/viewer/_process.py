@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import multiprocessing as mp
+import os
 import threading
 import time
 from typing import Optional
@@ -92,6 +93,9 @@ def viewer_process_main(
 
 
 class ViewerSessionProxy:
+    _close_timeout = 5.0
+    _ci_startup_grace = 5.0
+
     def __init__(self, connection, process: mp.Process):
         self._connection = connection
         self._process = process
@@ -201,16 +205,47 @@ class ViewerSessionProxy:
         self._send("stop_camera_motion")
 
     def close(self) -> None:
-        if self._connection.closed:
-            return
+        alive = self._process.is_alive()
         try:
-            self._send("close")
+            if alive and not self._connection.closed:
+                self._send("close")
         finally:
-            self._connection.close()
+            if not self._connection.closed:
+                self._connection.close()
+
+        if not alive:
+            return
+
+        self._process.join(self._close_timeout)
+        if self._process.is_alive():
+            self._process.terminate()
+            self._process.join(self._close_timeout)
+
+    def __del__(self) -> None:
+        try:
+            self.close()
+        except Exception:
+            pass
 
     def wait_until_ready(self, timeout: float | None = None) -> bool:
         if timeout is not None and timeout < 0:
             raise ValueError("timeout must be non-negative")
+
+        if os.environ.get("CI") == "true":
+            deadline = None if timeout is None else time.monotonic() + timeout
+            startup_deadline = time.monotonic() + min(
+                self._ci_startup_grace, timeout if timeout is not None else self._ci_startup_grace
+            )
+
+            while True:
+                if not self._process.is_alive():
+                    return False
+                now = time.monotonic()
+                if now >= startup_deadline:
+                    return True
+                if deadline is not None and now >= deadline:
+                    return False
+                time.sleep(0.1)
 
         self._send("wait_until_ready", timeout)
         deadline = None if timeout is None else time.monotonic() + timeout

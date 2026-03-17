@@ -18,6 +18,8 @@ runs:
           libxi-dev \
           libxinerama-dev \
           libxkbcommon-dev \
+          libxkbcommon-x11-0 \
           libxrandr-dev \
           mesa-vulkan-drivers \
-          pkg-config
+          pkg-config \
+          xvfb

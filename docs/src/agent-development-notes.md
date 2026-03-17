@@ -8,6 +8,48 @@ and format defined in
 
 Entries are listed newest first.
 
+## 2026-03-17 - Dedicated viewer integration CI stabilized on Linux
+
+- Commits: `e043738`, `56b64dd`, `5c07633`, `bf15327`, `9a9a986`, `2221f78`,
+  `9d6b5da`
+- Agent: `Codex (GPT-5, OpenAI)`
+- Context: The repository already had real viewer and headless-render tests, but they
+  were either skipped in normal CI or mixed into the default Python path without a
+  trustworthy runtime contract. This work carved those checks into a dedicated CI lane
+  and then iterated on the Linux/Xvfb path until the live viewer session and Rust
+  headless tests could pass reliably enough to use as a real integration signal.
+- Implementation: Added a `Viewer Integration` job in `.github/workflows/CI.yml`,
+  removed `ATOMIC_KERNELS_RUN_VIEWER_TESTS=1` from the default Python test job, and
+  extended `.github/actions/install-linux-build-deps/action.yml` with the Xvfb and X11
+  keyboard runtime packages the live viewer actually needs on GitHub-hosted Ubuntu.
+  Tightened `crates/ak-vis/src/viewer/headless.rs` for slower CI rendering, adjusted
+  the live-viewer readiness path in `crates/ak-vis/src/viewer/app.rs`, hardened the
+  subprocess-backed Python viewer lifecycle in
+  `python/atomic_kernels/viewer/_process.py`, and added focused regression coverage in
+  `tests/test_viewer_process.py` plus a second real viewer trajectory command smoke
+  test in `tests/test_viewer_integration.py`.
+- Difficulty: The hard part was that the first failures were misleading. The viewer
+  test initially looked like a generic readiness timeout, but the actual problems came
+  in sequence: missing `libxkbcommon-x11` on the runner, unreaped subprocess teardown
+  that left `xvfb-run` hanging, and finally a readiness handshake that stayed false in
+  the Linux subprocess path even after Bevy had clearly created a real window. Getting
+  to a green lane required separating genuine runtime dependencies from process-lifetime
+  bugs and from the handshake path itself instead of treating everything as the same
+  timeout symptom.
+- Constraints: The dedicated lane is intentionally Linux-only for now and runs against
+  `xvfb` plus Mesa's software-rendered Vulkan (`llvmpipe`), so it should be understood
+  as an explicit CI environment rather than a promise about all GUI backends. The
+  Python subprocess viewer path now uses a CI-specific startup-liveness fallback for
+  readiness because that proved more reliable than the existing explicit ready signal
+  under Xvfb, while the non-CI path still uses the original request/response handshake.
+  The docs workflow was also narrowed during this branch so `docs.yml` is no longer
+  triggered on pull requests and remains manual/push-driven instead.
+- Follow-up: If the live viewer integration lane stays stable, consider whether the
+  CI-specific readiness fallback can be replaced with a more principled backend signal
+  from the Rust viewer app. If more live viewer coverage is added, prefer a small
+  number of behavior-distinct smoke tests over many overlapping windowed tests so the
+  lane stays fast and diagnosable.
+
 ## 2026-03-16 - Wheel build and release workflow consolidated
 
 - Commits: `01b7d6f`, `b84b0a4`, `3ffc69b`, `87c72c8`, `e164e0f`, `5c55fa2`,

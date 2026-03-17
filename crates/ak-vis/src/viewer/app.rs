@@ -1,6 +1,5 @@
 use ak_core::{Structure, Trajectory};
 use bevy::prelude::*;
-use bevy::window::PrimaryWindow;
 use bevy_panorbit_camera::PanOrbitCameraPlugin;
 use std::sync::{Arc, mpsc};
 use std::thread;
@@ -89,7 +88,7 @@ fn run_app(
 
 fn signal_viewer_ready(
     mut lifecycle: ResMut<'_, ViewerLifecycle>,
-    windows: Query<'_, '_, Entity, With<PrimaryWindow>>,
+    windows: Query<'_, '_, Entity, With<Window>>,
 ) {
     if lifecycle.ready_signaled || windows.is_empty() {
         return;

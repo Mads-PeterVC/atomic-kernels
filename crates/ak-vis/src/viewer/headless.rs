@@ -614,8 +614,8 @@ mod tests {
     fn test_render_config(path: &Path) -> HeadlessRenderConfig {
         let mut config = HeadlessRenderConfig::new(path, 320, 240);
         if std::env::var_os("CI").is_some() {
-            config.preroll_frames = 24;
-            config.stable_frames = 8;
+            config.preroll_frames = 48;
+            config.stable_frames = 12;
         }
         config
     }
@@ -645,7 +645,7 @@ mod tests {
     where
         F: FnMut(&Path) -> Result<(), HeadlessRenderError>,
     {
-        let attempts = if std::env::var_os("CI").is_some() { 3 } else { 1 };
+        let attempts = if std::env::var_os("CI").is_some() { 5 } else { 1 };
         for attempt in 0..attempts {
             let path = temp_png(name);
             match render_once(&path) {
