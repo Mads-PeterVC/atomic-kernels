@@ -34,20 +34,29 @@ class ViewerClickScene:
     description: str
 
 
+@dataclass(frozen=True)
+class ClickDebugInfo:
+    process_id: int | None
+    window_id: str
+    window_geometry: dict[str, int]
+    resolved_x: int
+    resolved_y: int
+
+
 def single_center_atom_scene() -> ViewerClickScene:
-    focus = (4.0, 4.0, 4.0)
+    focus = (6.0, 6.0, 6.0)
     return ViewerClickScene(
         atoms=Atoms(
-            "He",
+            "Cs",
             positions=[focus],
-            cell=[8.0, 8.0, 8.0],
+            cell=[12.0, 12.0, 12.0],
             pbc=[False, False, False],
         ),
         focus=focus,
-        radius=12.0,
+        radius=9.0,
         click_target=ClickTarget(0.5, 0.5, normalized_to_window=True),
         expected_selection=[0],
-        description="single atom centered inside an 8x8x8 cell; click at the viewer-window center",
+        description="single large Cs atom centered inside a 12x12x12 cell; click at the viewer-window center",
     )
 
 
@@ -74,15 +83,25 @@ def launch_ready_viewer_session(scene: ViewerClickScene, timeout: float):
     return session
 
 
-def wait_for_selected_atoms(session, expected: list[int], timeout: float) -> None:
+def wait_for_selected_atoms(
+    session, expected: list[int], timeout: float, debug_info: ClickDebugInfo | None = None
+) -> None:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         current = session.selected_atoms()
         if current == expected:
             return
         time.sleep(0.05)
+    debug_suffix = ""
+    if debug_info is not None:
+        debug_suffix = (
+            f"; click debug pid={debug_info.process_id} window={debug_info.window_id} "
+            f"geometry={debug_info.window_geometry} "
+            f"resolved_click=({debug_info.resolved_x}, {debug_info.resolved_y})"
+        )
     raise AssertionError(
         f"selection did not become {expected}; current selection is {session.selected_atoms()}"
+        f"{debug_suffix}"
     )
 
 
@@ -133,8 +152,10 @@ def _window_geometry(window_id: str) -> dict[str, int]:
         if "=" not in line:
             continue
         key, value = line.split("=", 1)
-        if value.isdigit():
+        try:
             geometry[key] = int(value)
+        except ValueError:
+            continue
     return geometry
 
 
@@ -150,13 +171,16 @@ def _resolve_click_target(window_id: str, target: ClickTarget) -> tuple[int, int
     return int(round(target.x * width)), int(round(target.y * height))
 
 
-def click_viewer_at(session, target: ClickTarget) -> None:
+def click_viewer_at(session, target: ClickTarget) -> ClickDebugInfo:
     window_id = _viewer_window_id(session)
+    process_id = _viewer_process_id(session)
+    geometry = _window_geometry(window_id)
     resolved_x, resolved_y = _resolve_click_target(window_id, target)
     subprocess.run(
         [
             "xdotool",
             "mousemove",
+            "--sync",
             "--window",
             window_id,
             str(resolved_x),
@@ -173,4 +197,12 @@ def click_viewer_at(session, target: ClickTarget) -> None:
             "1",
         ],
         check=True,
+    )
+    time.sleep(0.1)
+    return ClickDebugInfo(
+        process_id=process_id,
+        window_id=window_id,
+        window_geometry=geometry,
+        resolved_x=resolved_x,
+        resolved_y=resolved_y,
     )
