@@ -135,6 +135,21 @@ class _ViewerSession:
     def reset_render_style(self):
         return None
 
+    def selected_atoms(self, frame_index=None):
+        return []
+
+    def set_selection(self, selection, frame_index=None):
+        return None
+
+    def add_selection(self, selection, frame_index=None):
+        return None
+
+    def remove_selection(self, selection, frame_index=None):
+        return None
+
+    def clear_selection(self, frame_index=None):
+        return None
+
     def set_camera_view(self, focus=None, radius=None, yaw=None, pitch=None):
         return None
 

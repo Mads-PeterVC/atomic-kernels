@@ -25,7 +25,10 @@ mod tests {
     #[test]
     fn toggle_ui_visibility_flips_visibility_on_u_press() {
         let mut app = App::new();
-        let entity = app.world_mut().spawn((ToggleableUI, Visibility::Visible)).id();
+        let entity = app
+            .world_mut()
+            .spawn((ToggleableUI, Visibility::Visible))
+            .id();
 
         let mut keys = ButtonInput::<KeyCode>::default();
         keys.press(KeyCode::KeyU);
@@ -33,12 +36,18 @@ mod tests {
         app.add_systems(Update, toggle_ui_visibility);
 
         app.update();
-        assert_eq!(*app.world().get::<Visibility>(entity).unwrap(), Visibility::Hidden);
+        assert_eq!(
+            *app.world().get::<Visibility>(entity).unwrap(),
+            Visibility::Hidden
+        );
 
         let mut keys = ButtonInput::<KeyCode>::default();
         keys.press(KeyCode::KeyU);
         app.insert_resource(keys);
         app.update();
-        assert_eq!(*app.world().get::<Visibility>(entity).unwrap(), Visibility::Visible);
+        assert_eq!(
+            *app.world().get::<Visibility>(entity).unwrap(),
+            Visibility::Visible
+        );
     }
 }

@@ -4,6 +4,9 @@ use bevy::prelude::*;
 pub struct FrameAtom;
 
 #[derive(Component)]
+pub struct FrameSelectionHighlight;
+
+#[derive(Component)]
 pub struct FrameBond;
 
 #[derive(Component)]
@@ -22,6 +25,12 @@ pub struct ToggleableUI;
 pub struct MainSceneCamera;
 
 #[derive(Component)]
+pub struct AtomIndex(pub usize);
+
+#[derive(Component)]
+pub struct MarqueeSelectionOverlay;
+
+#[derive(Component)]
 pub struct OrientationWidgetRoot;
 
 #[derive(Component)]
@@ -37,9 +46,9 @@ pub struct OrientationWidgetLetterStroke {
 #[cfg(test)]
 mod tests {
     use super::{
-        FrameAtom, FrameAxis, FrameBond, FrameCell, FrameFace, MainSceneCamera,
-        OrientationWidgetCamera, OrientationWidgetLetterStroke, OrientationWidgetRoot,
-        ToggleableUI,
+        AtomIndex, FrameAtom, FrameAxis, FrameBond, FrameCell, FrameFace, FrameSelectionHighlight,
+        MainSceneCamera, MarqueeSelectionOverlay, OrientationWidgetCamera,
+        OrientationWidgetLetterStroke, OrientationWidgetRoot, ToggleableUI,
     };
     use bevy::prelude::*;
 
@@ -50,12 +59,15 @@ mod tests {
         let entity = world
             .spawn((
                 FrameAtom,
+                FrameSelectionHighlight,
                 FrameBond,
                 FrameFace,
                 FrameCell,
                 FrameAxis,
                 ToggleableUI,
                 MainSceneCamera,
+                AtomIndex(3),
+                MarqueeSelectionOverlay,
                 OrientationWidgetRoot,
                 OrientationWidgetCamera,
                 OrientationWidgetLetterStroke {
@@ -71,12 +83,15 @@ mod tests {
         assert_eq!(stroke.start, Vec2::new(-0.5, 0.0));
         assert_eq!(stroke.end, Vec2::new(0.5, 0.0));
         assert!(world.get::<FrameAtom>(entity).is_some());
+        assert!(world.get::<FrameSelectionHighlight>(entity).is_some());
         assert!(world.get::<FrameBond>(entity).is_some());
         assert!(world.get::<FrameFace>(entity).is_some());
         assert!(world.get::<FrameCell>(entity).is_some());
         assert!(world.get::<FrameAxis>(entity).is_some());
         assert!(world.get::<ToggleableUI>(entity).is_some());
         assert!(world.get::<MainSceneCamera>(entity).is_some());
+        assert_eq!(world.get::<AtomIndex>(entity).unwrap().0, 3);
+        assert!(world.get::<MarqueeSelectionOverlay>(entity).is_some());
         assert!(world.get::<OrientationWidgetRoot>(entity).is_some());
         assert!(world.get::<OrientationWidgetCamera>(entity).is_some());
     }

@@ -35,24 +35,33 @@ Progress
 
 Expand the interactive viewer UI beyond the current camera and rendering controls.
 
-- Atom selection should become a first-class interaction rather than a script-only
-  concept.
 - Add distance and angle measurement tools for common inspection workflows.
 - Show which image in a trajectory is currently displayed.
 - Expect additional viewer affordances to emerge once selection and measurement exist,
   so this area should be treated as a broader UI roadmap rather than a closed list.
 
+Progress
+
+- Shared live atom selection and Shift-drag marquee selection landed in `bd816a4`.
+- The next clean slice in this area is measurement and selection-driven inspection UI,
+  since selection now exists as durable viewer state instead of a script-only mask.
+
 ### Interactive picking and selection state
 
-Add a proper viewer-side picking and selection model that is shared between the UI and
-the Python API.
+~~Add a proper viewer-side picking and selection model that is shared between the UI
+and the Python API.~~
 
-- Picking should identify atoms in the live viewer and expose that state in a durable
-  way rather than only as a transient visual highlight.
-- Python should be able to query, replace, extend, and clear the current selection.
-- The design should support future selection-driven workflows such as measurements,
+- ~~Picking should identify atoms in the live viewer and expose that state in a durable
+  way rather than only as a transient visual highlight.~~
+- ~~Python should be able to query, replace, extend, and clear the current
+  selection.~~
+- ~~The design should support future selection-driven workflows such as measurements,
   annotations, and subset-specific rendering without duplicating selection logic across
-  the Rust viewer and Python facade layers.
+  the Rust viewer and Python facade layers.~~
+
+Progress
+
+- Feature completed in `bd816a4`.
 
 ### Supercell visualization and selection semantics
 

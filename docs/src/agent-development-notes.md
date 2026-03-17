@@ -8,6 +8,52 @@ and format defined in
 
 Entries are listed newest first.
 
+## 2026-03-17 - Interactive viewer selection and marquee picking
+
+- Commit: `bd816a4`
+- Agent: `Codex (GPT-5, OpenAI)`
+- Context: The viewer already had Python-side selection-aware rendering and coloring,
+  but live interaction still treated selection as a script-led concept instead of real
+  viewer state. This work made atom selection durable in the running viewer, exposed it
+  through the Python session API, and added Shift-drag marquee selection so common slab
+  and layer workflows do not depend on clicking atoms one by one.
+- Implementation: Extended `crates/ak-vis/src/viewer/session.rs` with frame-scoped
+  shared selection state, selection commands, and a snapshot path for live readback.
+  Wired live atom picking and selection highlighting through
+  `crates/ak-vis/src/viewer/systems.rs`, `crates/ak-vis/src/viewer/app.rs`, and the
+  atom/entity tagging changes in `crates/ak-vis/src/render/render_atoms.rs`,
+  `crates/ak-vis/src/components.rs`, and `crates/ak-vis/src/visuals/convert.rs`.
+  Exposed selection query and mutation methods through the PyO3 bindings in
+  `crates/ak-py/src/pyfunctions/py_viewer.rs` and the Python facade/proxy layers in
+  `python/atomic_kernels/viewer/_session.py`,
+  `python/atomic_kernels/viewer/_process.py`, and
+  `python/atomic_kernels/atomic_kernels.pyi`. Follow-up work on the same commit added a
+  screen-space Shift-drag marquee rectangle that targets the main scene camera and
+  replaces the current frame selection using projected atom centers without occlusion
+  filtering.
+- Difficulty: The awkward part was that selection touched several different abstractions
+  at once. The viewer command channel was one-way, so Python readback needed a shared
+  snapshot instead of another ad hoc request/response path. The first visible selection
+  highlight also broke Shift-click deselection because the translucent shell itself was
+  pickable and intercepted clicks until it was explicitly marked `Pickable::IGNORE`.
+  Marquee selection then added another layer of input coordination: the drag path needed
+  to suppress PanOrbit's normal left-button orbiting only for the active gesture, avoid
+  turning a tiny Shift-click jitter into a rectangle selection, and target the correct
+  UI camera so the marquee box actually rendered above the 3D scene.
+- Constraints: Shared selection is frame-scoped and atom-only. It supports live picking,
+  Shift-click toggling, Python query/replace/add/remove/clear operations, and
+  Shift-drag rectangle replacement on the current frame. The marquee path is
+  intentionally depth-agnostic and uses projected atom centers rather than sphere
+  overlap, which is what makes side-view slab selection practical but also means it is
+  not a visibility-filtered lasso tool. The overlay box is a live-viewer affordance and
+  does not introduce a new Python UI API.
+- Follow-up: The next clean feature on top of this is measurement and inspection UI:
+  distances for 2 selected atoms, angles for 3 selected atoms, and a deliberate choice
+  about whether those appear as a HUD panel, inline labels, or a more explicit viewer
+  tool mode. If supercell display lands later, selection identity will need another pass
+  so repeated images can participate without collapsing back into the original-cell atom
+  set.
+
 ## 2026-03-17 - Dedicated viewer integration CI stabilized on Linux
 
 - Commits: `e043738`, `56b64dd`, `5c07633`, `bf15327`, `9a9a986`, `2221f78`,

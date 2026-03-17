@@ -117,3 +117,7 @@ def selection_mask(atoms: Atoms, selection) -> np.ndarray:
     resolved = np.zeros(len(atoms), dtype=bool)
     resolved[indices] = True
     return resolved
+
+
+def normalized_selection_mask(atoms: Atoms, selection) -> list[bool]:
+    return selection_mask(atoms, selection).tolist()

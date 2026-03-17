@@ -2,18 +2,32 @@ use crate::render::{render_atoms, render_axis, render_bonds, render_cell, render
 use crate::visuals::{BondVisual, FaceVisual};
 use crate::{JMOL, convert_axis, convert_cell, convert_structure, structure_position_to_world};
 
-use crate::components::{FrameAtom, FrameAxis, FrameBond, FrameCell, FrameFace, MainSceneCamera};
+use crate::components::{
+    AtomIndex, FrameAtom, FrameAxis, FrameBond, FrameCell, FrameFace, FrameSelectionHighlight,
+    MainSceneCamera, MarqueeSelectionOverlay,
+};
 use crate::viewer::ViewerConfig;
 use crate::viewer::controls::default_camera_state;
 use crate::viewer::controls::despawn_current_frame;
-use crate::viewer::runtime::{CommandReceiver, MainCameraRenderTarget};
+use crate::viewer::runtime::{CommandReceiver, MainCameraRenderTarget, SharedViewerSnapshot};
 use crate::viewer::{
     AtomColorRule, BallAndStickStyle, BondList, BondScope, CameraState, RenderStyle, ViewerState,
 };
 use bevy::ecs::system::SystemParam;
+use bevy::picking::prelude::{Click, Pickable, Pointer, PointerButton};
 use bevy::prelude::*;
 use bevy_panorbit_camera::PanOrbitCamera;
 use std::collections::HashMap;
+
+const MARQUEE_DRAG_THRESHOLD: f32 = 6.0;
+
+#[derive(Resource, Debug, Default, Clone)]
+pub struct MarqueeSelectionState {
+    drag_start: Option<Vec2>,
+    drag_current: Option<Vec2>,
+    drag_active: bool,
+    suppress_click_once: bool,
+}
 
 fn scalar_colors_for_rule(
     viewer: &ViewerState,
@@ -193,6 +207,161 @@ fn face_visuals_for_current_frame(viewer: &ViewerState) -> Vec<FaceVisual> {
     visuals
 }
 
+fn selection_highlight_visuals_for_current_frame(viewer: &ViewerState) -> Vec<crate::AtomVisual> {
+    let selection = viewer.current_selection();
+    if selection.is_empty() || !selection.iter().any(|selected| *selected) {
+        return Vec::new();
+    }
+
+    convert_structure(&viewer.traj.view(viewer.current), &JMOL)
+        .into_iter()
+        .filter_map(|mut visual| {
+            if !selection.get(visual.atom_index).copied().unwrap_or(false) {
+                return None;
+            }
+            visual.radius = selection_highlight_radius(visual.radius);
+            visual.color = selection_highlight_color();
+            Some(visual)
+        })
+        .collect()
+}
+
+fn shift_held(keys: &ButtonInput<KeyCode>) -> bool {
+    keys.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight])
+}
+
+fn viewport_contains(camera: &Camera, point: Vec2) -> bool {
+    camera
+        .logical_viewport_rect()
+        .map(|rect| rect.contains(point))
+        .unwrap_or(true)
+}
+
+fn marquee_drag_exceeded(start: Vec2, current: Vec2) -> bool {
+    start.distance(current) >= MARQUEE_DRAG_THRESHOLD
+}
+
+fn marquee_rect(start: Vec2, current: Vec2) -> Rect {
+    Rect::from_corners(start, current)
+}
+
+fn selection_mask_for_projected_positions(
+    atom_count: usize,
+    projected_positions: impl IntoIterator<Item = (usize, Vec2)>,
+    rect: Rect,
+) -> Vec<bool> {
+    let mut mask = vec![false; atom_count];
+    for (index, viewport_position) in projected_positions {
+        if index < atom_count && rect.contains(viewport_position) {
+            mask[index] = true;
+        }
+    }
+    mask
+}
+
+fn projected_selection_for_rect(
+    viewer: &ViewerState,
+    camera: &Camera,
+    camera_transform: &GlobalTransform,
+    rect: Rect,
+) -> Vec<bool> {
+    let view = viewer.traj.view(viewer.current);
+    let projected = view
+        .positions
+        .iter()
+        .enumerate()
+        .filter_map(|(index, position)| {
+            camera
+                .world_to_viewport(camera_transform, structure_position_to_world(*position))
+                .ok()
+                .map(|viewport_position| (index, viewport_position))
+        });
+    selection_mask_for_projected_positions(view.positions.len(), projected, rect)
+}
+
+fn selection_highlight_radius(atom_radius: f32) -> f32 {
+    atom_radius + 0.08 + atom_radius * 0.12
+}
+
+fn selection_highlight_color() -> Color {
+    Color::srgba(1.0, 0.55, 0.08, 0.42)
+}
+
+fn render_selection_highlights(
+    visuals: Vec<crate::AtomVisual>,
+    commands: &mut Commands,
+    materials: &mut ResMut<Assets<StandardMaterial>>,
+    meshes: &mut ResMut<Assets<Mesh>>,
+    quality: u32,
+) {
+    for visual in visuals {
+        let mesh = meshes.add(
+            Sphere::new(visual.radius)
+                .mesh()
+                .ico(quality)
+                .expect("Failed to create selection highlight sphere"),
+        );
+        let material = materials.add(StandardMaterial {
+            base_color: visual.color,
+            alpha_mode: AlphaMode::Blend,
+            unlit: true,
+            cull_mode: None,
+            ..default()
+        });
+        commands.spawn((
+            Mesh3d(mesh),
+            MeshMaterial3d(material),
+            Transform::from_translation(Vec3::new(visual.x(), visual.y(), visual.z())),
+            FrameSelectionHighlight,
+            Pickable::IGNORE,
+        ));
+    }
+}
+
+impl MarqueeSelectionState {
+    fn is_tracking(&self) -> bool {
+        self.drag_start.is_some()
+    }
+
+    fn begin(&mut self, cursor: Vec2) {
+        self.drag_start = Some(cursor);
+        self.drag_current = Some(cursor);
+        self.drag_active = false;
+    }
+
+    fn update(&mut self, cursor: Vec2) {
+        let Some(start) = self.drag_start else {
+            return;
+        };
+        self.drag_current = Some(cursor);
+        if !self.drag_active && marquee_drag_exceeded(start, cursor) {
+            self.drag_active = true;
+        }
+    }
+
+    fn active_rect(&self) -> Option<Rect> {
+        if !self.drag_active {
+            return None;
+        }
+        Some(marquee_rect(self.drag_start?, self.drag_current?))
+    }
+
+    fn finish(&mut self) -> Option<Rect> {
+        let rect = self.active_rect();
+        self.drag_start = None;
+        self.drag_current = None;
+        self.drag_active = false;
+        if rect.is_some() {
+            self.suppress_click_once = true;
+        }
+        rect
+    }
+
+    fn take_click_suppression(&mut self) -> bool {
+        std::mem::take(&mut self.suppress_click_once)
+    }
+}
+
 fn render_frame(
     commands: &mut Commands,
     meshes: &mut ResMut<Assets<Mesh>>,
@@ -231,6 +400,17 @@ fn render_frame(
         meshes,
         config.render.ico_subdiv,
     );
+
+    let selection_highlights = selection_highlight_visuals_for_current_frame(viewer);
+    if !selection_highlights.is_empty() {
+        render_selection_highlights(
+            selection_highlights,
+            commands,
+            materials,
+            meshes,
+            config.render.ico_subdiv,
+        );
+    }
 
     let bond_visuals = bond_visuals_for_current_frame(viewer);
     if !bond_visuals.is_empty() {
@@ -389,6 +569,162 @@ pub fn update_camera_light(
     light_transform.rotation = Quat::from_rotation_arc(Vec3::NEG_Z, to_focus);
 }
 
+pub fn setup_marquee_overlay(mut commands: Commands) {
+    commands.spawn((
+        Node {
+            position_type: PositionType::Absolute,
+            left: px(0.0),
+            top: px(0.0),
+            width: px(0.0),
+            height: px(0.0),
+            border: UiRect::all(px(1.5)),
+            display: Display::None,
+            ..default()
+        },
+        BackgroundColor(Color::srgba(1.0, 0.55, 0.08, 0.12)),
+        BorderColor::all(Color::srgba(1.0, 0.7, 0.2, 0.85)),
+        Visibility::Hidden,
+        ZIndex(50),
+        MarqueeSelectionOverlay,
+    ));
+}
+
+pub fn handle_marquee_selection(
+    mouse_buttons: Res<ButtonInput<MouseButton>>,
+    keys: Res<ButtonInput<KeyCode>>,
+    windows: Query<&Window>,
+    mut camera_query: Query<
+        (&Camera, &GlobalTransform, &mut PanOrbitCamera),
+        With<MainSceneCamera>,
+    >,
+    mut marquee: ResMut<MarqueeSelectionState>,
+    mut viewer: ResMut<ViewerState>,
+) {
+    let Ok(window) = windows.single() else {
+        return;
+    };
+    let Ok((camera, camera_transform, mut pan_orbit)) = camera_query.single_mut() else {
+        return;
+    };
+    let cursor_position = window.cursor_position();
+
+    if mouse_buttons.just_pressed(MouseButton::Left)
+        && shift_held(&keys)
+        && let Some(cursor_position) = cursor_position
+        && viewport_contains(camera, cursor_position)
+    {
+        marquee.begin(cursor_position);
+        pan_orbit.enabled = false;
+    }
+
+    if !marquee.is_tracking() {
+        return;
+    }
+
+    if mouse_buttons.pressed(MouseButton::Left)
+        && let Some(cursor_position) = cursor_position
+    {
+        marquee.update(cursor_position);
+    }
+
+    if mouse_buttons.just_released(MouseButton::Left) {
+        let rect = marquee.finish();
+        pan_orbit.enabled = true;
+
+        if let Some(rect) = rect {
+            let selection =
+                projected_selection_for_rect(viewer.as_ref(), camera, camera_transform, rect);
+            let current_frame = viewer.current;
+            viewer.selection.replace(current_frame, selection);
+            viewer.needs_render = true;
+        }
+    }
+}
+
+pub fn sync_marquee_overlay(
+    mut commands: Commands,
+    marquee: Res<MarqueeSelectionState>,
+    main_camera: Query<Entity, With<MainSceneCamera>>,
+    mut overlays: Query<
+        (Entity, &mut Node, &mut Visibility, Option<&UiTargetCamera>),
+        With<MarqueeSelectionOverlay>,
+    >,
+) {
+    let Ok((overlay_entity, mut node, mut visibility, target_camera)) = overlays.single_mut()
+    else {
+        return;
+    };
+    if target_camera.is_none()
+        && let Ok(main_camera) = main_camera.single()
+    {
+        commands
+            .entity(overlay_entity)
+            .insert(UiTargetCamera(main_camera));
+    }
+
+    let Some(rect) = marquee.active_rect() else {
+        node.display = Display::None;
+        *visibility = Visibility::Hidden;
+        return;
+    };
+
+    node.display = Display::Flex;
+    node.left = px(rect.min.x);
+    node.top = px(rect.min.y);
+    node.width = px(rect.width());
+    node.height = px(rect.height());
+    *visibility = Visibility::Visible;
+}
+
+pub fn sync_viewer_snapshot(viewer: Res<ViewerState>, snapshot: Res<SharedViewerSnapshot>) {
+    let Ok(mut snapshot) = snapshot.0.lock() else {
+        return;
+    };
+    snapshot.current_frame = viewer.current;
+    snapshot.selection = viewer.selection.clone();
+}
+
+pub fn handle_atom_clicks(
+    mut clicks: MessageReader<Pointer<Click>>,
+    keys: Res<ButtonInput<KeyCode>>,
+    atoms: Query<&AtomIndex>,
+    mut marquee: ResMut<MarqueeSelectionState>,
+    mut viewer: ResMut<ViewerState>,
+) {
+    if marquee.take_click_suppression() {
+        let _ = clicks.read().count();
+        return;
+    }
+
+    let modified = keys.any_pressed([
+        KeyCode::ShiftLeft,
+        KeyCode::ShiftRight,
+        KeyCode::ControlLeft,
+        KeyCode::ControlRight,
+        KeyCode::SuperLeft,
+        KeyCode::SuperRight,
+    ]);
+
+    let mut changed = false;
+    for click in clicks.read() {
+        if click.button != PointerButton::Primary {
+            continue;
+        }
+        let Ok(atom_index) = atoms.get(click.entity) else {
+            continue;
+        };
+        changed |= if modified {
+            viewer.toggle_atom_selection(atom_index.0)
+        } else {
+            viewer.replace_atom_selection(atom_index.0)
+        };
+    }
+
+    if changed {
+        viewer.needs_render = true;
+    }
+}
+
 pub fn apply_viewer_commands(
     mut viewer: ResMut<ViewerState>,
     mut camera: ResMut<CameraState>,
@@ -422,6 +758,7 @@ pub fn apply_viewer_commands(
 #[derive(SystemParam)]
 pub struct RenderFrameQueries<'w, 's> {
     atoms: Query<'w, 's, Entity, With<FrameAtom>>,
+    selection_highlights: Query<'w, 's, Entity, With<FrameSelectionHighlight>>,
     cells: Query<'w, 's, Entity, With<FrameCell>>,
     axes: Query<'w, 's, Entity, With<FrameAxis>>,
     bonds: Query<'w, 's, Entity, With<FrameBond>>,
@@ -449,6 +786,7 @@ pub fn rerender_if_dirty(
     despawn_current_frame(
         &mut commands,
         queries.atoms,
+        queries.selection_highlights,
         queries.cells,
         queries.axes,
         queries.bonds,
@@ -490,4 +828,119 @@ pub fn apply_camera_state(
     orbit.target_pitch = camera_state.pitch;
     orbit.force_update = true;
     camera_state.needs_apply = false;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        MarqueeSelectionState, marquee_drag_exceeded, selection_highlight_color,
+        selection_highlight_radius, selection_mask_for_projected_positions, sync_marquee_overlay,
+    };
+    use crate::components::{MainSceneCamera, MarqueeSelectionOverlay};
+    use bevy::ecs::system::SystemState;
+    use bevy::prelude::*;
+
+    #[test]
+    fn selection_highlight_radius_keeps_a_minimum_extra_shell() {
+        let small = selection_highlight_radius(0.25);
+        let medium = selection_highlight_radius(0.5);
+
+        assert!((small - 0.25) > 0.10);
+        assert!((medium - 0.5) > 0.13);
+    }
+
+    #[test]
+    fn selection_highlight_radius_grows_sublinearly_relative_to_atom_size() {
+        let small_extra = selection_highlight_radius(0.3) - 0.3;
+        let large_extra = selection_highlight_radius(1.2) - 1.2;
+
+        assert!(large_extra > small_extra);
+        assert!(selection_highlight_radius(1.2) < 1.2 * 1.2);
+    }
+
+    #[test]
+    fn selection_highlight_color_is_more_pronounced() {
+        let color = selection_highlight_color().to_srgba();
+
+        assert!(color.red >= 0.99);
+        assert!(color.green < 0.6);
+        assert!(color.alpha >= 0.4);
+    }
+
+    #[test]
+    fn marquee_threshold_requires_real_drag_distance() {
+        assert!(!marquee_drag_exceeded(
+            Vec2::new(10.0, 10.0),
+            Vec2::new(13.0, 14.0)
+        ));
+        assert!(marquee_drag_exceeded(
+            Vec2::new(10.0, 10.0),
+            Vec2::new(20.0, 10.0)
+        ));
+    }
+
+    #[test]
+    fn projected_selection_mask_is_depth_agnostic() {
+        let rect = Rect::from_corners(Vec2::new(10.0, 10.0), Vec2::new(40.0, 40.0));
+        let mask = selection_mask_for_projected_positions(
+            4,
+            [
+                (0, Vec2::new(12.0, 12.0)),
+                (1, Vec2::new(12.0, 12.0)),
+                (2, Vec2::new(60.0, 60.0)),
+                (3, Vec2::new(20.0, 25.0)),
+            ],
+            rect,
+        );
+
+        assert_eq!(mask, vec![true, true, false, true]);
+    }
+
+    #[test]
+    fn sync_marquee_overlay_updates_visibility_and_bounds() {
+        let mut world = World::new();
+        let mut marquee = MarqueeSelectionState::default();
+        marquee.begin(Vec2::new(10.0, 15.0));
+        marquee.update(Vec2::new(40.0, 55.0));
+        world.insert_resource(marquee);
+        world.spawn((Camera::default(), MainSceneCamera));
+        world.spawn((
+            Node {
+                display: Display::None,
+                ..default()
+            },
+            Visibility::Hidden,
+            MarqueeSelectionOverlay,
+        ));
+
+        let mut system_state: SystemState<(
+            Commands,
+            Res<MarqueeSelectionState>,
+            Query<Entity, With<MainSceneCamera>>,
+            Query<
+                (Entity, &mut Node, &mut Visibility, Option<&UiTargetCamera>),
+                With<MarqueeSelectionOverlay>,
+            >,
+        )> = SystemState::new(&mut world);
+
+        let (commands, marquee, main_camera, overlays) = system_state.get_mut(&mut world);
+        sync_marquee_overlay(commands, marquee, main_camera, overlays);
+        system_state.apply(&mut world);
+
+        let main_camera_entity = world
+            .query_filtered::<Entity, With<MainSceneCamera>>()
+            .single(&world)
+            .expect("main camera should exist");
+        let (node, visibility, target_camera) = world
+            .query::<(&Node, &Visibility, &UiTargetCamera)>()
+            .single(&world)
+            .expect("overlay should exist");
+        assert_eq!(node.display, Display::Flex);
+        assert_eq!(node.left, px(10.0));
+        assert_eq!(node.top, px(15.0));
+        assert_eq!(node.width, px(30.0));
+        assert_eq!(node.height, px(40.0));
+        assert_eq!(*visibility, Visibility::Visible);
+        assert_eq!(target_camera.entity(), main_camera_entity);
+    }
 }

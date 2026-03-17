@@ -1,18 +1,16 @@
 use ak_core::Structure;
-use ak_vis::{
-    AtomVisual, AxisVisual, ColorScheme, JMOL, ScalarColorMap, render, render_atoms,
-};
-use ak_vis::visuals::{BondVisual, FaceVisual};
 use ak_vis::viewer::{RenderConfig, ViewerConfig};
+use ak_vis::visuals::{BondVisual, FaceVisual};
+use ak_vis::{AtomVisual, AxisVisual, ColorScheme, JMOL, ScalarColorMap, render, render_atoms};
 use bevy::ecs::system::SystemState;
 use bevy::prelude::*;
 
-#[path = "../examples/headless_scene.rs"]
-#[allow(dead_code)]
-mod headless_scene;
 #[path = "../examples/config_scene.rs"]
 #[allow(dead_code)]
 mod config_scene;
+#[path = "../examples/headless_scene.rs"]
+#[allow(dead_code)]
+mod headless_scene;
 #[path = "../examples/relaxation_scene.rs"]
 #[allow(dead_code)]
 mod relaxation_scene;
@@ -41,7 +39,10 @@ fn jmol_palette_and_color_scheme_return_expected_colors() {
     let hydrogen = JMOL.get(structure.view().numbers[0]).to_srgba();
     let oxygen = JMOL.color(&structure.view(), 1).to_srgba();
 
-    assert_eq!((hydrogen.red, hydrogen.green, hydrogen.blue), (1.0, 1.0, 1.0));
+    assert_eq!(
+        (hydrogen.red, hydrogen.green, hydrogen.blue),
+        (1.0, 1.0, 1.0)
+    );
     assert!((oxygen.red - 1.0).abs() < 1e-6);
     assert!(oxygen.green < 0.1);
     assert!(oxygen.blue < 0.1);
@@ -84,9 +85,9 @@ fn render_helpers_spawn_expected_entities() {
         let (mut commands, mut materials, mut meshes) = system_state.get_mut(&mut world);
         render_atoms(
             vec![
-                AtomVisual::new([0.0, 0.0, 0.0], Color::srgb(1.0, 0.0, 0.0), 0.5),
-                AtomVisual::new([1.0, 0.0, 0.0], Color::srgb(1.0, 0.0, 0.0), 0.5),
-                AtomVisual::new([0.0, 1.0, 0.0], Color::srgb(0.0, 0.0, 1.0), 0.25),
+                AtomVisual::new(0, [0.0, 0.0, 0.0], Color::srgb(1.0, 0.0, 0.0), 0.5),
+                AtomVisual::new(1, [1.0, 0.0, 0.0], Color::srgb(1.0, 0.0, 0.0), 0.5),
+                AtomVisual::new(2, [0.0, 1.0, 0.0], Color::srgb(0.0, 0.0, 1.0), 0.25),
             ],
             &mut commands,
             &mut materials,

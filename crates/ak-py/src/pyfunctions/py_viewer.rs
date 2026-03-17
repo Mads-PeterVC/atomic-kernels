@@ -204,6 +204,39 @@ impl PyViewerSession {
         self.handle.reset_render_style().map_err(Self::send_error)
     }
 
+    #[pyo3(signature = (frame_index=None))]
+    fn selected_atoms(&self, frame_index: Option<usize>) -> Vec<usize> {
+        self.handle.selected_atoms(frame_index)
+    }
+
+    #[pyo3(signature = (selection, frame_index=None))]
+    fn set_selection(&self, selection: Vec<bool>, frame_index: Option<usize>) -> PyResult<()> {
+        self.handle
+            .replace_selection(selection, frame_index)
+            .map_err(Self::send_error)
+    }
+
+    #[pyo3(signature = (selection, frame_index=None))]
+    fn add_selection(&self, selection: Vec<bool>, frame_index: Option<usize>) -> PyResult<()> {
+        self.handle
+            .add_selection(selection, frame_index)
+            .map_err(Self::send_error)
+    }
+
+    #[pyo3(signature = (selection, frame_index=None))]
+    fn remove_selection(&self, selection: Vec<bool>, frame_index: Option<usize>) -> PyResult<()> {
+        self.handle
+            .remove_selection(selection, frame_index)
+            .map_err(Self::send_error)
+    }
+
+    #[pyo3(signature = (frame_index=None))]
+    fn clear_selection(&self, frame_index: Option<usize>) -> PyResult<()> {
+        self.handle
+            .clear_selection(frame_index)
+            .map_err(Self::send_error)
+    }
+
     #[pyo3(signature = (focus=None, radius=None, yaw=None, pitch=None))]
     fn set_camera_view(
         &self,
@@ -288,7 +321,13 @@ impl PyPreparedViewerSession {
         })?;
 
         py.detach(move || {
-            run_prepared(trajectory, config, receiver, handle.readiness().clone());
+            run_prepared(
+                trajectory,
+                config,
+                receiver,
+                handle.readiness().clone(),
+                handle.snapshot().clone(),
+            );
         });
 
         Ok(())

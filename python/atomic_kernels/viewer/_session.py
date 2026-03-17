@@ -5,6 +5,7 @@ from ase import Atoms
 from ._camera import CameraController
 from ._color import ColorController, ViewerSelection
 from ._render import RenderController
+from ._utils import normalized_selection_mask
 
 
 class ViewerSessionFacade:
@@ -63,6 +64,38 @@ class ViewerSessionFacade:
     def close(self) -> None:
         """Close the running viewer session."""
         self._backend.close()
+
+    def selected_atoms(self, frame_index: int | None = None) -> list[int]:
+        """Return the currently selected atom indices for a frame."""
+        return list(self._backend.selected_atoms(self._resolve_frame_index(frame_index)))
+
+    def set_selection(self, selection, frame_index: int | None = None) -> None:
+        """Replace the shared live selection for a frame."""
+        resolved = self._resolve_frame_index(frame_index)
+        self._backend.set_selection(
+            normalized_selection_mask(self._frame(resolved), selection),
+            frame_index=resolved,
+        )
+
+    def add_selection(self, selection, frame_index: int | None = None) -> None:
+        """Add atoms to the shared live selection for a frame."""
+        resolved = self._resolve_frame_index(frame_index)
+        self._backend.add_selection(
+            normalized_selection_mask(self._frame(resolved), selection),
+            frame_index=resolved,
+        )
+
+    def remove_selection(self, selection, frame_index: int | None = None) -> None:
+        """Remove atoms from the shared live selection for a frame."""
+        resolved = self._resolve_frame_index(frame_index)
+        self._backend.remove_selection(
+            normalized_selection_mask(self._frame(resolved), selection),
+            frame_index=resolved,
+        )
+
+    def clear_selection(self, frame_index: int | None = None) -> None:
+        """Clear the shared live selection for a frame."""
+        self._backend.clear_selection(frame_index=self._resolve_frame_index(frame_index))
 
     def wait_until_ready(self, timeout: float | None = None) -> bool:
         """Wait until the viewer reports readiness or the timeout elapses.
