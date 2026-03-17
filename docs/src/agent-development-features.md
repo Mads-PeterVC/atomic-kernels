@@ -111,16 +111,21 @@ Progress
 
 ### Dedicated viewer integration CI
 
-Add a dedicated CI lane for real viewer and headless-render integration coverage with
-explicit runtime assumptions.
+~~Add a dedicated CI lane for real viewer and headless-render integration coverage with
+explicit runtime assumptions.~~
 
-- GUI and headless viewer tests should not be folded blindly into the default unit-test
+- ~~GUI and headless viewer tests should not be folded blindly into the default unit-test
   path because they depend on graphics/runtime details that differ from normal library
-  tests.
-- The job should define and document the display, renderer, or software-rendering
-  environment it expects so failures are actionable rather than flaky.
-- Once this exists, it should cover the real viewer lifecycle more directly than the
-  current stub-heavy Python tests.
+  tests.~~
+- ~~The job should define and document the display, renderer, or software-rendering
+  environment it expects so failures are actionable rather than flaky.~~
+- ~~Once this exists, it should cover the real viewer lifecycle more directly than the
+  current stub-heavy Python tests.~~
+
+Progress
+
+- Feature completed in `e043738`, `56b64dd`, `5c07633`, `bf15327`, `9a9a986`,
+  `2221f78`, `9d6b5da`.
 
 ### Camera tuning as public configuration
 
