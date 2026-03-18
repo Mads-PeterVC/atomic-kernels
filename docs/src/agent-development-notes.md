@@ -8,6 +8,84 @@ and format defined in
 
 Entries are listed newest first.
 
+## 2026-03-18 - Inspector UI, angle cue, and UI module split
+
+- Commits: `fb94de0`, `8e2d2f7`, `fd041e5`, `24496e7`
+- Agent: `Codex (GPT-5, OpenAI)`
+- Context: Once live selection existed in the viewer, the next high-value gap was a
+  usable inspection surface. This work replaced the placeholder overlay with a real
+  inspector panel, added selection-driven distance and angle readouts, and then pushed
+  the angle case far enough to be legible in-scene instead of only as text. The same
+  branch also cleaned up the now-large UI module into a directory-backed Rust 2018
+  module layout so future UI work does not pile more behavior into one file.
+- Implementation: Added a structured inspector in `crates/ak-vis/src/ui.rs` and later
+  split it into `crates/ak-vis/src/ui/{build,shortcuts,state,tests}.rs`, with
+  `crates/ak-vis/src/ui.rs` kept as the module entrypoint. The panel now owns
+  selection and measurement state, a collapsible keybindings section, symbol-font
+  keycaps, and the `U`/`H` toggle behavior. Selection-driven angle rendering was added
+  in `crates/ak-vis/src/viewer/systems.rs` as derived scene geometry (two rays plus an
+  arc), with supporting frame markers and teardown updates in
+  `crates/ak-vis/src/components.rs` and
+  `crates/ak-vis/src/viewer/controls/navigation.rs`. Preserving click order for the
+  angle vertex required extending `crates/ak-vis/src/viewer/session.rs` so
+  `SelectionFrames` stores per-frame selection order alongside the boolean mask.
+- Difficulty: The awkward parts came in layers. The first panel version initially
+  bound itself to the orientation-widget camera instead of the main scene camera, then
+  briefly broke click-picking because the UI overlay was still pickable. The angle cue
+  then rendered correctly in data terms but was hidden inside the enlarged selection
+  shell until its radius was made relative to the actual vertex atom highlight. The
+  most important semantic bug was that the old selection model only stored a boolean
+  mask, so `selected_atoms()` reconstructed indices in ascending order and silently
+  changed `A-B-C` measurements into `min-mid-max`; fixing that required treating
+  selection order as real viewer state rather than an incidental UI detail. Even the
+  keybinding chips took several iterations because the chosen font and codepoint family
+  had to be made consistent before the arrows stopped looking mismatched.
+- Constraints: Measurement remains viewer-only and selection-driven. Distances are
+  still text-only for 2 selected atoms, while the scene cue exists only for 3-atom
+  angle measurements and uses the second selected atom as the vertex. The keybinding
+  arrows currently depend on the bundled `NotoSansSymbols2-Regular.ttf` asset and use
+  per-glyph placement tweaks rather than a general icon system. The inspector does not
+  yet include trajectory status or playback controls.
+- Follow-up: The next clean UI slice is a separate trajectory/status control surface,
+  since the current inspector intentionally dropped trajectory information to stay
+  focused on selection and measurement. If distance measurements also need an in-scene
+  cue, build it on top of the same derived measurement path rather than introducing a
+  second ad hoc overlay model.
+
+## 2026-03-17 - Real viewer click smoke test added under Xvfb
+
+- Commit: `294787b`
+- Agent: `Codex (GPT-5, OpenAI)`
+- Context: The new inspector UI briefly regressed live click picking, which exposed a
+  gap in the existing integration coverage: the project had real viewer CI, but no
+  end-to-end test that proved UI-enabled pointer input still selected atoms. This
+  change added one narrow smoke test for that contract and a matching manual scene so
+  the setup can be inspected visually before trusting CI.
+- Implementation: Added `tests/viewer_integration_helpers.py` with a small reusable
+  harness for deterministic viewer-input scenes, UI-enabled session launch, polling,
+  and real X11 click injection through `xdotool`. Added the manual validation script
+  `scripts/viewer_click_selection_scene.py`, extended
+  `tests/test_viewer_integration.py` with a single UI-enabled atom-click smoke test,
+  and updated `.github/actions/install-linux-build-deps/action.yml` so the viewer
+  integration lane installs `xdotool`.
+- Difficulty: The hard part was that several plausible click strategies worked
+  differently under `xvfb-run` than in a normal desktop session. The initial
+  screen-center click missed the window, window activation failed because there is no
+  real window manager in the CI environment, and window-targeted `xdotool click
+  --window ...` still did not trigger Bevy selection reliably. The stable solution was
+  to resolve the actual viewer window geometry, move the real X pointer to absolute
+  coordinates, and emit explicit `mousedown`/`mouseup` events. The test harness also
+  needed richer debug output while converging on that path.
+- Constraints: The smoke test is intentionally narrow. It only asserts that one visible
+  atom can be selected with `show_ui=True` under the Linux/Xvfb CI path, and it skips
+  cleanly unless `ATOMIC_KERNELS_RUN_VIEWER_TESTS=1`, a windowing session, and
+  `xdotool` are all present. It is a regression guard for UI-enabled click picking,
+  not a broad GUI automation framework.
+- Follow-up: If more live viewer input coverage is added, extend the same helper
+  module with additional deterministic scenes rather than duplicating subprocess and
+  `xdotool` setup inline. The next likely additions would be Shift-click selection
+  order and marquee-selection coexistence with the inspector enabled.
+
 ## 2026-03-17 - Interactive viewer selection and marquee picking
 
 - Commit: `bd816a4`

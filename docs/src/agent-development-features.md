@@ -35,7 +35,7 @@ Progress
 
 Expand the interactive viewer UI beyond the current camera and rendering controls.
 
-- Add distance and angle measurement tools for common inspection workflows.
+- ~~Add distance and angle measurement tools for common inspection workflows.~~
 - Show which image in a trajectory is currently displayed.
 - Expect additional viewer affordances to emerge once selection and measurement exist,
   so this area should be treated as a broader UI roadmap rather than a closed list.
@@ -43,8 +43,25 @@ Expand the interactive viewer UI beyond the current camera and rendering control
 Progress
 
 - Shared live atom selection and Shift-drag marquee selection landed in `bd816a4`.
-- The next clean slice in this area is measurement and selection-driven inspection UI,
-  since selection now exists as durable viewer state instead of a script-only mask.
+- A structured selection/measurement inspector, keybindings panel, 2-atom distance
+  readout, 3-atom angle readout, 3-atom in-scene angle cue, and the follow-up UI
+  module split landed in `fb94de0`, `8e2d2f7`, `fd041e5`, and `24496e7`.
+- The next clean slice in this area is a dedicated trajectory status/playback surface,
+  since the current inspector intentionally stays focused on selection and measurement.
+
+### UI-enabled viewer input smoke test
+
+~~Add one real viewer integration smoke test that proves atom click-picking still works
+when the UI is enabled.~~
+
+- ~~The test should run in the existing Xvfb-based viewer integration lane rather than
+  relying only on in-process unit tests.~~
+- ~~The scene setup should be reusable and manually launchable so the click target can
+  be inspected visually before CI green is trusted.~~
+
+Progress
+
+- Feature completed in `294787b`.
 
 ### Interactive picking and selection state
 
