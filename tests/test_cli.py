@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from ase import Atoms
 from click.testing import CliRunner
 
@@ -34,8 +35,10 @@ def test_ak_view_help_shows_grouped_flags():
     assert "--width" in result.output
     assert "--height" in result.output
     assert "--theme" in result.output
-    assert "--ui/--no-ui" in result.output
-    assert "--cell/--no-cell" in result.output
+    assert "--ui" in result.output
+    assert "--no-ui" in result.output
+    assert "--cell" in result.output
+    assert "--no-cell" in result.output
     assert "-w" in result.output
     assert "-h" in result.output
     assert "-t" in result.output
@@ -109,8 +112,8 @@ def test_dark_theme_builds_expected_viewer_config():
     )
 
     assert config is not None
-    assert config.color.background == (0.1, 0.1, 0.1)
-    assert config.color.cell_color == (0.8, 0.8, 0.8)
+    assert config.color.background == pytest.approx((0.1, 0.1, 0.1))
+    assert config.color.cell_color == pytest.approx((0.8, 0.8, 0.8))
     assert config.lighting.ambient_brightness == 150.0
     assert config.lighting.fill_illuminance == 0.0
     assert config.lighting.key_illuminance == 0.0

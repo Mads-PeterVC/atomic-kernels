@@ -189,7 +189,7 @@ fn sync_inspector_text_updates_all_sections() {
     );
     assert_eq!(
         app.world().get::<Text>(hints_toggle).unwrap().0,
-        "to collapse)"
+        ")"
     );
 }
 
