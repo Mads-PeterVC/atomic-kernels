@@ -3,9 +3,9 @@ use crate::{PyStructure, PyTrajectory, PyViewerConfig};
 use ak_vis::launch;
 use ak_vis::{
     BallAndStickStyle, BondList, BondScope, Face, FaceList, HeadlessRenderConfig, RenderStyle,
-    ScalarColorMap, ViewerReadiness, ViewerSessionHandle, export_image, export_image_with_session,
-    export_prepared_image, run, run_default, run_prepared, run_structure, run_structure_default,
-    run_with_session,
+    ScalarColorMap, SelectedImageAtom, ViewerReadiness, ViewerSessionHandle, export_image,
+    export_image_with_session, export_prepared_image, run, run_default, run_prepared,
+    run_structure, run_structure_default, run_with_session,
 };
 use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
@@ -209,6 +209,24 @@ impl PyViewerSession {
         self.handle.selected_atoms(frame_index)
     }
 
+    #[pyo3(signature = (frame_index=None))]
+    fn selected_images(&self, frame_index: Option<usize>) -> Vec<(usize, (i32, i32, i32))> {
+        self.handle
+            .selected_images(frame_index)
+            .into_iter()
+            .map(|atom| {
+                (
+                    atom.atom_index,
+                    (
+                        atom.image_offset[0],
+                        atom.image_offset[1],
+                        atom.image_offset[2],
+                    ),
+                )
+            })
+            .collect()
+    }
+
     #[pyo3(signature = (selection, frame_index=None))]
     fn set_selection(&self, selection: Vec<bool>, frame_index: Option<usize>) -> PyResult<()> {
         self.handle
@@ -235,6 +253,93 @@ impl PyViewerSession {
         self.handle
             .clear_selection(frame_index)
             .map_err(Self::send_error)
+    }
+
+    #[pyo3(signature = (selection, frame_index=None))]
+    fn set_image_selection(
+        &self,
+        selection: Vec<(usize, (i32, i32, i32))>,
+        frame_index: Option<usize>,
+    ) -> PyResult<()> {
+        self.handle
+            .replace_image_selection(normalize_image_selection(selection), frame_index)
+            .map_err(Self::send_error)
+    }
+
+    #[pyo3(signature = (selection, frame_index=None))]
+    fn add_image_selection(
+        &self,
+        selection: Vec<(usize, (i32, i32, i32))>,
+        frame_index: Option<usize>,
+    ) -> PyResult<()> {
+        self.handle
+            .add_image_selection(normalize_image_selection(selection), frame_index)
+            .map_err(Self::send_error)
+    }
+
+    #[pyo3(signature = (selection, frame_index=None))]
+    fn remove_image_selection(
+        &self,
+        selection: Vec<(usize, (i32, i32, i32))>,
+        frame_index: Option<usize>,
+    ) -> PyResult<()> {
+        self.handle
+            .remove_image_selection(normalize_image_selection(selection), frame_index)
+            .map_err(Self::send_error)
+    }
+
+    #[pyo3(signature = (frame_index=None))]
+    fn clear_image_selection(&self, frame_index: Option<usize>) -> PyResult<()> {
+        self.handle
+            .clear_image_selection(frame_index)
+            .map_err(Self::send_error)
+    }
+
+    fn set_supercell(&self, repeats: (u32, u32, u32)) -> PyResult<()> {
+        self.handle
+            .set_supercell([repeats.0, repeats.1, repeats.2])
+            .map_err(Self::send_error)
+    }
+
+    fn increment_supercell_axis(&self, axis: usize) -> PyResult<()> {
+        self.handle
+            .increment_supercell_axis(axis)
+            .map_err(Self::send_error)
+    }
+
+    fn decrement_supercell_axis(&self, axis: usize) -> PyResult<()> {
+        self.handle
+            .decrement_supercell_axis(axis)
+            .map_err(Self::send_error)
+    }
+
+    fn reset_supercell(&self) -> PyResult<()> {
+        self.handle.reset_supercell().map_err(Self::send_error)
+    }
+
+    #[pyo3(signature = (enabled=true))]
+    fn set_ghost_repeated_images(&self, enabled: bool) -> PyResult<()> {
+        self.handle
+            .set_ghost_repeated_images(enabled)
+            .map_err(Self::send_error)
+    }
+
+    fn toggle_ghost_repeated_images(&self) -> PyResult<()> {
+        self.handle
+            .toggle_ghost_repeated_images()
+            .map_err(Self::send_error)
+    }
+
+    fn supercell(&self) -> ((u32, u32, u32), bool) {
+        let settings = self.handle.supercell();
+        (
+            (
+                settings.repeats[0],
+                settings.repeats[1],
+                settings.repeats[2],
+            ),
+            settings.ghost_repeated_images,
+        )
     }
 
     #[pyo3(signature = (focus=None, radius=None, yaw=None, pitch=None))]
@@ -282,6 +387,16 @@ impl PyViewerSession {
     fn stop_camera_motion(&self) -> PyResult<()> {
         self.handle.stop_camera_motion().map_err(Self::send_error)
     }
+}
+
+fn normalize_image_selection(selection: Vec<(usize, (i32, i32, i32))>) -> Vec<SelectedImageAtom> {
+    selection
+        .into_iter()
+        .map(|(atom_index, image_offset)| SelectedImageAtom {
+            atom_index,
+            image_offset: [image_offset.0, image_offset.1, image_offset.2],
+        })
+        .collect()
 }
 
 #[pyclass(name = "PreparedViewerSession", unsendable)]

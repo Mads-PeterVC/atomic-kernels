@@ -1,4 +1,4 @@
-use crate::{AtomVisual, AxisVisual, CellVisual, ColorScheme};
+use crate::{AtomIdentity, AtomVisual, AxisVisual, CellVisual, ColorScheme};
 use ak_core::{PERIODIC_TABLE, StructureView};
 use bevy::math::Vec3;
 use bevy::prelude::*;
@@ -22,7 +22,10 @@ pub fn convert_structure<C: ColorScheme>(view: &StructureView, scheme: &C) -> Ve
         let radius: f32 = 0.9 * PERIODIC_TABLE.get(view.numbers[i]).covalent_radius as f32;
         let color = scheme.color(view, i);
         let atom_visual = AtomVisual {
-            atom_index: i,
+            atom_identity: AtomIdentity {
+                atom_index: i,
+                image_offset: [0, 0, 0],
+            },
             position: structure_position_to_world(view.positions[i]).to_array(),
             color,
             radius,

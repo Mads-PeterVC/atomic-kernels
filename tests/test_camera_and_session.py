@@ -11,6 +11,8 @@ class BackendSpy:
     def __init__(self):
         self.calls = []
         self.selection = []
+        self.image_selection = []
+        self.supercell_state = ((0, 0, 0), True)
 
     def append_frame(self, frame):
         self.calls.append(("append_frame", frame))
@@ -39,6 +41,44 @@ class BackendSpy:
 
     def clear_selection(self, frame_index=None):
         self.calls.append(("clear_selection", frame_index))
+
+    def selected_images(self, frame_index=None):
+        self.calls.append(("selected_images", frame_index))
+        return list(self.image_selection)
+
+    def set_image_selection(self, selection, frame_index=None):
+        self.calls.append(("set_image_selection", selection, frame_index))
+
+    def add_image_selection(self, selection, frame_index=None):
+        self.calls.append(("add_image_selection", selection, frame_index))
+
+    def remove_image_selection(self, selection, frame_index=None):
+        self.calls.append(("remove_image_selection", selection, frame_index))
+
+    def clear_image_selection(self, frame_index=None):
+        self.calls.append(("clear_image_selection", frame_index))
+
+    def set_supercell(self, repeats):
+        self.calls.append(("set_supercell", repeats))
+
+    def increment_supercell_axis(self, axis):
+        self.calls.append(("increment_supercell_axis", axis))
+
+    def decrement_supercell_axis(self, axis):
+        self.calls.append(("decrement_supercell_axis", axis))
+
+    def reset_supercell(self):
+        self.calls.append(("reset_supercell",))
+
+    def set_ghost_repeated_images(self, enabled=True):
+        self.calls.append(("set_ghost_repeated_images", enabled))
+
+    def toggle_ghost_repeated_images(self):
+        self.calls.append(("toggle_ghost_repeated_images",))
+
+    def supercell(self):
+        self.calls.append(("supercell",))
+        return self.supercell_state
 
     def set_camera_view(self, focus, radius, yaw, pitch):
         self.calls.append(("set_camera_view", focus, radius, yaw, pitch))
@@ -141,4 +181,44 @@ def test_viewer_session_facade_selection_methods_normalize_masks():
         ("add_selection", [False, False, True], 0),
         ("remove_selection", [False, False, True], 0),
         ("clear_selection", 0),
+    ]
+
+
+def test_viewer_session_facade_exposes_image_selection_and_supercell_controls():
+    atoms = Atoms("H2")
+    backend = BackendSpy()
+    backend.image_selection = [(1, (1, 0, 0))]
+    backend.supercell_state = ((2, 1, 0), False)
+    facade = ViewerSessionFacade(backend, [atoms])
+
+    assert facade.selected_images() == [{"atom_index": 1, "image_offset": (1, 0, 0)}]
+
+    facade.set_image_selection([(0, (0, 0, 0))])
+    facade.add_image_selection([(1, (1, 0, 0))])
+    facade.remove_image_selection([(1, (1, 0, 0))])
+    facade.clear_image_selection()
+    facade.set_supercell((2, 1, 0))
+    facade.increment_supercell_axis(0)
+    facade.decrement_supercell_axis(1)
+    facade.reset_supercell()
+    facade.set_ghost_repeated_images(False)
+    facade.toggle_supercell_distinction()
+    assert facade.supercell() == {
+        "repeats": (2, 1, 0),
+        "ghost_repeated_images": False,
+    }
+
+    assert backend.calls == [
+        ("selected_images", 0),
+        ("set_image_selection", [(0, (0, 0, 0))], 0),
+        ("add_image_selection", [(1, (1, 0, 0))], 0),
+        ("remove_image_selection", [(1, (1, 0, 0))], 0),
+        ("clear_image_selection", 0),
+        ("set_supercell", (2, 1, 0)),
+        ("increment_supercell_axis", 0),
+        ("decrement_supercell_axis", 1),
+        ("reset_supercell",),
+        ("set_ghost_repeated_images", False),
+        ("toggle_ghost_repeated_images",),
+        ("supercell",),
     ]

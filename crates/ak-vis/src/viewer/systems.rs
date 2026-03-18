@@ -1,17 +1,19 @@
 use crate::render::{render_atoms, render_axis, render_bonds, render_cell, render_faces};
 use crate::visuals::{BondVisual, FaceVisual};
-use crate::{JMOL, convert_axis, convert_cell, convert_structure, structure_position_to_world};
+use crate::visuals::atom_visual::AtomIdentity;
+use crate::{ColorScheme, JMOL, convert_axis, convert_cell, structure_position_to_world};
 
 use crate::components::{
-    AtomIndex, FrameAtom, FrameAxis, FrameBond, FrameCell, FrameFace, FrameMeasurementCue,
-    FrameSelectionHighlight, MainSceneCamera, MarqueeSelectionOverlay,
+    DisplayAtomIdentity, FrameAtom, FrameAxis, FrameBond, FrameCell, FrameFace,
+    FrameMeasurementCue, FrameSelectionHighlight, MainSceneCamera, MarqueeSelectionOverlay,
 };
 use crate::viewer::ViewerConfig;
 use crate::viewer::controls::default_camera_state;
 use crate::viewer::controls::despawn_current_frame;
 use crate::viewer::runtime::{CommandReceiver, MainCameraRenderTarget, SharedViewerSnapshot};
 use crate::viewer::{
-    AtomColorRule, BallAndStickStyle, BondList, BondScope, CameraState, RenderStyle, ViewerState,
+    AtomColorRule, BallAndStickStyle, BondList, BondScope, CameraState, DisplayAtom,
+    RenderStyle, SelectedImageAtom, SelectionFrames, ViewerState,
 };
 use bevy::ecs::system::SystemParam;
 use bevy::light::{NotShadowCaster, NotShadowReceiver};
@@ -43,7 +45,7 @@ pub struct MarqueeSelectionState {
 
 #[derive(Clone, Debug, PartialEq)]
 struct AngleMeasurementCue {
-    atoms: [usize; 3],
+    atoms: [SelectedImageAtom; 3],
     vertex: Vec3,
     first_direction: Vec3,
     second_direction: Vec3,
@@ -229,20 +231,72 @@ fn face_visuals_for_current_frame(viewer: &ViewerState) -> Vec<FaceVisual> {
     visuals
 }
 
+fn displayed_atom_visuals_for_current_frame(viewer: &ViewerState) -> Vec<crate::AtomVisual> {
+    let view = viewer.traj.view(viewer.current);
+    let scalar_colors = scalar_colors_for_current_frame(viewer);
+    let ball_and_stick_styles = resolved_atom_styles_for_current_frame(viewer);
+
+    viewer
+        .display_atoms(viewer.current)
+        .into_iter()
+        .map(|atom| {
+            let mut color = JMOL.color(&view, atom.identity.atom_index);
+            if let Some(colors) = scalar_colors.as_ref()
+                && let Some(mapped) = colors[atom.identity.atom_index]
+            {
+                color = mapped;
+            }
+
+            let mut radius =
+                0.9 * ak_core::PERIODIC_TABLE.get(view.numbers[atom.identity.atom_index]).covalent_radius
+                    as f32;
+            if let Some(styles) = ball_and_stick_styles.as_ref()
+                && let Some(style) = styles[atom.identity.atom_index]
+            {
+                radius *= style.atom_scale;
+            }
+
+            if !atom.is_main_cell && viewer.supercell.ghost_repeated_images {
+                let srgb = color.to_srgba();
+                color = Color::srgba(
+                    (srgb.red * 0.55) + 0.35,
+                    (srgb.green * 0.55) + 0.35,
+                    (srgb.blue * 0.55) + 0.35,
+                    (srgb.alpha * 0.35).max(0.18),
+                );
+            }
+
+            crate::AtomVisual {
+                atom_identity: AtomIdentity {
+                    atom_index: atom.identity.atom_index,
+                    image_offset: atom.identity.image_offset,
+                },
+                position: structure_position_to_world(atom.position).to_array(),
+                color,
+                radius,
+            }
+        })
+        .collect()
+}
+
 fn selection_highlight_visuals_for_current_frame(viewer: &ViewerState) -> Vec<crate::AtomVisual> {
-    let selection = viewer.current_selection();
-    if selection.is_empty() || !selection.iter().any(|selected| *selected) {
+    let selection = viewer.selected_images(viewer.current);
+    if selection.is_empty() {
         return Vec::new();
     }
 
     let emphasized_vertex = angle_measurement_cue_for_current_frame(viewer).map(|cue| cue.atoms[1]);
-    convert_structure(&viewer.traj.view(viewer.current), &JMOL)
+    displayed_atom_visuals_for_current_frame(viewer)
         .into_iter()
         .filter_map(|mut visual| {
-            if !selection.get(visual.atom_index).copied().unwrap_or(false) {
+            let selected = SelectedImageAtom {
+                atom_index: visual.atom_index(),
+                image_offset: visual.atom_identity.image_offset,
+            };
+            if !selection.contains(&selected) {
                 return None;
             }
-            let is_vertex = emphasized_vertex == Some(visual.atom_index);
+            let is_vertex = emphasized_vertex == Some(selected);
             visual.radius = selection_highlight_radius(visual.radius, is_vertex);
             visual.color = selection_highlight_color(is_vertex);
             Some(visual)
@@ -269,18 +323,17 @@ fn marquee_rect(start: Vec2, current: Vec2) -> Rect {
     Rect::from_corners(start, current)
 }
 
-fn selection_mask_for_projected_positions(
-    atom_count: usize,
-    projected_positions: impl IntoIterator<Item = (usize, Vec2)>,
+fn image_selection_for_projected_positions(
+    projected_positions: impl IntoIterator<Item = (SelectedImageAtom, Vec2)>,
     rect: Rect,
-) -> Vec<bool> {
-    let mut mask = vec![false; atom_count];
+) -> Vec<SelectedImageAtom> {
+    let mut selection = Vec::new();
     for (index, viewport_position) in projected_positions {
-        if index < atom_count && rect.contains(viewport_position) {
-            mask[index] = true;
+        if rect.contains(viewport_position) && !selection.contains(&index) {
+            selection.push(index);
         }
     }
-    mask
+    selection
 }
 
 fn projected_selection_for_rect(
@@ -288,44 +341,45 @@ fn projected_selection_for_rect(
     camera: &Camera,
     camera_transform: &GlobalTransform,
     rect: Rect,
-) -> Vec<bool> {
-    let view = viewer.traj.view(viewer.current);
-    let projected = view
-        .positions
-        .iter()
-        .enumerate()
-        .filter_map(|(index, position)| {
+) -> Vec<SelectedImageAtom> {
+    let projected = viewer.display_atoms(viewer.current).into_iter().filter_map(|atom| {
             camera
-                .world_to_viewport(camera_transform, structure_position_to_world(*position))
+                .world_to_viewport(camera_transform, structure_position_to_world(atom.position))
                 .ok()
-                .map(|viewport_position| (index, viewport_position))
+                .map(|viewport_position| (atom.identity, viewport_position))
         });
-    selection_mask_for_projected_positions(view.positions.len(), projected, rect)
+    image_selection_for_projected_positions(projected, rect)
 }
 
 fn angle_measurement_cue_for_current_frame(viewer: &ViewerState) -> Option<AngleMeasurementCue> {
-    let selected = viewer.selected_atoms(viewer.current);
-    let view = viewer.traj.view(viewer.current);
-    let vertex_atom_radius = convert_structure(&view, &JMOL)
+    let selected = viewer.selected_images(viewer.current);
+    let displayed_atoms = viewer.display_atoms(viewer.current);
+    let vertex_atom_radius = displayed_atom_visuals_for_current_frame(viewer)
         .into_iter()
-        .find(|visual| Some(visual.atom_index) == selected.get(1).copied())
+        .find(|visual| {
+            selected.get(1).copied()
+                == Some(SelectedImageAtom {
+                    atom_index: visual.atom_index(),
+                    image_offset: visual.atom_identity.image_offset,
+                })
+        })
         .map(|visual| visual.radius)
         .unwrap_or(0.0);
-    angle_measurement_cue_from_positions(view.positions, &selected, vertex_atom_radius)
+    angle_measurement_cue_from_positions(&displayed_atoms, &selected, vertex_atom_radius)
 }
 
 fn angle_measurement_cue_from_positions(
-    positions: &[[f64; 3]],
-    selected_indices: &[usize],
+    positions: &[DisplayAtom],
+    selected_indices: &[SelectedImageAtom],
     vertex_atom_radius: f32,
 ) -> Option<AngleMeasurementCue> {
     let &[a, b, c] = selected_indices else {
         return None;
     };
 
-    let pa = structure_position_to_world(*positions.get(a)?);
-    let pb = structure_position_to_world(*positions.get(b)?);
-    let pc = structure_position_to_world(*positions.get(c)?);
+    let pa = structure_position_to_world(positions.iter().find(|atom| atom.identity == a)?.position);
+    let pb = structure_position_to_world(positions.iter().find(|atom| atom.identity == b)?.position);
+    let pc = structure_position_to_world(positions.iter().find(|atom| atom.identity == c)?.position);
 
     let first = pa - pb;
     let second = pc - pb;
@@ -555,26 +609,7 @@ fn render_frame(
         return;
     }
 
-    let view = viewer.traj.view(viewer.current);
-    let scalar_colors = scalar_colors_for_current_frame(viewer);
-    let ball_and_stick_styles = resolved_atom_styles_for_current_frame(viewer);
-    let atom_visuals = convert_structure(&view, &JMOL)
-        .into_iter()
-        .enumerate()
-        .map(|(index, mut visual)| {
-            if let Some(colors) = scalar_colors.as_ref()
-                && let Some(color) = colors[index]
-            {
-                visual.color = color;
-            }
-            if let Some(styles) = ball_and_stick_styles.as_ref()
-                && let Some(style) = styles[index]
-            {
-                visual.radius *= style.atom_scale;
-            }
-            visual
-        })
-        .collect();
+    let atom_visuals = displayed_atom_visuals_for_current_frame(viewer);
     render_atoms(
         atom_visuals,
         commands,
@@ -609,12 +644,12 @@ fn render_frame(
     }
 
     if config.render.show_cell {
-        let cell_visuals = convert_cell(&view, config.color.cell_color);
+        let cell_visuals = convert_cell(&viewer.traj.view(viewer.current), config.color.cell_color);
         render_cell(cell_visuals, commands, materials, meshes);
     }
 
     if config.render.show_axes {
-        let axis_visuals = convert_axis(&view);
+        let axis_visuals = convert_axis(&viewer.traj.view(viewer.current));
         render_axis(axis_visuals, commands, materials, meshes);
     }
 
@@ -821,7 +856,17 @@ pub fn handle_marquee_selection(
             let selection =
                 projected_selection_for_rect(viewer.as_ref(), camera, camera_transform, rect);
             let current_frame = viewer.current;
-            viewer.selection.replace(current_frame, selection);
+            viewer.image_selection.replace(current_frame, selection);
+            let selected_images = viewer.image_selection.selected(current_frame);
+            let atom_count = viewer.traj.view(current_frame).positions.len();
+            viewer.selection.replace(
+                current_frame,
+                SelectionFrames::mask_from_images(atom_count, &selected_images),
+            );
+            viewer.selection.set_order(
+                current_frame,
+                SelectionFrames::ordered_atoms_from_images(&selected_images),
+            );
             viewer.needs_render = true;
         }
     }
@@ -868,12 +913,14 @@ pub fn sync_viewer_snapshot(viewer: Res<ViewerState>, snapshot: Res<SharedViewer
     };
     snapshot.current_frame = viewer.current;
     snapshot.selection = viewer.selection.clone();
+    snapshot.image_selection = viewer.image_selection.clone();
+    snapshot.supercell = viewer.supercell;
 }
 
 pub fn handle_atom_clicks(
     mut clicks: MessageReader<Pointer<Click>>,
     keys: Res<ButtonInput<KeyCode>>,
-    atoms: Query<&AtomIndex>,
+    atoms: Query<&DisplayAtomIdentity>,
     mut marquee: ResMut<MarqueeSelectionState>,
     mut viewer: ResMut<ViewerState>,
 ) {
@@ -899,10 +946,14 @@ pub fn handle_atom_clicks(
         let Ok(atom_index) = atoms.get(click.entity) else {
             continue;
         };
+        let selected = SelectedImageAtom {
+            atom_index: atom_index.atom_index,
+            image_offset: atom_index.image_offset,
+        };
         changed |= if modified {
-            viewer.toggle_atom_selection(atom_index.0)
+            viewer.toggle_atom_selection(selected)
         } else {
-            viewer.replace_atom_selection(atom_index.0)
+            viewer.replace_atom_selection(selected)
         };
     }
 
@@ -1023,13 +1074,25 @@ mod tests {
     use super::{
         ANGLE_CUE_RADIUS_MAX, MarqueeSelectionState,
         angle_measurement_cue_from_positions, marquee_drag_exceeded, render_angle_measurement_cue,
-        selection_highlight_color, selection_highlight_radius,
-        selection_mask_for_projected_positions, sync_marquee_overlay,
+        image_selection_for_projected_positions, selection_highlight_color,
+        selection_highlight_radius, sync_marquee_overlay,
     };
     use crate::components::{FrameMeasurementCue, MainSceneCamera, MarqueeSelectionOverlay};
+    use crate::viewer::{DisplayAtom, SelectedImageAtom};
     use bevy::ecs::system::SystemState;
     use bevy::picking::prelude::Pickable;
     use bevy::prelude::*;
+
+    fn display_atom(atom_index: usize, position: [f64; 3]) -> DisplayAtom {
+        DisplayAtom {
+            identity: SelectedImageAtom {
+                atom_index,
+                image_offset: [0, 0, 0],
+            },
+            position,
+            is_main_cell: true,
+        }
+    }
 
     #[test]
     fn selection_highlight_radius_keeps_a_minimum_extra_shell() {
@@ -1072,13 +1135,28 @@ mod tests {
     #[test]
     fn angle_measurement_cue_uses_second_selected_atom_as_vertex() {
         let cue = angle_measurement_cue_from_positions(
-            &[[1.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 2.0, 0.0]],
-            &[0, 1, 2],
+            &[
+                display_atom(0, [1.0, 0.0, 0.0]),
+                display_atom(1, [0.0, 0.0, 0.0]),
+                display_atom(2, [0.0, 2.0, 0.0]),
+            ],
+            &[
+                SelectedImageAtom { atom_index: 0, image_offset: [0, 0, 0] },
+                SelectedImageAtom { atom_index: 1, image_offset: [0, 0, 0] },
+                SelectedImageAtom { atom_index: 2, image_offset: [0, 0, 0] },
+            ],
             0.0,
         )
         .unwrap();
 
-        assert_eq!(cue.atoms, [0, 1, 2]);
+        assert_eq!(
+            cue.atoms,
+            [
+                SelectedImageAtom { atom_index: 0, image_offset: [0, 0, 0] },
+                SelectedImageAtom { atom_index: 1, image_offset: [0, 0, 0] },
+                SelectedImageAtom { atom_index: 2, image_offset: [0, 0, 0] },
+            ]
+        );
         assert_eq!(cue.vertex, Vec3::ZERO);
         assert!((cue.first_direction.length() - 1.0).abs() < 1e-6);
         assert!((cue.second_direction.length() - 1.0).abs() < 1e-6);
@@ -1087,14 +1165,30 @@ mod tests {
     #[test]
     fn angle_measurement_cue_radius_clamps_for_short_and_long_spans() {
         let short = angle_measurement_cue_from_positions(
-            &[[0.05, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.05, 0.0]],
-            &[0, 1, 2],
+            &[
+                display_atom(0, [0.05, 0.0, 0.0]),
+                display_atom(1, [0.0, 0.0, 0.0]),
+                display_atom(2, [0.0, 0.05, 0.0]),
+            ],
+            &[
+                SelectedImageAtom { atom_index: 0, image_offset: [0, 0, 0] },
+                SelectedImageAtom { atom_index: 1, image_offset: [0, 0, 0] },
+                SelectedImageAtom { atom_index: 2, image_offset: [0, 0, 0] },
+            ],
             0.0,
         )
         .unwrap();
         let long = angle_measurement_cue_from_positions(
-            &[[10.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 10.0, 0.0]],
-            &[0, 1, 2],
+            &[
+                display_atom(0, [10.0, 0.0, 0.0]),
+                display_atom(1, [0.0, 0.0, 0.0]),
+                display_atom(2, [0.0, 10.0, 0.0]),
+            ],
+            &[
+                SelectedImageAtom { atom_index: 0, image_offset: [0, 0, 0] },
+                SelectedImageAtom { atom_index: 1, image_offset: [0, 0, 0] },
+                SelectedImageAtom { atom_index: 2, image_offset: [0, 0, 0] },
+            ],
             0.0,
         )
         .unwrap();
@@ -1107,16 +1201,32 @@ mod tests {
     fn angle_measurement_cue_returns_none_for_degenerate_geometry() {
         assert!(
             angle_measurement_cue_from_positions(
-                &[[1.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
-                &[0, 1, 2],
+                &[
+                    display_atom(0, [1.0, 0.0, 0.0]),
+                    display_atom(1, [1.0, 0.0, 0.0]),
+                    display_atom(2, [0.0, 1.0, 0.0]),
+                ],
+                &[
+                    SelectedImageAtom { atom_index: 0, image_offset: [0, 0, 0] },
+                    SelectedImageAtom { atom_index: 1, image_offset: [0, 0, 0] },
+                    SelectedImageAtom { atom_index: 2, image_offset: [0, 0, 0] },
+                ],
                 0.0,
             )
             .is_none()
         );
         assert!(
             angle_measurement_cue_from_positions(
-                &[[1.0, 0.0, 0.0], [0.0, 0.0, 0.0], [2.0, 0.0, 0.0]],
-                &[0, 1, 2],
+                &[
+                    display_atom(0, [1.0, 0.0, 0.0]),
+                    display_atom(1, [0.0, 0.0, 0.0]),
+                    display_atom(2, [2.0, 0.0, 0.0]),
+                ],
+                &[
+                    SelectedImageAtom { atom_index: 0, image_offset: [0, 0, 0] },
+                    SelectedImageAtom { atom_index: 1, image_offset: [0, 0, 0] },
+                    SelectedImageAtom { atom_index: 2, image_offset: [0, 0, 0] },
+                ],
                 0.0,
             )
             .is_none()
@@ -1127,8 +1237,16 @@ mod tests {
     fn angle_measurement_cue_radius_clears_emphasized_vertex_shell() {
         let vertex_atom_radius = 0.62;
         let cue = angle_measurement_cue_from_positions(
-            &[[1.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
-            &[0, 1, 2],
+            &[
+                display_atom(0, [1.0, 0.0, 0.0]),
+                display_atom(1, [0.0, 0.0, 0.0]),
+                display_atom(2, [0.0, 1.0, 0.0]),
+            ],
+            &[
+                SelectedImageAtom { atom_index: 0, image_offset: [0, 0, 0] },
+                SelectedImageAtom { atom_index: 1, image_offset: [0, 0, 0] },
+                SelectedImageAtom { atom_index: 2, image_offset: [0, 0, 0] },
+            ],
             vertex_atom_radius,
         )
         .unwrap();
@@ -1139,8 +1257,16 @@ mod tests {
     #[test]
     fn render_angle_measurement_cue_spawns_non_pickable_entities() {
         let cue = angle_measurement_cue_from_positions(
-            &[[1.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
-            &[0, 1, 2],
+            &[
+                display_atom(0, [1.0, 0.0, 0.0]),
+                display_atom(1, [0.0, 0.0, 0.0]),
+                display_atom(2, [0.0, 1.0, 0.0]),
+            ],
+            &[
+                SelectedImageAtom { atom_index: 0, image_offset: [0, 0, 0] },
+                SelectedImageAtom { atom_index: 1, image_offset: [0, 0, 0] },
+                SelectedImageAtom { atom_index: 2, image_offset: [0, 0, 0] },
+            ],
             0.0,
         )
         .unwrap();
@@ -1184,18 +1310,36 @@ mod tests {
     #[test]
     fn projected_selection_mask_is_depth_agnostic() {
         let rect = Rect::from_corners(Vec2::new(10.0, 10.0), Vec2::new(40.0, 40.0));
-        let mask = selection_mask_for_projected_positions(
-            4,
+        let mask = image_selection_for_projected_positions(
             [
-                (0, Vec2::new(12.0, 12.0)),
-                (1, Vec2::new(12.0, 12.0)),
-                (2, Vec2::new(60.0, 60.0)),
-                (3, Vec2::new(20.0, 25.0)),
+                (
+                    SelectedImageAtom { atom_index: 0, image_offset: [0, 0, 0] },
+                    Vec2::new(12.0, 12.0),
+                ),
+                (
+                    SelectedImageAtom { atom_index: 1, image_offset: [0, 0, 0] },
+                    Vec2::new(12.0, 12.0),
+                ),
+                (
+                    SelectedImageAtom { atom_index: 2, image_offset: [0, 0, 0] },
+                    Vec2::new(60.0, 60.0),
+                ),
+                (
+                    SelectedImageAtom { atom_index: 3, image_offset: [0, 0, 0] },
+                    Vec2::new(20.0, 25.0),
+                ),
             ],
             rect,
         );
 
-        assert_eq!(mask, vec![true, true, false, true]);
+        assert_eq!(
+            mask,
+            vec![
+                SelectedImageAtom { atom_index: 0, image_offset: [0, 0, 0] },
+                SelectedImageAtom { atom_index: 1, image_offset: [0, 0, 0] },
+                SelectedImageAtom { atom_index: 3, image_offset: [0, 0, 0] },
+            ]
+        );
     }
 
     #[test]

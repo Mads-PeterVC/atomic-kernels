@@ -82,16 +82,24 @@ Progress
 
 ### Supercell visualization and selection semantics
 
-Add the ability to display repeated periodic images while preserving a clear notion of
-the original cell.
+~~Add the ability to display repeated periodic images while preserving a clear notion of
+the original cell.~~
 
-- Users should be able to repeat the structure in one or more periodic directions.
-- The viewer should visually distinguish atoms in the main cell from atoms shown only
-  because of repetition.
-- Python-side selection should remain convenient for both the main cell and repeated
-  images instead of flattening everything into a single ambiguous atom set.
-- The design should avoid forcing the displayed supercell to replace the canonical
-  original-cell representation in the API.
+- ~~Users should be able to repeat the structure in one or more periodic directions.~~
+- ~~The viewer should visually distinguish atoms in the main cell from atoms shown only
+  because of repetition.~~
+- ~~Python-side selection should remain convenient for both the main cell and repeated
+  images instead of flattening everything into a single ambiguous atom set.~~
+- ~~The design should avoid forcing the displayed supercell to replace the canonical
+  original-cell representation in the API.~~
+
+Progress
+
+- Feature completed in `c24f53c`.
+- The current viewer keeps initial framing and `X`/`Y`/`Z` snap views cell-based even
+  when repeated images are displayed, so future camera work should treat supercell
+  display fit and default/snap framing as separate decisions rather than one shared
+  camera policy.
 
 ### Higher-level chemistry helpers for bonds and polyhedra
 

@@ -85,6 +85,12 @@ pub(crate) fn configure_shared_app(
     snapshot: Arc<Mutex<ViewerSnapshot>>,
 ) {
     let mut viewer_state = ViewerState::new(trajectory, config.initial_frame);
+    viewer_state.supercell.repeats = [
+        config.render.supercell_repeat_a,
+        config.render.supercell_repeat_b,
+        config.render.supercell_repeat_c,
+    ];
+    viewer_state.supercell.ghost_repeated_images = config.render.ghost_repeated_images;
     let mut camera_state = CameraState::new(&viewer_state);
 
     if let Some(receiver_ref) = receiver.as_mut() {

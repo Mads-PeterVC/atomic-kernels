@@ -64,6 +64,15 @@ def viewer_process_main(
                     connection.send(("selected_atoms", selected))
                 except (BrokenPipeError, EOFError, OSError):
                     break
+            elif command == "selected_images":
+                try:
+                    selected = session.selected_images(payload)
+                except RuntimeError:
+                    selected = []
+                try:
+                    connection.send(("selected_images", selected))
+                except (BrokenPipeError, EOFError, OSError):
+                    break
             elif command == "set_selection":
                 session.set_selection(*payload)
             elif command == "add_selection":
@@ -72,6 +81,35 @@ def viewer_process_main(
                 session.remove_selection(*payload)
             elif command == "clear_selection":
                 session.clear_selection(payload)
+            elif command == "set_image_selection":
+                session.set_image_selection(*payload)
+            elif command == "add_image_selection":
+                session.add_image_selection(*payload)
+            elif command == "remove_image_selection":
+                session.remove_image_selection(*payload)
+            elif command == "clear_image_selection":
+                session.clear_image_selection(payload)
+            elif command == "set_supercell":
+                session.set_supercell(payload)
+            elif command == "increment_supercell_axis":
+                session.increment_supercell_axis(payload)
+            elif command == "decrement_supercell_axis":
+                session.decrement_supercell_axis(payload)
+            elif command == "reset_supercell":
+                session.reset_supercell()
+            elif command == "set_ghost_repeated_images":
+                session.set_ghost_repeated_images(payload)
+            elif command == "toggle_ghost_repeated_images":
+                session.toggle_ghost_repeated_images()
+            elif command == "supercell":
+                try:
+                    state = session.supercell()
+                except RuntimeError:
+                    state = ((0, 0, 0), True)
+                try:
+                    connection.send(("supercell", state))
+                except (BrokenPipeError, EOFError, OSError):
+                    break
             elif command == "set_camera_view":
                 session.set_camera_view(*payload)
             elif command == "pan_camera":
@@ -203,6 +241,17 @@ class ViewerSessionProxy:
             if message == "selected_atoms":
                 return list(payload)
 
+    def selected_images(self, frame_index: int | None = None):
+        self._send("selected_images", frame_index)
+        while True:
+            if not self._process.is_alive() and not self._connection.poll():
+                return []
+            if not self._connection.poll(0.1):
+                continue
+            message, payload = self._connection.recv()
+            if message == "selected_images":
+                return list(payload)
+
     def set_selection(self, selection, frame_index: int | None = None) -> None:
         self._send("set_selection", (list(selection), frame_index))
 
@@ -214,6 +263,47 @@ class ViewerSessionProxy:
 
     def clear_selection(self, frame_index: int | None = None) -> None:
         self._send("clear_selection", frame_index)
+
+    def set_image_selection(self, selection, frame_index: int | None = None) -> None:
+        self._send("set_image_selection", (list(selection), frame_index))
+
+    def add_image_selection(self, selection, frame_index: int | None = None) -> None:
+        self._send("add_image_selection", (list(selection), frame_index))
+
+    def remove_image_selection(self, selection, frame_index: int | None = None) -> None:
+        self._send("remove_image_selection", (list(selection), frame_index))
+
+    def clear_image_selection(self, frame_index: int | None = None) -> None:
+        self._send("clear_image_selection", frame_index)
+
+    def set_supercell(self, repeats) -> None:
+        self._send("set_supercell", tuple(repeats))
+
+    def increment_supercell_axis(self, axis: int) -> None:
+        self._send("increment_supercell_axis", axis)
+
+    def decrement_supercell_axis(self, axis: int) -> None:
+        self._send("decrement_supercell_axis", axis)
+
+    def reset_supercell(self) -> None:
+        self._send("reset_supercell")
+
+    def set_ghost_repeated_images(self, enabled: bool = True) -> None:
+        self._send("set_ghost_repeated_images", enabled)
+
+    def toggle_ghost_repeated_images(self) -> None:
+        self._send("toggle_ghost_repeated_images")
+
+    def supercell(self):
+        self._send("supercell")
+        while True:
+            if not self._process.is_alive() and not self._connection.poll():
+                return ((0, 0, 0), True)
+            if not self._connection.poll(0.1):
+                continue
+            message, payload = self._connection.recv()
+            if message == "supercell":
+                return payload
 
     def set_camera_view(
         self,

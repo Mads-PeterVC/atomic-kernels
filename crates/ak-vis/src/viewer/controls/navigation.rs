@@ -1,4 +1,5 @@
 use bevy::ecs::system::SystemParam;
+use bevy::input::keyboard::Key;
 use bevy::prelude::*;
 
 use crate::components::{
@@ -10,8 +11,18 @@ use crate::viewer::ViewerState;
 #[derive(SystemParam)]
 pub struct RenderResources<'w> {
     keys: Res<'w, ButtonInput<KeyCode>>,
+    logical_keys: Res<'w, ButtonInput<Key>>,
     time: Res<'w, Time>,
     viewer: ResMut<'w, ViewerState>,
+}
+
+fn digit_hotkey_pressed(
+    physical_keys: &ButtonInput<KeyCode>,
+    logical_keys: &ButtonInput<Key>,
+    physical: KeyCode,
+    text: &'static str,
+) -> bool {
+    physical_keys.just_pressed(physical) || logical_keys.just_pressed(Key::Character(text.into()))
 }
 
 pub fn despawn_current_frame(
@@ -48,6 +59,34 @@ pub fn despawn_current_frame(
 }
 
 pub fn navigate_frames(mut timer: Local<Timer>, mut resources: RenderResources) {
+    let shifted = resources
+        .keys
+        .any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight]);
+    for (axis, key, text) in [
+        (0usize, KeyCode::Digit1, "1"),
+        (1usize, KeyCode::Digit2, "2"),
+        (2usize, KeyCode::Digit3, "3"),
+    ] {
+        if digit_hotkey_pressed(&resources.keys, &resources.logical_keys, key, text) {
+            let _ = resources.viewer.apply_command(if shifted {
+                crate::viewer::ViewerCommand::DecrementSupercellAxis { axis }
+            } else {
+                crate::viewer::ViewerCommand::IncrementSupercellAxis { axis }
+            });
+        }
+    }
+
+    if digit_hotkey_pressed(
+        &resources.keys,
+        &resources.logical_keys,
+        KeyCode::Digit0,
+        "0",
+    ) {
+        let _ = resources
+            .viewer
+            .apply_command(crate::viewer::ViewerCommand::ToggleGhostRepeatedImages);
+    }
+
     // Initialize timer on first run (0.1 seconds = 10 frames per second)
     if timer.duration().is_zero() {
         *timer = Timer::from_seconds(0.1, TimerMode::Repeating);
@@ -77,6 +116,7 @@ mod tests {
     use crate::viewer::ViewerState;
     use ak_core::{Structure, Trajectory};
     use bevy::ecs::system::SystemState;
+    use bevy::input::keyboard::Key;
     use bevy::prelude::*;
     use std::time::Duration;
 
@@ -157,11 +197,13 @@ mod tests {
         let mut app = App::new();
         let mut keys = ButtonInput::<KeyCode>::default();
         keys.press(KeyCode::KeyD);
+        let logical_keys = ButtonInput::<Key>::default();
 
         let mut time = Time::<()>::default();
         time.advance_by(Duration::from_secs_f32(0.11));
 
         app.insert_resource(keys);
+        app.insert_resource(logical_keys);
         app.insert_resource(time);
         app.insert_resource(sample_viewer());
         app.add_systems(Update, navigate_frames);
@@ -169,5 +211,51 @@ mod tests {
         app.update();
 
         assert_eq!(app.world().resource::<ViewerState>().current, 1);
+    }
+
+    #[test]
+    fn navigate_frames_adjusts_supercell_and_ghosting_with_digit_hotkeys() {
+        let mut app = App::new();
+        let mut keys = ButtonInput::<KeyCode>::default();
+        keys.press(KeyCode::Digit1);
+        keys.press(KeyCode::Digit0);
+        let logical_keys = ButtonInput::<Key>::default();
+
+        let time = Time::<()>::default();
+
+        app.insert_resource(keys);
+        app.insert_resource(logical_keys);
+        app.insert_resource(time);
+        app.insert_resource(sample_viewer());
+        app.add_systems(Update, navigate_frames);
+
+        app.update();
+
+        let viewer = app.world().resource::<ViewerState>();
+        assert_eq!(viewer.supercell.repeats, [1, 0, 0]);
+        assert!(!viewer.supercell.ghost_repeated_images);
+    }
+
+    #[test]
+    fn navigate_frames_accepts_logical_digit_hotkeys() {
+        let mut app = App::new();
+        let keys = ButtonInput::<KeyCode>::default();
+        let mut logical_keys = ButtonInput::<Key>::default();
+        logical_keys.press(Key::Character("1".into()));
+        logical_keys.press(Key::Character("0".into()));
+
+        let time = Time::<()>::default();
+
+        app.insert_resource(keys);
+        app.insert_resource(logical_keys);
+        app.insert_resource(time);
+        app.insert_resource(sample_viewer());
+        app.add_systems(Update, navigate_frames);
+
+        app.update();
+
+        let viewer = app.world().resource::<ViewerState>();
+        assert_eq!(viewer.supercell.repeats, [1, 0, 0]);
+        assert!(!viewer.supercell.ghost_repeated_images);
     }
 }

@@ -69,6 +69,15 @@ class ViewerSessionFacade:
         """Return the currently selected atom indices for a frame."""
         return list(self._backend.selected_atoms(self._resolve_frame_index(frame_index)))
 
+    def selected_images(self, frame_index: int | None = None) -> list[dict]:
+        """Return the currently selected image-aware atoms for a frame."""
+        return [
+            {"atom_index": atom_index, "image_offset": tuple(image_offset)}
+            for atom_index, image_offset in self._backend.selected_images(
+                self._resolve_frame_index(frame_index)
+            )
+        ]
+
     def set_selection(self, selection, frame_index: int | None = None) -> None:
         """Replace the shared live selection for a frame."""
         resolved = self._resolve_frame_index(frame_index)
@@ -96,6 +105,65 @@ class ViewerSessionFacade:
     def clear_selection(self, frame_index: int | None = None) -> None:
         """Clear the shared live selection for a frame."""
         self._backend.clear_selection(frame_index=self._resolve_frame_index(frame_index))
+
+    def set_image_selection(
+        self, selection: list[tuple[int, tuple[int, int, int]]], frame_index: int | None = None
+    ) -> None:
+        """Replace the image-aware selection for a frame."""
+        self._backend.set_image_selection(
+            list(selection), frame_index=self._resolve_frame_index(frame_index)
+        )
+
+    def add_image_selection(
+        self, selection: list[tuple[int, tuple[int, int, int]]], frame_index: int | None = None
+    ) -> None:
+        """Add image-aware atoms to the selection for a frame."""
+        self._backend.add_image_selection(
+            list(selection), frame_index=self._resolve_frame_index(frame_index)
+        )
+
+    def remove_image_selection(
+        self, selection: list[tuple[int, tuple[int, int, int]]], frame_index: int | None = None
+    ) -> None:
+        """Remove image-aware atoms from the selection for a frame."""
+        self._backend.remove_image_selection(
+            list(selection), frame_index=self._resolve_frame_index(frame_index)
+        )
+
+    def clear_image_selection(self, frame_index: int | None = None) -> None:
+        """Clear the image-aware selection for a frame."""
+        self._backend.clear_image_selection(
+            frame_index=self._resolve_frame_index(frame_index)
+        )
+
+    def set_supercell(self, repeats: tuple[int, int, int]) -> None:
+        """Set symmetric per-axis repeat extents for displayed periodic images."""
+        self._backend.set_supercell(tuple(int(value) for value in repeats))
+
+    def increment_supercell_axis(self, axis: int) -> None:
+        """Increase the symmetric repeat extent for one lattice axis."""
+        self._backend.increment_supercell_axis(int(axis))
+
+    def decrement_supercell_axis(self, axis: int) -> None:
+        """Decrease the symmetric repeat extent for one lattice axis."""
+        self._backend.decrement_supercell_axis(int(axis))
+
+    def reset_supercell(self) -> None:
+        """Reset the viewer to the base cell without repeated images."""
+        self._backend.reset_supercell()
+
+    def set_ghost_repeated_images(self, enabled: bool = True) -> None:
+        """Set whether repeated-only images should be ghosted."""
+        self._backend.set_ghost_repeated_images(enabled)
+
+    def toggle_supercell_distinction(self) -> None:
+        """Toggle ghosting of repeated-only images."""
+        self._backend.toggle_ghost_repeated_images()
+
+    def supercell(self) -> dict:
+        """Return the current supercell display settings."""
+        repeats, ghosted = self._backend.supercell()
+        return {"repeats": tuple(repeats), "ghost_repeated_images": bool(ghosted)}
 
     def wait_until_ready(self, timeout: float | None = None) -> bool:
         """Wait until the viewer reports readiness or the timeout elapses.

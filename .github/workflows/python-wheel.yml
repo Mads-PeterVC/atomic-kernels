@@ -22,16 +22,19 @@ jobs:
         platform:
           - label: macOS arm64
             runs-on: macos-14
+            cache-key: macos-arm64
             artifact-suffix: macos-arm64
             wheel-pattern: macosx*_arm64.whl
             install-linux-build-deps: false
           - label: macOS x86_64
             runs-on: macos-15-intel
+            cache-key: macos-x86_64
             artifact-suffix: macos-x86_64
             wheel-pattern: macosx*_x86_64.whl
             install-linux-build-deps: false
           - label: Linux x86_64
             runs-on: ubuntu-24.04
+            cache-key: linux-x86_64
             artifact-suffix: linux-x86_64
             wheel-pattern: linux*x86_64.whl
             install-linux-build-deps: true
@@ -53,7 +56,7 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
         with:
-          shared-key: ${{ matrix.platform.runs-on }}-wheel
+          shared-key: ${{ matrix.platform.cache-key }}-wheel
           cache-workspace-crates: "true"
 
       - uses: ./.github/actions/install-linux-build-deps

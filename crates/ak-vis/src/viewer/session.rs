@@ -7,7 +7,14 @@ use std::sync::{Arc, Condvar, Mutex};
 use std::time::{Duration, Instant};
 
 use crate::ScalarColorMap;
-use crate::structure_vec3_to_world;
+
+mod camera;
+mod selection;
+
+#[cfg(test)]
+mod tests;
+
+pub use camera::camera_view_for_frame;
 
 pub enum ViewerCommand {
     LoadTrajectory {
@@ -66,6 +73,35 @@ pub enum ViewerCommand {
     ClearSelection {
         frame_index: Option<usize>,
     },
+    ReplaceImageSelection {
+        selection: Vec<SelectedImageAtom>,
+        frame_index: Option<usize>,
+    },
+    AddImageSelection {
+        selection: Vec<SelectedImageAtom>,
+        frame_index: Option<usize>,
+    },
+    RemoveImageSelection {
+        selection: Vec<SelectedImageAtom>,
+        frame_index: Option<usize>,
+    },
+    ClearImageSelection {
+        frame_index: Option<usize>,
+    },
+    SetSupercell {
+        repeats: [u32; 3],
+    },
+    IncrementSupercellAxis {
+        axis: usize,
+    },
+    DecrementSupercellAxis {
+        axis: usize,
+    },
+    ResetSupercell,
+    SetGhostRepeatedImages {
+        enabled: bool,
+    },
+    ToggleGhostRepeatedImages,
     SetCameraView {
         focus: Option<[f32; 3]>,
         radius: Option<f32>,
@@ -118,10 +154,29 @@ pub struct SelectionFrames {
     ordered: Vec<Vec<usize>>,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct SelectedImageAtom {
+    pub atom_index: usize,
+    pub image_offset: [i32; 3],
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ImageSelectionFrames {
+    frames: Vec<Vec<SelectedImageAtom>>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SupercellSettings {
+    pub repeats: [u32; 3],
+    pub ghost_repeated_images: bool,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ViewerSnapshot {
     pub current_frame: usize,
     pub selection: SelectionFrames,
+    pub image_selection: ImageSelectionFrames,
+    pub supercell: SupercellSettings,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -408,12 +463,114 @@ impl ViewerSessionHandle {
             .map_err(|_| ViewerSessionClosed)
     }
 
+    pub fn replace_image_selection(
+        &self,
+        selection: Vec<SelectedImageAtom>,
+        frame_index: Option<usize>,
+    ) -> Result<(), ViewerSessionClosed> {
+        self.sender
+            .send(ViewerCommand::ReplaceImageSelection {
+                selection,
+                frame_index,
+            })
+            .map_err(|_| ViewerSessionClosed)
+    }
+
+    pub fn add_image_selection(
+        &self,
+        selection: Vec<SelectedImageAtom>,
+        frame_index: Option<usize>,
+    ) -> Result<(), ViewerSessionClosed> {
+        self.sender
+            .send(ViewerCommand::AddImageSelection {
+                selection,
+                frame_index,
+            })
+            .map_err(|_| ViewerSessionClosed)
+    }
+
+    pub fn remove_image_selection(
+        &self,
+        selection: Vec<SelectedImageAtom>,
+        frame_index: Option<usize>,
+    ) -> Result<(), ViewerSessionClosed> {
+        self.sender
+            .send(ViewerCommand::RemoveImageSelection {
+                selection,
+                frame_index,
+            })
+            .map_err(|_| ViewerSessionClosed)
+    }
+
+    pub fn clear_image_selection(
+        &self,
+        frame_index: Option<usize>,
+    ) -> Result<(), ViewerSessionClosed> {
+        self.sender
+            .send(ViewerCommand::ClearImageSelection { frame_index })
+            .map_err(|_| ViewerSessionClosed)
+    }
+
     pub fn selected_atoms(&self, frame_index: Option<usize>) -> Vec<usize> {
         let Ok(snapshot) = self.snapshot.lock() else {
             return Vec::new();
         };
         let target_frame = frame_index.unwrap_or(snapshot.current_frame);
         snapshot.selection.selected_indices(target_frame)
+    }
+
+    pub fn selected_images(&self, frame_index: Option<usize>) -> Vec<SelectedImageAtom> {
+        let Ok(snapshot) = self.snapshot.lock() else {
+            return Vec::new();
+        };
+        let target_frame = frame_index.unwrap_or(snapshot.current_frame);
+        snapshot.image_selection.selected(target_frame)
+    }
+
+    pub fn set_supercell(&self, repeats: [u32; 3]) -> Result<(), ViewerSessionClosed> {
+        self.sender
+            .send(ViewerCommand::SetSupercell { repeats })
+            .map_err(|_| ViewerSessionClosed)
+    }
+
+    pub fn increment_supercell_axis(&self, axis: usize) -> Result<(), ViewerSessionClosed> {
+        self.sender
+            .send(ViewerCommand::IncrementSupercellAxis { axis })
+            .map_err(|_| ViewerSessionClosed)
+    }
+
+    pub fn decrement_supercell_axis(&self, axis: usize) -> Result<(), ViewerSessionClosed> {
+        self.sender
+            .send(ViewerCommand::DecrementSupercellAxis { axis })
+            .map_err(|_| ViewerSessionClosed)
+    }
+
+    pub fn reset_supercell(&self) -> Result<(), ViewerSessionClosed> {
+        self.sender
+            .send(ViewerCommand::ResetSupercell)
+            .map_err(|_| ViewerSessionClosed)
+    }
+
+    pub fn set_ghost_repeated_images(
+        &self,
+        enabled: bool,
+    ) -> Result<(), ViewerSessionClosed> {
+        self.sender
+            .send(ViewerCommand::SetGhostRepeatedImages { enabled })
+            .map_err(|_| ViewerSessionClosed)
+    }
+
+    pub fn toggle_ghost_repeated_images(&self) -> Result<(), ViewerSessionClosed> {
+        self.sender
+            .send(ViewerCommand::ToggleGhostRepeatedImages)
+            .map_err(|_| ViewerSessionClosed)
+    }
+
+    pub fn supercell(&self) -> SupercellSettings {
+        let Ok(snapshot) = self.snapshot.lock() else {
+            return SupercellSettings::default();
+        };
+        snapshot.supercell
     }
 
     pub fn set_camera_view(
@@ -557,6 +714,13 @@ impl Default for ViewerReadiness {
     }
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct DisplayAtom {
+    pub identity: SelectedImageAtom,
+    pub position: [f64; 3],
+    pub is_main_cell: bool,
+}
+
 #[derive(Resource)]
 pub struct ViewerState {
     pub traj: Trajectory,
@@ -568,6 +732,8 @@ pub struct ViewerState {
     pub faces: FaceFrames,
     pub render_style_rules: Vec<RenderStyleRule>,
     pub selection: SelectionFrames,
+    pub image_selection: ImageSelectionFrames,
+    pub supercell: SupercellSettings,
     pub needs_render: bool,
     pub needs_camera_reset: bool,
 }
@@ -577,6 +743,7 @@ impl ViewerState {
         let frame_count = traj.len();
         let current = clamp_frame(initial_frame, traj.len());
         let selection = SelectionFrames::new(&traj);
+        let image_selection = ImageSelectionFrames::new(frame_count);
         Self {
             traj,
             current,
@@ -587,6 +754,8 @@ impl ViewerState {
             faces: FaceFrames::new(frame_count),
             render_style_rules: Vec::new(),
             selection,
+            image_selection,
+            supercell: SupercellSettings::default(),
             needs_render: true,
             needs_camera_reset: true,
         }
@@ -614,6 +783,8 @@ impl ViewerState {
                 self.faces = FaceFrames::new(frame_count);
                 self.render_style_rules.clear();
                 self.selection = SelectionFrames::new(&self.traj);
+                self.image_selection = ImageSelectionFrames::new(frame_count);
+                self.supercell = SupercellSettings::default();
                 self.needs_render = true;
                 self.needs_camera_reset = true;
                 CommandOutcome::default()
@@ -627,6 +798,7 @@ impl ViewerState {
                 self.selection.append_empty_for_atom_count(
                     self.traj.view(self.traj.len() - 1).positions.len(),
                 );
+                self.image_selection.append_empty_frame();
                 if was_empty {
                     self.current = 0;
                     self.needs_render = true;
@@ -747,6 +919,8 @@ impl ViewerState {
                 let target_frame = frame_index.unwrap_or(self.current);
                 if self.validate_selection(target_frame, &selection) {
                     self.selection.replace(target_frame, selection);
+                    self.image_selection
+                        .replace(target_frame, self.selection.selected_main_images(target_frame));
                     self.needs_render = self.current == target_frame;
                 }
                 CommandOutcome::default()
@@ -758,6 +932,8 @@ impl ViewerState {
                 let target_frame = frame_index.unwrap_or(self.current);
                 if self.validate_selection(target_frame, &selection) {
                     self.selection.add(target_frame, &selection);
+                    self.image_selection
+                        .replace(target_frame, self.selection.selected_main_images(target_frame));
                     self.needs_render = self.current == target_frame;
                 }
                 CommandOutcome::default()
@@ -769,6 +945,8 @@ impl ViewerState {
                 let target_frame = frame_index.unwrap_or(self.current);
                 if self.validate_selection(target_frame, &selection) {
                     self.selection.remove(target_frame, &selection);
+                    self.image_selection
+                        .replace(target_frame, self.selection.selected_main_images(target_frame));
                     self.needs_render = self.current == target_frame;
                 }
                 CommandOutcome::default()
@@ -777,8 +955,97 @@ impl ViewerState {
                 let target_frame = frame_index.unwrap_or(self.current);
                 if target_frame < self.traj.len() {
                     self.selection.clear(target_frame);
+                    self.image_selection.clear(target_frame);
                     self.needs_render = self.current == target_frame;
                 }
+                CommandOutcome::default()
+            }
+            ViewerCommand::ReplaceImageSelection {
+                selection,
+                frame_index,
+            } => {
+                let target_frame = frame_index.unwrap_or(self.current);
+                if self.validate_image_selection(target_frame, &selection) {
+                    self.image_selection.replace(target_frame, selection);
+                    self.sync_main_selection_from_images(target_frame);
+                    self.needs_render = self.current == target_frame;
+                }
+                CommandOutcome::default()
+            }
+            ViewerCommand::AddImageSelection {
+                selection,
+                frame_index,
+            } => {
+                let target_frame = frame_index.unwrap_or(self.current);
+                if self.validate_image_selection(target_frame, &selection) {
+                    self.image_selection.add(target_frame, &selection);
+                    self.sync_main_selection_from_images(target_frame);
+                    self.needs_render = self.current == target_frame;
+                }
+                CommandOutcome::default()
+            }
+            ViewerCommand::RemoveImageSelection {
+                selection,
+                frame_index,
+            } => {
+                let target_frame = frame_index.unwrap_or(self.current);
+                if self.validate_image_selection(target_frame, &selection) {
+                    self.image_selection.remove(target_frame, &selection);
+                    self.sync_main_selection_from_images(target_frame);
+                    self.needs_render = self.current == target_frame;
+                }
+                CommandOutcome::default()
+            }
+            ViewerCommand::ClearImageSelection { frame_index } => {
+                let target_frame = frame_index.unwrap_or(self.current);
+                if target_frame < self.traj.len() {
+                    self.image_selection.clear(target_frame);
+                    self.sync_main_selection_from_images(target_frame);
+                    self.needs_render = self.current == target_frame;
+                }
+                CommandOutcome::default()
+            }
+            ViewerCommand::SetSupercell { repeats } => {
+                if self.supercell.repeats != repeats {
+                    self.supercell.repeats = repeats;
+                    self.needs_render = true;
+                }
+                CommandOutcome::default()
+            }
+            ViewerCommand::IncrementSupercellAxis { axis } => {
+                if axis < 3 {
+                    self.supercell.repeats[axis] = self.supercell.repeats[axis].saturating_add(1);
+                    self.needs_render = true;
+                }
+                CommandOutcome::default()
+            }
+            ViewerCommand::DecrementSupercellAxis { axis } => {
+                if axis < 3 {
+                    let next = self.supercell.repeats[axis].saturating_sub(1);
+                    if self.supercell.repeats[axis] != next {
+                        self.supercell.repeats[axis] = next;
+                        self.needs_render = true;
+                    }
+                }
+                CommandOutcome::default()
+            }
+            ViewerCommand::ResetSupercell => {
+                if self.supercell.repeats != [0, 0, 0] {
+                    self.supercell.repeats = [0, 0, 0];
+                    self.needs_render = true;
+                }
+                CommandOutcome::default()
+            }
+            ViewerCommand::SetGhostRepeatedImages { enabled } => {
+                if self.supercell.ghost_repeated_images != enabled {
+                    self.supercell.ghost_repeated_images = enabled;
+                    self.needs_render = true;
+                }
+                CommandOutcome::default()
+            }
+            ViewerCommand::ToggleGhostRepeatedImages => {
+                self.supercell.ghost_repeated_images = !self.supercell.ghost_repeated_images;
+                self.needs_render = true;
                 CommandOutcome::default()
             }
             ViewerCommand::SetCameraView { .. }
@@ -818,16 +1085,69 @@ impl ViewerState {
         self.selection.selected_indices(frame_index)
     }
 
+    pub fn selected_images(&self, frame_index: usize) -> Vec<SelectedImageAtom> {
+        let selected = self.image_selection.selected(frame_index);
+        if selected.is_empty() {
+            self.selection.selected_main_images(frame_index)
+        } else {
+            selected
+        }
+    }
+
     pub fn current_selection(&self) -> &[bool] {
         self.selection.get(self.current).unwrap_or(&[])
     }
 
-    pub fn replace_atom_selection(&mut self, atom_index: usize) -> bool {
-        self.selection.replace_single(self.current, atom_index)
+    pub fn current_image_selection(&self) -> &[SelectedImageAtom] {
+        self.image_selection.get(self.current).unwrap_or(&[])
     }
 
-    pub fn toggle_atom_selection(&mut self, atom_index: usize) -> bool {
-        self.selection.toggle(self.current, atom_index)
+    pub fn current_supercell(&self) -> SupercellSettings {
+        self.supercell
+    }
+
+    pub fn replace_atom_selection(&mut self, atom: SelectedImageAtom) -> bool {
+        let changed = self.image_selection.replace_single(self.current, atom);
+        if changed {
+            self.sync_main_selection_from_images(self.current);
+        }
+        changed
+    }
+
+    pub fn toggle_atom_selection(&mut self, atom: SelectedImageAtom) -> bool {
+        let changed = self.image_selection.toggle(self.current, atom);
+        if changed {
+            self.sync_main_selection_from_images(self.current);
+        }
+        changed
+    }
+
+    pub fn display_atoms(&self, frame_index: usize) -> Vec<DisplayAtom> {
+        if frame_index >= self.traj.len() {
+            return Vec::new();
+        }
+
+        let view = self.traj.view(frame_index);
+        let offsets = supercell_offsets(self.supercell.repeats);
+        let mut atoms = Vec::with_capacity(view.positions.len() * offsets.len());
+        for image_offset in offsets {
+            let shift = scaled_cell_translation(view.cell, image_offset);
+            for (atom_index, position) in view.positions.iter().copied().enumerate() {
+                atoms.push(DisplayAtom {
+                    identity: SelectedImageAtom {
+                        atom_index,
+                        image_offset,
+                    },
+                    position: [
+                        position[0] + shift[0],
+                        position[1] + shift[1],
+                        position[2] + shift[2],
+                    ],
+                    is_main_cell: image_offset == [0, 0, 0],
+                });
+            }
+        }
+        atoms
     }
 
     fn cell_changed(&self, old_index: usize, new_index: usize) -> bool {
@@ -841,6 +1161,17 @@ impl ViewerState {
     fn validate_selection(&self, frame_index: usize, selection: &[bool]) -> bool {
         frame_index < self.traj.len()
             && self.traj.view(frame_index).positions.len() == selection.len()
+    }
+
+    fn validate_image_selection(&self, frame_index: usize, selection: &[SelectedImageAtom]) -> bool {
+        if frame_index >= self.traj.len() {
+            return false;
+        }
+        let atom_count = self.traj.view(frame_index).positions.len();
+        let allowed_offsets = supercell_offsets(self.supercell.repeats);
+        selection.iter().all(|atom| {
+            atom.atom_index < atom_count && allowed_offsets.contains(&atom.image_offset)
+        })
     }
 
     fn store_scalars(&mut self, name: String, frame_index: usize, values: Vec<f32>) {
@@ -859,6 +1190,17 @@ impl ViewerState {
         for values in self.atom_scalars.values_mut() {
             values.resize(frame_count, None);
         }
+    }
+
+    fn sync_main_selection_from_images(&mut self, frame_index: usize) {
+        let Some(selected) = self.image_selection.get(frame_index) else {
+            return;
+        };
+        let atom_count = self.traj.view(frame_index).positions.len();
+        self.selection
+            .replace(frame_index, SelectionFrames::mask_from_images(atom_count, selected));
+        self.selection
+            .set_order(frame_index, SelectionFrames::ordered_atoms_from_images(selected));
     }
 }
 
@@ -996,117 +1338,6 @@ impl FaceFrames {
     }
 }
 
-impl SelectionFrames {
-    pub fn new(traj: &Trajectory) -> Self {
-        Self {
-            frames: (0..traj.len())
-                .map(|index| vec![false; traj.view(index).positions.len()])
-                .collect(),
-            ordered: vec![Vec::new(); traj.len()],
-        }
-    }
-
-    pub fn get(&self, frame_index: usize) -> Option<&[bool]> {
-        self.frames.get(frame_index).map(Vec::as_slice)
-    }
-
-    pub fn replace(&mut self, frame_index: usize, selection: Vec<bool>) {
-        if frame_index < self.frames.len() && self.frames[frame_index].len() == selection.len() {
-            self.frames[frame_index] = selection;
-            self.ordered[frame_index] = self.frames[frame_index]
-                .iter()
-                .enumerate()
-                .filter_map(|(index, selected)| selected.then_some(index))
-                .collect();
-        }
-    }
-
-    pub fn add(&mut self, frame_index: usize, selection: &[bool]) {
-        if let Some(current) = self.frames.get_mut(frame_index) {
-            if current.len() != selection.len() {
-                return;
-            }
-            for (slot, selected) in current.iter_mut().zip(selection.iter().copied()) {
-                *slot |= selected;
-            }
-            let ordered = &mut self.ordered[frame_index];
-            for (index, selected) in selection.iter().copied().enumerate() {
-                if selected && current[index] && !ordered.contains(&index) {
-                    ordered.push(index);
-                }
-            }
-        }
-    }
-
-    pub fn remove(&mut self, frame_index: usize, selection: &[bool]) {
-        if let Some(current) = self.frames.get_mut(frame_index) {
-            if current.len() != selection.len() {
-                return;
-            }
-            for (slot, selected) in current.iter_mut().zip(selection.iter().copied()) {
-                if selected {
-                    *slot = false;
-                }
-            }
-            self.ordered[frame_index].retain(|index| current.get(*index).copied().unwrap_or(false));
-        }
-    }
-
-    pub fn clear(&mut self, frame_index: usize) {
-        if let Some(current) = self.frames.get_mut(frame_index) {
-            current.fill(false);
-            self.ordered[frame_index].clear();
-        }
-    }
-
-    pub fn append_empty_for_atom_count(&mut self, atom_count: usize) {
-        self.frames.push(vec![false; atom_count]);
-        self.ordered.push(Vec::new());
-    }
-
-    pub fn selected_indices(&self, frame_index: usize) -> Vec<usize> {
-        self.ordered.get(frame_index).cloned().unwrap_or_default()
-    }
-
-    fn replace_single(&mut self, frame_index: usize, atom_index: usize) -> bool {
-        let Some(selection) = self.frames.get_mut(frame_index) else {
-            return false;
-        };
-        if atom_index >= selection.len() {
-            return false;
-        }
-        let changed = selection
-            .iter()
-            .enumerate()
-            .any(|(index, selected)| *selected != (index == atom_index));
-        if changed {
-            selection.fill(false);
-            selection[atom_index] = true;
-            self.ordered[frame_index].clear();
-            self.ordered[frame_index].push(atom_index);
-        }
-        changed
-    }
-
-    fn toggle(&mut self, frame_index: usize, atom_index: usize) -> bool {
-        let Some(selection) = self.frames.get_mut(frame_index) else {
-            return false;
-        };
-        if atom_index >= selection.len() {
-            return false;
-        }
-        selection[atom_index] = !selection[atom_index];
-        if selection[atom_index] {
-            if !self.ordered[frame_index].contains(&atom_index) {
-                self.ordered[frame_index].push(atom_index);
-            }
-        } else {
-            self.ordered[frame_index].retain(|index| *index != atom_index);
-        }
-        true
-    }
-}
-
 impl BallAndStickStyle {
     pub fn bond_color(self) -> bevy::color::Color {
         bevy::color::Color::srgba(
@@ -1115,110 +1346,6 @@ impl BallAndStickStyle {
             self.bond_color[2],
             self.bond_color[3],
         )
-    }
-}
-
-impl CameraState {
-    pub fn new(viewer: &ViewerState) -> Self {
-        Self::from_view(camera_view_for_frame(viewer).unwrap_or(CameraView {
-            focus: Vec3::ZERO,
-            radius: 1.0,
-            yaw: -std::f32::consts::FRAC_PI_2,
-            pitch: 0.0,
-        }))
-    }
-
-    pub fn from_view(view: CameraView) -> Self {
-        Self {
-            focus: view.focus,
-            radius: view.radius,
-            yaw: view.yaw,
-            pitch: view.pitch,
-            needs_apply: true,
-            motion: None,
-        }
-    }
-
-    pub fn apply_command(&mut self, viewer: &ViewerState, command: &ViewerCommand) {
-        match command {
-            ViewerCommand::SetCameraView {
-                focus,
-                radius,
-                yaw,
-                pitch,
-            } => {
-                self.motion = None;
-                if let Some(focus) = focus {
-                    self.focus = Vec3::from_array(*focus);
-                }
-                if let Some(radius) = radius {
-                    self.radius = (*radius).max(f32::EPSILON);
-                }
-                if let Some(yaw) = yaw {
-                    self.yaw = *yaw;
-                }
-                if let Some(pitch) = pitch {
-                    self.pitch = *pitch;
-                }
-                self.needs_apply = true;
-            }
-            ViewerCommand::PanCamera { delta } => {
-                self.motion = None;
-                self.focus += Vec3::from_array(*delta);
-                self.needs_apply = true;
-            }
-            ViewerCommand::ZoomCamera { factor, delta } => {
-                self.motion = None;
-                if let Some(factor) = factor {
-                    self.radius = (self.radius * *factor).max(f32::EPSILON);
-                }
-                if let Some(delta) = delta {
-                    self.radius = (self.radius + *delta).max(f32::EPSILON);
-                }
-                self.needs_apply = true;
-            }
-            ViewerCommand::OrbitCamera {
-                yaw_delta,
-                pitch_delta,
-            } => {
-                self.motion = None;
-                self.yaw += *yaw_delta;
-                self.pitch += *pitch_delta;
-                self.needs_apply = true;
-            }
-            ViewerCommand::FrameAll => {
-                if let Some(view) = camera_view_for_frame(viewer) {
-                    *self = Self::from_view(view);
-                }
-            }
-            ViewerCommand::StartOrbit {
-                yaw_rate,
-                pitch_rate,
-            } => {
-                self.motion = Some(OrbitMotion {
-                    yaw_rate: *yaw_rate,
-                    pitch_rate: *pitch_rate,
-                });
-            }
-            ViewerCommand::StopCameraMotion => {
-                self.motion = None;
-            }
-            _ => {}
-        }
-    }
-
-    pub fn reset_for_frame(&mut self, viewer: &ViewerState) {
-        if let Some(view) = camera_view_for_frame(viewer) {
-            *self = Self::from_view(view);
-        }
-    }
-
-    pub fn tick_motion(&mut self, delta_seconds: f32) {
-        if let Some(motion) = self.motion {
-            self.yaw += motion.yaw_rate * delta_seconds;
-            self.pitch += motion.pitch_rate * delta_seconds;
-            self.needs_apply = true;
-        }
     }
 }
 
@@ -1235,12 +1362,59 @@ impl Default for ViewerSnapshot {
                 frames: Vec::new(),
                 ordered: Vec::new(),
             },
+            image_selection: ImageSelectionFrames { frames: Vec::new() },
+            supercell: SupercellSettings::default(),
+        }
+    }
+}
+
+impl Default for SupercellSettings {
+    fn default() -> Self {
+        Self {
+            repeats: [0, 0, 0],
+            ghost_repeated_images: true,
         }
     }
 }
 
 fn clamp_frame(index: usize, len: usize) -> usize {
     if len == 0 { 0 } else { index.min(len - 1) }
+}
+
+fn axis_offsets(repeat_extent: u32) -> Vec<i32> {
+    let repeat_extent = repeat_extent as i32;
+    (-repeat_extent..=repeat_extent).collect()
+}
+
+fn supercell_offsets(repeats: [u32; 3]) -> Vec<[i32; 3]> {
+    let mut offsets = Vec::new();
+    for ia in axis_offsets(repeats[0]) {
+        for ib in axis_offsets(repeats[1]) {
+            for ic in axis_offsets(repeats[2]) {
+                offsets.push([ia, ib, ic]);
+            }
+        }
+    }
+    offsets.sort_by_key(|offset| {
+        (
+            offset.iter().map(|value| value.abs()).sum::<i32>(),
+            offset[0].abs(),
+            offset[1].abs(),
+            offset[2].abs(),
+            offset[0],
+            offset[1],
+            offset[2],
+        )
+    });
+    offsets
+}
+
+fn scaled_cell_translation(cell: ak_core::geometry::Cell, offset: [i32; 3]) -> [f64; 3] {
+    let a = cell.a();
+    let b = cell.b();
+    let c = cell.c();
+    let shift = a * offset[0] as f64 + b * offset[1] as f64 + c * offset[2] as f64;
+    [shift[0], shift[1], shift[2]]
 }
 
 fn canonicalize_face_atoms(atoms: &[usize]) -> Vec<usize> {
@@ -1270,449 +1444,4 @@ fn minimum_face_rotation(atoms: &[usize]) -> Vec<usize> {
         }
     }
     best
-}
-
-pub fn camera_view_for_frame(viewer: &ViewerState) -> Option<CameraView> {
-    if !viewer.has_frames() {
-        return None;
-    }
-
-    let view = viewer.traj.view(viewer.current);
-    let focus = structure_vec3_to_world(Vec3::from_slice(
-        view.cell.reduced(0.5, 0.5, 0.5).cast::<f32>().as_slice(),
-    ));
-    let radius = [view.cell.a(), view.cell.b(), view.cell.c()]
-        .iter()
-        .fold(0.0_f64, |acc, v| acc.max(v.norm())) as f32;
-
-    Some(CameraView {
-        focus,
-        radius: 2.5 * radius.max(f32::EPSILON),
-        yaw: -std::f32::consts::FRAC_PI_2,
-        pitch: 0.0,
-    })
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{
-        AtomColorRule, BallAndStickStyle, BondFrames, BondList, BondScope, CameraState, Face,
-        FaceFrames, FaceList, RenderStyle, ScalarColorMap, ViewerCommand, ViewerState,
-        camera_view_for_frame,
-    };
-    use ak_core::{Structure, Trajectory};
-    use bevy::prelude::Vec3;
-
-    fn test_structure(x: f64) -> Structure {
-        Structure::new(
-            vec![[x, 0.0, 0.0], [x + 1.0, 0.0, 0.0]],
-            vec![1, 1],
-            [[10.0, 0.0, 0.0], [0.0, 10.0, 0.0], [0.0, 0.0, 10.0]],
-            [false, false, false],
-        )
-    }
-
-    fn test_structure4() -> Structure {
-        Structure::new(
-            vec![
-                [0.0, 0.0, 0.0],
-                [1.0, 0.0, 0.0],
-                [1.0, 1.0, 0.0],
-                [0.0, 1.0, 0.0],
-            ],
-            vec![1, 1, 1, 1],
-            [[10.0, 0.0, 0.0], [0.0, 10.0, 0.0], [0.0, 0.0, 10.0]],
-            [false, false, false],
-        )
-    }
-
-    #[test]
-    fn load_trajectory_sets_initial_frame() {
-        let mut state = ViewerState::new(Trajectory::new(vec![test_structure(0.0)]), 0);
-        state.needs_render = false;
-        state.needs_camera_reset = false;
-
-        state.apply_command(ViewerCommand::LoadTrajectory {
-            frames: vec![
-                test_structure(0.0),
-                test_structure(1.0),
-                test_structure(2.0),
-            ],
-            initial_frame: 2,
-        });
-
-        assert_eq!(state.current, 2);
-        assert_eq!(state.trajectory_len(), 3);
-        assert!(state.needs_render);
-        assert!(state.needs_camera_reset);
-    }
-
-    #[test]
-    fn append_frame_increases_trajectory_length() {
-        let mut state = ViewerState::new(Trajectory::new(vec![test_structure(0.0)]), 0);
-
-        state.apply_command(ViewerCommand::AppendFrame {
-            frame: test_structure(1.0),
-        });
-
-        assert_eq!(state.trajectory_len(), 2);
-    }
-
-    #[test]
-    fn follow_tail_on_moves_to_latest_frame_after_append() {
-        let mut state = ViewerState::new(Trajectory::new(vec![test_structure(0.0)]), 0);
-        state.apply_command(ViewerCommand::SetFollowTail { enabled: true });
-
-        state.apply_command(ViewerCommand::AppendFrame {
-            frame: test_structure(1.0),
-        });
-
-        assert_eq!(state.current, 1);
-        assert!(state.needs_render);
-    }
-
-    #[test]
-    fn follow_tail_off_preserves_current_frame_after_append() {
-        let mut state = ViewerState::new(Trajectory::new(vec![test_structure(0.0)]), 0);
-        state.needs_render = false;
-
-        state.apply_command(ViewerCommand::AppendFrame {
-            frame: test_structure(1.0),
-        });
-
-        assert_eq!(state.current, 0);
-        assert_eq!(state.trajectory_len(), 2);
-        assert!(!state.needs_render);
-    }
-
-    #[test]
-    fn out_of_bounds_current_frame_is_ignored() {
-        let mut state = ViewerState::new(
-            Trajectory::new(vec![test_structure(0.0), test_structure(1.0)]),
-            0,
-        );
-        state.needs_render = false;
-
-        state.apply_command(ViewerCommand::SetCurrentFrame { index: 5 });
-
-        assert_eq!(state.current, 0);
-        assert!(!state.needs_render);
-    }
-
-    #[test]
-    fn set_atom_scalars_stores_current_frame_values() {
-        let mut state = ViewerState::new(Trajectory::new(vec![test_structure(0.0)]), 0);
-
-        state.apply_command(ViewerCommand::SetAtomScalars {
-            name: "energy".to_string(),
-            values: vec![1.0, 2.0],
-            frame_index: None,
-        });
-
-        assert_eq!(
-            state.atom_scalars["energy"][0].as_ref().unwrap(),
-            &vec![1.0, 2.0]
-        );
-    }
-
-    #[test]
-    fn color_by_scalar_switches_color_mode() {
-        let mut state = ViewerState::new(Trajectory::new(vec![test_structure(0.0)]), 0);
-
-        state.apply_command(ViewerCommand::ColorByScalar {
-            name: "energy".to_string(),
-            palette: ScalarColorMap::Viridis,
-            min: None,
-            max: None,
-            append: false,
-        });
-
-        assert_eq!(
-            state.atom_color_rules,
-            vec![AtomColorRule {
-                name: "energy".to_string(),
-                palette: ScalarColorMap::Viridis,
-                min: None,
-                max: None,
-            }]
-        );
-    }
-
-    #[test]
-    fn append_color_rule_preserves_existing_rules() {
-        let mut state = ViewerState::new(Trajectory::new(vec![test_structure(0.0)]), 0);
-
-        state.apply_command(ViewerCommand::ColorByScalar {
-            name: "energy".to_string(),
-            palette: ScalarColorMap::Viridis,
-            min: None,
-            max: None,
-            append: false,
-        });
-        state.apply_command(ViewerCommand::ColorByScalar {
-            name: "charge".to_string(),
-            palette: ScalarColorMap::Plasma,
-            min: Some(-1.0),
-            max: Some(1.0),
-            append: true,
-        });
-
-        assert_eq!(state.atom_color_rules.len(), 2);
-        assert_eq!(state.atom_color_rules[0].name, "energy");
-        assert_eq!(state.atom_color_rules[1].name, "charge");
-    }
-
-    #[test]
-    fn bond_list_canonicalizes_edges() {
-        let bonds = BondList::new([(2, 1), (1, 2), (0, 0), (0, 3)]);
-
-        let edges: Vec<(usize, usize)> = bonds.iter().copied().collect();
-        assert_eq!(edges, vec![(0, 3), (1, 2)]);
-    }
-
-    #[test]
-    fn bond_frames_store_per_frame_bonds() {
-        let mut frames = BondFrames::new(2);
-        frames.set(1, BondList::new([(0, 1)]));
-
-        assert!(frames.get(0).is_none());
-        assert_eq!(
-            frames.get(1).unwrap().iter().copied().collect::<Vec<_>>(),
-            vec![(0, 1)]
-        );
-    }
-
-    #[test]
-    fn face_list_canonicalizes_rotations_and_reversals() {
-        let faces = FaceList::new([
-            Face::new([0, 1, 2, 3], [1.0, 0.0, 0.0, 0.5]).unwrap(),
-            Face::new([2, 3, 0, 1], [0.0, 1.0, 0.0, 0.5]).unwrap(),
-            Face::new([3, 2, 1, 0], [0.0, 0.0, 1.0, 0.5]).unwrap(),
-        ]);
-
-        assert_eq!(faces.len(), 1);
-        assert_eq!(faces.iter().next().unwrap().atoms.as_slice(), &[0, 1, 2, 3]);
-    }
-
-    #[test]
-    fn face_frames_store_per_frame_faces() {
-        let mut frames = FaceFrames::new(2);
-        frames.set(
-            1,
-            FaceList::new([Face::new([0, 1, 2], [0.2, 0.4, 0.6, 0.3]).unwrap()]),
-        );
-
-        assert!(frames.get(0).is_none());
-        assert_eq!(frames.get(1).unwrap().len(), 1);
-    }
-
-    #[test]
-    fn set_faces_drops_out_of_range_polygons() {
-        let mut state = ViewerState::new(Trajectory::new(vec![test_structure4()]), 0);
-
-        state.apply_command(ViewerCommand::SetFaces {
-            faces: FaceList::new([
-                Face::new([0, 1, 2], [0.1, 0.2, 0.3, 0.4]).unwrap(),
-                Face::new([0, 1, 9], [0.5, 0.6, 0.7, 0.8]).unwrap(),
-            ]),
-            frame_index: None,
-        });
-
-        let faces = state.faces.get(0).unwrap();
-        assert_eq!(faces.len(), 1);
-        assert_eq!(faces.iter().next().unwrap().atoms.as_slice(), &[0, 1, 2]);
-    }
-
-    #[test]
-    fn set_render_style_stores_selection_rule() {
-        let mut state = ViewerState::new(Trajectory::new(vec![test_structure(0.0)]), 0);
-
-        state.apply_command(ViewerCommand::SetRenderStyle {
-            style: RenderStyle::BallAndStick(BallAndStickStyle {
-                atom_scale: 0.45,
-                bond_radius: 0.08,
-                bond_color: [0.7, 0.7, 0.7, 1.0],
-                bond_scope: BondScope::TouchSelection,
-            }),
-            selection: vec![true, false],
-            frame_index: None,
-            append: false,
-        });
-
-        assert_eq!(state.render_style_rules.len(), 1);
-        assert_eq!(state.render_style_rules[0].selection, vec![true, false]);
-        assert_eq!(state.render_style_rules[0].frame_index, 0);
-        assert!(matches!(
-            state.render_style_rules[0].style,
-            RenderStyle::BallAndStick(BallAndStickStyle {
-                bond_scope: BondScope::TouchSelection,
-                ..
-            })
-        ));
-    }
-
-    #[test]
-    fn selection_commands_update_current_frame_state() {
-        let mut state = ViewerState::new(Trajectory::new(vec![test_structure(0.0)]), 0);
-
-        state.apply_command(ViewerCommand::ReplaceSelection {
-            selection: vec![true, false],
-            frame_index: None,
-        });
-        state.apply_command(ViewerCommand::AddSelection {
-            selection: vec![false, true],
-            frame_index: None,
-        });
-        state.apply_command(ViewerCommand::RemoveSelection {
-            selection: vec![true, false],
-            frame_index: None,
-        });
-
-        assert_eq!(state.selected_atoms(0), vec![1]);
-    }
-
-    #[test]
-    fn selection_state_is_frame_scoped() {
-        let mut state = ViewerState::new(
-            Trajectory::new(vec![test_structure(0.0), test_structure(1.0)]),
-            0,
-        );
-
-        state.apply_command(ViewerCommand::ReplaceSelection {
-            selection: vec![true, false],
-            frame_index: Some(0),
-        });
-        state.apply_command(ViewerCommand::ReplaceSelection {
-            selection: vec![false, true],
-            frame_index: Some(1),
-        });
-
-        assert_eq!(state.selected_atoms(0), vec![0]);
-        assert_eq!(state.selected_atoms(1), vec![1]);
-    }
-
-    #[test]
-    fn click_selection_preserves_toggle_order() {
-        let mut state = ViewerState::new(Trajectory::new(vec![test_structure4()]), 0);
-
-        assert!(state.toggle_atom_selection(2));
-        assert!(state.toggle_atom_selection(0));
-        assert!(state.toggle_atom_selection(3));
-
-        assert_eq!(state.selected_atoms(0), vec![2, 0, 3]);
-    }
-
-    #[test]
-    fn toggling_atom_off_removes_it_from_selection_order() {
-        let mut state = ViewerState::new(Trajectory::new(vec![test_structure4()]), 0);
-
-        assert!(state.toggle_atom_selection(2));
-        assert!(state.toggle_atom_selection(0));
-        assert!(state.toggle_atom_selection(2));
-
-        assert_eq!(state.selected_atoms(0), vec![0]);
-    }
-
-    #[test]
-    fn load_trajectory_resets_selection_state() {
-        let mut state = ViewerState::new(Trajectory::new(vec![test_structure(0.0)]), 0);
-        state.apply_command(ViewerCommand::ReplaceSelection {
-            selection: vec![true, false],
-            frame_index: None,
-        });
-
-        state.apply_command(ViewerCommand::LoadTrajectory {
-            frames: vec![test_structure4()],
-            initial_frame: 0,
-        });
-
-        assert!(state.selected_atoms(0).is_empty());
-        assert_eq!(state.current_selection().len(), 4);
-    }
-
-    #[test]
-    fn set_camera_view_updates_requested_fields() {
-        let viewer = ViewerState::new(Trajectory::new(vec![test_structure(0.0)]), 0);
-        let mut camera = CameraState::new(&viewer);
-
-        camera.apply_command(
-            &viewer,
-            &ViewerCommand::SetCameraView {
-                focus: Some([1.0, 2.0, 3.0]),
-                radius: Some(9.0),
-                yaw: Some(0.5),
-                pitch: Some(-0.25),
-            },
-        );
-
-        assert_eq!(camera.focus, Vec3::new(1.0, 2.0, 3.0));
-        assert_eq!(camera.radius, 9.0);
-        assert_eq!(camera.yaw, 0.5);
-        assert_eq!(camera.pitch, -0.25);
-    }
-
-    #[test]
-    fn orbit_and_zoom_camera_are_incremental() {
-        let viewer = ViewerState::new(Trajectory::new(vec![test_structure(0.0)]), 0);
-        let mut camera = CameraState::new(&viewer);
-        let initial = camera.clone();
-
-        camera.apply_command(
-            &viewer,
-            &ViewerCommand::OrbitCamera {
-                yaw_delta: 0.2,
-                pitch_delta: -0.1,
-            },
-        );
-        camera.apply_command(
-            &viewer,
-            &ViewerCommand::ZoomCamera {
-                factor: Some(0.5),
-                delta: None,
-            },
-        );
-
-        assert_eq!(camera.yaw, initial.yaw + 0.2);
-        assert_eq!(camera.pitch, initial.pitch - 0.1);
-        assert_eq!(camera.radius, initial.radius * 0.5);
-    }
-
-    #[test]
-    fn start_and_stop_orbit_motion_updates_camera() {
-        let viewer = ViewerState::new(Trajectory::new(vec![test_structure(0.0)]), 0);
-        let mut camera = CameraState::new(&viewer);
-        let initial_yaw = camera.yaw;
-
-        camera.apply_command(
-            &viewer,
-            &ViewerCommand::StartOrbit {
-                yaw_rate: 1.0,
-                pitch_rate: 0.0,
-            },
-        );
-        camera.tick_motion(0.5);
-        assert_eq!(camera.yaw, initial_yaw + 0.5);
-
-        camera.apply_command(&viewer, &ViewerCommand::StopCameraMotion);
-        camera.tick_motion(0.5);
-        assert_eq!(camera.yaw, initial_yaw + 0.5);
-    }
-
-    #[test]
-    fn frame_all_restores_default_camera_view() {
-        let viewer = ViewerState::new(Trajectory::new(vec![test_structure(0.0)]), 0);
-        let mut camera = CameraState::new(&viewer);
-        camera.focus = Vec3::splat(5.0);
-        camera.radius = 99.0;
-        camera.yaw = 2.0;
-        camera.pitch = 1.0;
-
-        camera.apply_command(&viewer, &ViewerCommand::FrameAll);
-
-        let expected = camera_view_for_frame(&viewer).unwrap();
-        assert_eq!(camera.focus, expected.focus);
-        assert_eq!(camera.radius, expected.radius);
-        assert_eq!(camera.yaw, expected.yaw);
-        assert_eq!(camera.pitch, expected.pitch);
-    }
 }
