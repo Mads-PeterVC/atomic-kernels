@@ -8,6 +8,52 @@ and format defined in
 
 Entries are listed newest first.
 
+## 2026-03-18 - Python viewer CLI and follow-up viewer fixes
+
+- Commits: `55444a6`, `3550aa1`
+- Agent: `Codex (GPT-5, OpenAI)`
+- Context: This work introduced the first installed Python CLI entry point for the
+  viewer so ASE-readable files can be opened directly from the shell, while also
+  tightening several viewer-facing details discovered during rollout: live window size
+  defaults, inspector keybinding label wording, and the axis-snap shortcut mapping for
+  `X`/`Y`/`Z`.
+- Implementation: Added the new `ak` console script in `pyproject.toml` and the
+  Python package modules `python/atomic_kernels/cli/{__init__,main,view}.py`, using
+  `click` plus `rich-click` option groups to expose `ak view FILE` with theme, window
+  sizing, and toggle flags. Extended the Python/Rust viewer config bridge in
+  `python/atomic_kernels/viewer/_config.py`,
+  `python/atomic_kernels/atomic_kernels.pyi`,
+  `crates/ak-py/src/viewer_config.rs`, and
+  `crates/ak-vis/src/viewer/config.rs` so live viewers can carry explicit window
+  dimensions, then threaded those dimensions into Bevy window creation in
+  `crates/ak-vis/src/viewer/app.rs`. Follow-up fixes updated
+  `crates/ak-vis/src/viewer/controls/camera.rs` so `X` snaps to `+X`, `Y` to `+Y`,
+  and `Z` to `-Z`, and adjusted the inspector keybinding header in
+  `crates/ak-vis/src/ui/{shortcuts,state,tests}.rs` to keep the keycap while showing
+  the shorter `Keybindings (H)` label.
+- Difficulty: The awkward parts were mostly in the seams between systems. The first
+  Bevy window-size implementation accidentally replaced the default primary window with
+  `None` whenever the CLI did not provide explicit dimensions, which caused normal
+  viewer scripts to exit immediately with "No windows are open". The inspector label
+  cleanup also needed a second pass because shortening the text too aggressively broke
+  the dedicated toggle-text node and dropped the keycap rendering that the UI tests
+  and shortcut affordance relied on. Even the test suite needed iteration: rich-click
+  help formatting is environment-sensitive enough that strict string assertions were
+  brittle, and Rust-backed color tuples had to be compared approximately rather than
+  by exact decimal literals.
+- Constraints: The CLI currently remains viewer-only and intentionally narrow. It
+  shells directly into `bevy_viewer(...)` with ASE-based loading, a light/dark theme
+  preset, explicit live window sizing, and a small set of render toggles; it does not
+  yet expose broader viewer/session control, playback, or headless render commands.
+  The snap-view shortcut mapping is now opinionated for slab work by treating `Z` as a
+  top-down `-Z` view rather than a bottom-up `+Z` one.
+- Follow-up: If the CLI grows beyond `view`, keep the command tree under
+  `python/atomic_kernels/cli/` instead of mixing it into package roots, and prefer
+  extending the existing `ViewerConfig` seam rather than introducing a parallel
+  CLI-only viewer launch path. If more keyboard-driven camera views are added, cover
+  them in `crates/ak-vis/src/viewer/controls/camera.rs` tests so axis semantics do not
+  drift again.
+
 ## 2026-03-18 - Inspector UI, angle cue, and UI module split
 
 - Commits: `fb94de0`, `8e2d2f7`, `fd041e5`, `24496e7`
