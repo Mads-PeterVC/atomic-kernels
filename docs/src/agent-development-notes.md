@@ -8,6 +8,53 @@ and format defined in
 
 Entries are listed newest first.
 
+## 2026-03-18 - Supercell viewer state, image-aware selection, and repeat hotkeys
+
+- Commit: `c24f53c`
+- Agent: `Codex (GPT-5, OpenAI)`
+- Context: The viewer already had live selection and Python session control, but it
+  still treated the displayed structure as exactly one canonical cell. This work added
+  repeated-image display as first-class viewer state, preserved a distinct notion of
+  main-cell versus repeated atoms, and exposed that model through both the Rust session
+  layer and the Python viewer facade.
+- Implementation: Extended `crates/ak-vis/src/viewer/session.rs` with supercell
+  settings, image-aware selected-atom identity, snapshot/session commands for repeat
+  control, and a display-expanded atom list derived from the canonical trajectory
+  rather than replacing it. Wired repeated-image rendering and picking through
+  `crates/ak-vis/src/viewer/systems.rs`,
+  `crates/ak-vis/src/render/render_atoms.rs`,
+  `crates/ak-vis/src/components.rs`, and the visuals modules so repeated images carry
+  `(atom_index, image_offset)` identity and ghosted styling. Added `1`/`2`/`3`,
+  `Shift+1`/`Shift+2`/`Shift+3`, and `0` viewer shortcuts in
+  `crates/ak-vis/src/viewer/controls/navigation.rs` plus matching keybinding text in
+  `crates/ak-vis/src/ui/shortcuts.rs`. Exposed launch-time and live supercell controls
+  through the PyO3 bridge in `crates/ak-py/src/{viewer_config.rs,pyfunctions/py_viewer.rs}`
+  and the Python facade/proxy/stub layers in
+  `python/atomic_kernels/viewer/{_config,_process,_session}.py` and
+  `python/atomic_kernels/atomic_kernels.pyi`, with coverage added in
+  `tests/test_camera_and_session.py`, `tests/test_viewer_process.py`, and
+  `tests/test_viewer_integration.py`.
+- Difficulty: The hard part was that supercells were not just a render toggle. The
+  original selection model was only a per-frame boolean mask over canonical atoms, so
+  repeated images initially had nowhere stable to live in picking, snapshots, or
+  Python readback. The camera path also needed a correction during rollout: once the
+  first supercell implementation used displayed-atom bounds for `camera_view_for_frame`,
+  the initial framing and `X`/`Y`/`Z` snap views unexpectedly zoomed tighter than the
+  longstanding cell-based behavior. The final shape deliberately separates those
+  concerns by keeping display repetition dynamic while preserving the old default/snap
+  framing contract.
+- Constraints: Repetition is currently symmetric around the main cell and controlled by
+  per-axis repeat extents, not explicit negative/positive bounds. The viewer ghosts
+  repeated-only images as its only distinction mode, with `0` toggling that styling
+  off. Main-cell selection helpers remain part of the public API for convenience, while
+  repeated-image selection uses explicit `(atom_index, image_offset)` records instead
+  of flattening all displayed atoms into one global index space.
+- Follow-up: If future work wants `FrameAll` or other explicit camera commands to fit
+  the displayed supercell instead of the canonical cell, do that as a deliberate camera
+  policy change rather than by reusing the initial/snap framing path. If repeated-image
+  styling later needs image-aware bonds, faces, or subset render rules, build on the
+  new display-identity model instead of falling back to ambiguous flattened indices.
+
 ## 2026-03-18 - Python viewer CLI and follow-up viewer fixes
 
 - Commits: `55444a6`, `3550aa1`
