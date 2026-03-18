@@ -11,9 +11,9 @@ pub fn toggle_view(
     let (target_yaw, target_pitch) = if keys.just_pressed(KeyCode::KeyX) {
         (-FRAC_PI_2, 0.0)
     } else if keys.just_pressed(KeyCode::KeyY) {
-        (0.0, -FRAC_PI_2)
-    } else if keys.just_pressed(KeyCode::KeyZ) {
         (0.0, 0.0)
+    } else if keys.just_pressed(KeyCode::KeyZ) {
+        (0.0, FRAC_PI_2)
     } else {
         return;
     };
@@ -72,6 +72,7 @@ mod tests {
     use ak_core::{Structure, Trajectory};
     use bevy::ecs::system::SystemState;
     use bevy::prelude::*;
+    use std::f32::consts::FRAC_PI_2;
     use std::time::Duration;
 
     fn sample_viewer() -> ViewerState {
@@ -85,10 +86,20 @@ mod tests {
     }
 
     #[test]
-    fn toggle_view_snaps_camera_to_requested_axis() {
+    fn toggle_view_snaps_camera_to_requested_axes() {
+        for (key, expected_yaw, expected_pitch) in [
+            (KeyCode::KeyX, -FRAC_PI_2, 0.0),
+            (KeyCode::KeyY, 0.0, 0.0),
+            (KeyCode::KeyZ, 0.0, FRAC_PI_2),
+        ] {
+            assert_toggle_view(key, expected_yaw, expected_pitch);
+        }
+    }
+
+    fn assert_toggle_view(key: KeyCode, expected_yaw: f32, expected_pitch: f32) {
         let mut world = World::new();
         let mut keys = ButtonInput::<KeyCode>::default();
-        keys.press(KeyCode::KeyX);
+        keys.press(key);
 
         let viewer = sample_viewer();
         let initial_focus = CameraState::new(&viewer).focus;
@@ -108,8 +119,8 @@ mod tests {
         system_state.apply(&mut world);
 
         let camera = world.resource::<CameraState>();
-        assert_eq!(camera.yaw, -std::f32::consts::FRAC_PI_2);
-        assert_eq!(camera.pitch, 0.0);
+        assert_eq!(camera.yaw, expected_yaw);
+        assert_eq!(camera.pitch, expected_pitch);
         assert!(camera.needs_apply);
         assert_eq!(camera.motion, None);
         assert_eq!(camera.focus, initial_focus);

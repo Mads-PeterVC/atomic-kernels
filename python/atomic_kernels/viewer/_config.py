@@ -40,6 +40,8 @@ def serialize_config(config: Optional[ViewerConfig]) -> Optional[dict]:
             "orientation_widget_camera_scale": config.render.orientation_widget_camera_scale,
         },
         "initial_frame": config.initial_frame,
+        "window_width": config.window_width,
+        "window_height": config.window_height,
     }
 
 
@@ -55,4 +57,6 @@ def deserialize_config(payload: Optional[dict]) -> Optional[ViewerConfig]:
         lighting=LightingConfig(**payload["lighting"]),
         render=RenderConfig(**payload["render"]),
         initial_frame=payload["initial_frame"],
+        window_width=payload.get("window_width"),
+        window_height=payload.get("window_height"),
     )

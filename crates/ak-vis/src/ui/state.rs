@@ -221,11 +221,8 @@ fn measurement_text(inspector: &InspectorState) -> String {
 }
 
 fn hints_toggle_text(inspector: &InspectorState) -> String {
-    if inspector.hints_expanded {
-        "to collapse)".to_string()
-    } else {
-        "to expand)".to_string()
-    }
+    let _ = inspector;
+    ")".to_string()
 }
 
 fn shows_measurement(inspector: &InspectorState) -> bool {

@@ -252,12 +252,14 @@ pub struct PyViewerConfig {
 #[pymethods]
 impl PyViewerConfig {
     #[new]
-    #[pyo3(signature = (color=None, lighting=None, render=None, initial_frame=0))]
+    #[pyo3(signature = (color=None, lighting=None, render=None, initial_frame=0, window_width=None, window_height=None))]
     fn new(
         color: Option<PyColorConfig>,
         lighting: Option<PyLightingConfig>,
         render: Option<PyRenderConfig>,
         initial_frame: usize,
+        window_width: Option<u32>,
+        window_height: Option<u32>,
     ) -> Self {
         let default_config = ViewerConfig::default();
         PyViewerConfig {
@@ -268,6 +270,8 @@ impl PyViewerConfig {
                     .unwrap_or(default_config.lighting),
                 render: render.map(|r| (&r).into()).unwrap_or(default_config.render),
                 initial_frame,
+                window_width,
+                window_height,
             },
         }
     }
@@ -310,6 +314,26 @@ impl PyViewerConfig {
     #[setter]
     fn set_initial_frame(&mut self, value: usize) {
         self.inner.initial_frame = value;
+    }
+
+    #[getter]
+    fn window_width(&self) -> Option<u32> {
+        self.inner.window_width
+    }
+
+    #[setter]
+    fn set_window_width(&mut self, value: Option<u32>) {
+        self.inner.window_width = value;
+    }
+
+    #[getter]
+    fn window_height(&self) -> Option<u32> {
+        self.inner.window_height
+    }
+
+    #[setter]
+    fn set_window_height(&mut self, value: Option<u32>) {
+        self.inner.window_height = value;
     }
 }
 

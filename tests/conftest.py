@@ -64,11 +64,21 @@ class _RenderConfig:
 
 
 class _ViewerConfig:
-    def __init__(self, color=None, lighting=None, render=None, initial_frame=0):
+    def __init__(
+        self,
+        color=None,
+        lighting=None,
+        render=None,
+        initial_frame=0,
+        window_width=None,
+        window_height=None,
+    ):
         self.color = color or _ColorConfig()
         self.lighting = lighting or _LightingConfig()
         self.render = render or _RenderConfig()
         self.initial_frame = initial_frame
+        self.window_width = window_width
+        self.window_height = window_height
 
 
 class _PreparedViewerSession:
