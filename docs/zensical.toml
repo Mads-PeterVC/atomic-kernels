@@ -1,5 +1,8 @@
 [project]
 site_name = "atomic-kernels"
+repo_url = "https://github.com/Mads-PeterVC/atomic-kernels"
+site_url = "https://mads-petervc.github.io/atomic-kernels/"
+site_author = "Mads-Peter Verner Christiansen"
 docs_dir = "src"
 site_dir = "site"
 use_directory_urls = false
@@ -68,6 +71,7 @@ features = [
 
 # Palette toggle for automatic mode
 [[project.theme.palette]]
+primary = "deep purple"
 media = "(prefers-color-scheme)"
 toggle.icon = "lucide/sun-moon"
 toggle.name = "Switch to light mode"
@@ -76,6 +80,7 @@ toggle.name = "Switch to light mode"
 [[project.theme.palette]]
 media = "(prefers-color-scheme: light)"
 scheme = "default"
+primary = "deep purple"
 toggle.icon = "lucide/sun"
 toggle.name = "Switch to dark mode"
 
@@ -83,5 +88,6 @@ toggle.name = "Switch to dark mode"
 [[project.theme.palette]]
 media = "(prefers-color-scheme: dark)"
 scheme = "slate"
+primary = "deep purple"
 toggle.icon = "lucide/moon"
 toggle.name = "Switch to system preference"
