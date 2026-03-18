@@ -15,9 +15,14 @@ classifiers = [
 dynamic = ["version"]
 dependencies = [
     "ase>=3.23.0",
+    "click>=8.1.0",
     "numpy>=1.24.4",
+    "rich-click>=1.8.0",
     "scipy>=1.10.1",
 ]
+
+[project.scripts]
+ak = "atomic_kernels.cli:main"
 
 [dependency-groups]
 docs = [

@@ -74,4 +74,6 @@ pub struct ViewerConfig {
     pub lighting: LightingConfig,
     pub render: RenderConfig,
     pub initial_frame: usize,
+    pub window_width: Option<u32>,
+    pub window_height: Option<u32>,
 }

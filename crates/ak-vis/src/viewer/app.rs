@@ -44,17 +44,25 @@ fn build_app(
     snapshot: Arc<Mutex<crate::viewer::session::ViewerSnapshot>>,
 ) -> App {
     let mut app = App::new();
-    app.add_plugins((
-        DefaultPlugins
-            .build()
-            .disable::<bevy::audio::AudioPlugin>()
-            .set(AssetPlugin {
-                file_path: asset_root(),
+    let mut plugins = DefaultPlugins.build().disable::<bevy::audio::AudioPlugin>();
+    plugins = plugins.set(AssetPlugin {
+        file_path: asset_root(),
+        ..default()
+    });
+
+    if config.window_width.is_some() || config.window_height.is_some() {
+        let width = config.window_width.unwrap_or(750);
+        let height = config.window_height.unwrap_or(750);
+        plugins = plugins.set(WindowPlugin {
+            primary_window: Some(Window {
+                resolution: (width, height).into(),
                 ..default()
             }),
-        MeshPickingPlugin,
-        PanOrbitCameraPlugin,
-    ));
+            ..default()
+        });
+    }
+
+    app.add_plugins((plugins, MeshPickingPlugin, PanOrbitCameraPlugin));
     configure_shared_app(&mut app, trajectory, config, receiver, snapshot);
     app.insert_resource(MarqueeSelectionState::default());
     app.insert_resource(ViewerLifecycle {

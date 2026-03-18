@@ -137,10 +137,10 @@ pub(super) fn spawn_hints_section(
                 .insert(Pickable::IGNORE)
                 .with_children(|header| {
                     header.spawn(section_title_bundle("Keybindings", font));
-                    header.spawn(hint_action_bundle("(press", font));
+                    header.spawn(hint_action_bundle("(", font));
                     spawn_keycap(header, font, symbol_font, "H");
                     header.spawn((
-                        Text::new("to expand)"),
+                        Text::new(")"),
                         TextFont {
                             font: font.clone(),
                             font_size: 11.0,
