@@ -9,7 +9,19 @@ use crate::ui::InspectorState;
 use ak_core::Trajectory;
 use bevy::camera::RenderTarget;
 use bevy::prelude::*;
+use std::fs;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, mpsc};
+use std::sync::OnceLock;
+
+const ROBOTO_MONO_FONT: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/fonts/RobotoMono-VariableFont_wght.ttf"
+));
+const NOTO_SYMBOLS_FONT: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/fonts/NotoSansSymbols2-Regular.ttf"
+));
 
 #[derive(Resource)]
 pub(crate) struct CommandReceiver(pub Option<Mutex<mpsc::Receiver<ViewerCommand>>>);
@@ -21,7 +33,48 @@ pub(crate) struct MainCameraRenderTarget(pub RenderTarget);
 pub(crate) struct SharedViewerSnapshot(pub Arc<Mutex<ViewerSnapshot>>);
 
 pub(crate) fn asset_root() -> String {
-    format!("{}/assets", env!("CARGO_MANIFEST_DIR"))
+    if let Some(path) = std::env::var_os("AK_VIS_ASSET_ROOT") {
+        return path.to_string_lossy().into_owned();
+    }
+
+    bundled_asset_root().to_string_lossy().into_owned()
+}
+
+fn bundled_asset_root() -> &'static Path {
+    static ASSET_ROOT: OnceLock<PathBuf> = OnceLock::new();
+
+    ASSET_ROOT
+        .get_or_init(|| {
+            let root = std::env::temp_dir()
+                .join("atomic-kernels")
+                .join("ak-vis-assets")
+                .join(env!("CARGO_PKG_VERSION"));
+            let fonts_dir = root.join("fonts");
+            fs::create_dir_all(&fonts_dir).expect("failed to create bundled asset directory");
+            write_bundled_asset(
+                &fonts_dir.join("RobotoMono-VariableFont_wght.ttf"),
+                ROBOTO_MONO_FONT,
+            );
+            write_bundled_asset(
+                &fonts_dir.join("NotoSansSymbols2-Regular.ttf"),
+                NOTO_SYMBOLS_FONT,
+            );
+            root
+        })
+        .as_path()
+}
+
+fn write_bundled_asset(path: &Path, bytes: &[u8]) {
+    let needs_write = match fs::metadata(path) {
+        Ok(metadata) => metadata.len() != bytes.len() as u64,
+        Err(_) => true,
+    };
+
+    if needs_write {
+        fs::write(path, bytes).unwrap_or_else(|err| {
+            panic!("failed to write bundled asset {}: {err}", path.display())
+        });
+    }
 }
 
 pub(crate) fn configure_shared_app(
@@ -69,4 +122,16 @@ pub(crate) fn configure_shared_app(
                 sync_viewer_snapshot,
             ),
         );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::bundled_asset_root;
+
+    #[test]
+    fn bundled_asset_root_contains_expected_fonts() {
+        let root = bundled_asset_root();
+        assert!(root.join("fonts/RobotoMono-VariableFont_wght.ttf").is_file());
+        assert!(root.join("fonts/NotoSansSymbols2-Regular.ttf").is_file());
+    }
 }
