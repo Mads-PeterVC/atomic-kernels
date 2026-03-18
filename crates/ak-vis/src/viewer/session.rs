@@ -115,6 +115,7 @@ pub struct ViewerReadiness {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SelectionFrames {
     frames: Vec<Vec<bool>>,
+    ordered: Vec<Vec<usize>>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -1001,6 +1002,7 @@ impl SelectionFrames {
             frames: (0..traj.len())
                 .map(|index| vec![false; traj.view(index).positions.len()])
                 .collect(),
+            ordered: vec![Vec::new(); traj.len()],
         }
     }
 
@@ -1011,6 +1013,11 @@ impl SelectionFrames {
     pub fn replace(&mut self, frame_index: usize, selection: Vec<bool>) {
         if frame_index < self.frames.len() && self.frames[frame_index].len() == selection.len() {
             self.frames[frame_index] = selection;
+            self.ordered[frame_index] = self.frames[frame_index]
+                .iter()
+                .enumerate()
+                .filter_map(|(index, selected)| selected.then_some(index))
+                .collect();
         }
     }
 
@@ -1021,6 +1028,12 @@ impl SelectionFrames {
             }
             for (slot, selected) in current.iter_mut().zip(selection.iter().copied()) {
                 *slot |= selected;
+            }
+            let ordered = &mut self.ordered[frame_index];
+            for (index, selected) in selection.iter().copied().enumerate() {
+                if selected && current[index] && !ordered.contains(&index) {
+                    ordered.push(index);
+                }
             }
         }
     }
@@ -1035,30 +1048,24 @@ impl SelectionFrames {
                     *slot = false;
                 }
             }
+            self.ordered[frame_index].retain(|index| current.get(*index).copied().unwrap_or(false));
         }
     }
 
     pub fn clear(&mut self, frame_index: usize) {
         if let Some(current) = self.frames.get_mut(frame_index) {
             current.fill(false);
+            self.ordered[frame_index].clear();
         }
     }
 
     pub fn append_empty_for_atom_count(&mut self, atom_count: usize) {
         self.frames.push(vec![false; atom_count]);
+        self.ordered.push(Vec::new());
     }
 
     pub fn selected_indices(&self, frame_index: usize) -> Vec<usize> {
-        self.frames
-            .get(frame_index)
-            .map(|selection| {
-                selection
-                    .iter()
-                    .enumerate()
-                    .filter_map(|(index, selected)| selected.then_some(index))
-                    .collect()
-            })
-            .unwrap_or_default()
+        self.ordered.get(frame_index).cloned().unwrap_or_default()
     }
 
     fn replace_single(&mut self, frame_index: usize, atom_index: usize) -> bool {
@@ -1075,6 +1082,8 @@ impl SelectionFrames {
         if changed {
             selection.fill(false);
             selection[atom_index] = true;
+            self.ordered[frame_index].clear();
+            self.ordered[frame_index].push(atom_index);
         }
         changed
     }
@@ -1087,6 +1096,13 @@ impl SelectionFrames {
             return false;
         }
         selection[atom_index] = !selection[atom_index];
+        if selection[atom_index] {
+            if !self.ordered[frame_index].contains(&atom_index) {
+                self.ordered[frame_index].push(atom_index);
+            }
+        } else {
+            self.ordered[frame_index].retain(|index| *index != atom_index);
+        }
         true
     }
 }
@@ -1215,7 +1231,10 @@ impl Default for ViewerSnapshot {
     fn default() -> Self {
         Self {
             current_frame: 0,
-            selection: SelectionFrames { frames: Vec::new() },
+            selection: SelectionFrames {
+                frames: Vec::new(),
+                ordered: Vec::new(),
+            },
         }
     }
 }
@@ -1570,6 +1589,28 @@ mod tests {
 
         assert_eq!(state.selected_atoms(0), vec![0]);
         assert_eq!(state.selected_atoms(1), vec![1]);
+    }
+
+    #[test]
+    fn click_selection_preserves_toggle_order() {
+        let mut state = ViewerState::new(Trajectory::new(vec![test_structure4()]), 0);
+
+        assert!(state.toggle_atom_selection(2));
+        assert!(state.toggle_atom_selection(0));
+        assert!(state.toggle_atom_selection(3));
+
+        assert_eq!(state.selected_atoms(0), vec![2, 0, 3]);
+    }
+
+    #[test]
+    fn toggling_atom_off_removes_it_from_selection_order() {
+        let mut state = ViewerState::new(Trajectory::new(vec![test_structure4()]), 0);
+
+        assert!(state.toggle_atom_selection(2));
+        assert!(state.toggle_atom_selection(0));
+        assert!(state.toggle_atom_selection(2));
+
+        assert_eq!(state.selected_atoms(0), vec![0]);
     }
 
     #[test]

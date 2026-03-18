@@ -22,4 +22,5 @@ runs:
           libxrandr-dev \
           mesa-vulkan-drivers \
           pkg-config \
+          xdotool \
           xvfb

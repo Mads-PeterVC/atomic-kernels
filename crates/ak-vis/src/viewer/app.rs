@@ -4,7 +4,10 @@ use bevy_panorbit_camera::PanOrbitCameraPlugin;
 use std::sync::{Arc, Mutex, mpsc};
 use std::thread;
 
-use crate::ui::setup_ui;
+use crate::ui::{
+    setup_ui, sync_inspector_camera, sync_inspector_state, sync_inspector_text,
+    toggle_hints_visibility,
+};
 use crate::viewer::ViewerConfig;
 use crate::viewer::controls::{
     keyboard_controls, navigate_frames, screenshot_on_spacebar, screenshot_saving,
@@ -82,7 +85,11 @@ fn build_app(
 
     if app.world().resource::<ViewerConfig>().render.show_ui {
         app.add_systems(Startup, setup_ui);
-        app.add_systems(Update, toggle_ui_visibility);
+        app.add_systems(Update, (toggle_ui_visibility, toggle_hints_visibility));
+        app.add_systems(
+            PostUpdate,
+            (sync_inspector_camera, sync_inspector_state, sync_inspector_text).chain(),
+        );
     }
 
     app

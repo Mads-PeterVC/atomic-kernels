@@ -1,56 +1,24 @@
-use bevy::prelude::*;
+mod build;
+mod shortcuts;
+mod state;
 
-use crate::components::ToggleableUI;
+#[cfg(test)]
+mod tests;
 
-pub fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
-    let font = asset_server.load("fonts/RobotoMono-VariableFont_wght.ttf");
+pub use build::setup_ui;
+pub use state::{
+    InspectorState, MeasurementStatus, SelectedAtomSummary, derive_inspector_state,
+    sync_inspector_camera, sync_inspector_state, sync_inspector_text, toggle_hints_visibility,
+};
 
-    commands
-        .spawn((
-            Node {
-                flex_direction: FlexDirection::Column,
-                position_type: PositionType::Absolute,
-                left: px(24),
-                bottom: px(24),
-                width: px(200),
-                padding: UiRect::all(px(16)),
-                border_radius: BorderRadius::all(px(12)),
-                ..default()
-            },
-            BackgroundColor(Color::srgb(0.12, 0.12, 0.12).with_alpha(0.85)),
-            BorderColor::all(Color::WHITE.with_alpha(0.15)),
-            ZIndex(10),
-            ToggleableUI,
-        ))
-        .insert(children![text_bundle("Keybindings", &font)]);
+use bevy::prelude::Color;
 
-    commands.spawn((
-        Text::new("Some text"),
-        ToggleableUI,
-        TextLayout::new_with_justify(Justify::Right),
-        TextFont {
-            font: font.clone(),
-            font_size: 12.0,
-            ..default()
-        },
-    ));
-}
-
-fn text_bundle(text: &str, font: &Handle<Font>) -> impl Bundle {
-    (
-        Text::new(text),
-        // Set the justification of the Text
-        Underline,
-        TextLayout::new_with_justify(Justify::Center),
-        TextFont {
-            font: font.clone(),
-            ..default()
-        }, // Set the style of the Node itself.
-           // Node {
-           //     position_type: PositionType::Absolute,
-           //     bottom: px(5),
-           //     left: px(10),
-           //     ..default()
-           // },
-    )
-}
+pub(super) const PANEL_BACKGROUND: Color = Color::srgba(0.07, 0.08, 0.10, 0.58);
+pub(super) const SECTION_BACKGROUND: Color = Color::srgba(0.10, 0.11, 0.14, 0.54);
+pub(super) const PANEL_BORDER: Color = Color::srgba(1.0, 1.0, 1.0, 0.08);
+pub(super) const BODY_COLOR: Color = Color::srgb(0.76, 0.79, 0.83);
+pub(super) const ACCENT_COLOR: Color = Color::srgb(0.72, 0.86, 0.96);
+pub(super) const KEYCAP_BACKGROUND: Color = Color::srgba(0.19, 0.21, 0.25, 0.82);
+pub(super) const KEYCAP_BORDER: Color = Color::srgba(1.0, 1.0, 1.0, 0.08);
+pub(super) const KEYCAP_TEXT: Color = Color::srgb(0.89, 0.91, 0.95);
+pub(super) const HINT_LABEL_COLOR: Color = Color::srgb(0.70, 0.74, 0.79);
