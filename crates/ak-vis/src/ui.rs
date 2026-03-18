@@ -53,13 +53,13 @@ const ZOOM_TOKENS: &[ShortcutToken] = &[
     ShortcutToken::Key("S"),
 ];
 const ORBIT_TOKENS: &[ShortcutToken] = &[
-    ShortcutToken::Key("←"),
+    ShortcutToken::Key("◀"),
     ShortcutToken::Separator("/"),
-    ShortcutToken::Key("→"),
+    ShortcutToken::Key("▶"),
     ShortcutToken::Separator("/"),
-    ShortcutToken::Key("↑"),
+    ShortcutToken::Key("▲"),
     ShortcutToken::Separator("/"),
-    ShortcutToken::Key("↓"),
+    ShortcutToken::Key("▼"),
 ];
 const SNAP_VIEW_TOKENS: &[ShortcutToken] = &[
     ShortcutToken::Key("X"),
@@ -107,7 +107,7 @@ const SHORTCUT_HINTS: &[ShortcutHint] = &[
     },
     ShortcutHint {
         tokens: TOGGLE_INSPECTOR_TOKENS,
-        label: "toggle inspector",
+        label: "toggle UI",
     },
     ShortcutHint {
         tokens: TOGGLE_HINTS_TOKENS,
@@ -145,6 +145,7 @@ impl Default for MeasurementStatus {
 
 pub fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
     let font = asset_server.load("fonts/RobotoMono-VariableFont_wght.ttf");
+    let symbol_font = asset_server.load("fonts/NotoSansSymbols2-Regular.ttf");
 
     commands
         .spawn_empty()
@@ -183,7 +184,7 @@ pub fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                 .insert(Pickable::IGNORE)
                 .insert(InspectorPanelSurface)
                 .with_children(|panel| {
-                    spawn_hints_section(panel, &font);
+                    spawn_hints_section(panel, &font, &symbol_font);
                     spawn_section(
                         panel,
                         &font,
@@ -260,7 +261,11 @@ fn section_body_bundle(text: &str, font: &Handle<Font>) -> impl Bundle {
     )
 }
 
-fn spawn_hints_section(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font>) {
+fn spawn_hints_section(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    symbol_font: &Handle<Font>,
+) {
     parent
         .spawn_empty()
         .insert(Node {
@@ -286,7 +291,7 @@ fn spawn_hints_section(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font
                 .with_children(|header| {
                     header.spawn(section_title_bundle("Keybindings", font));
                     header.spawn(hint_action_bundle("(press", font));
-                    spawn_keycap(header, font, "H");
+                    spawn_keycap(header, font, symbol_font, "H");
                     header.spawn((
                         Text::new("to expand)"),
                         TextFont {
@@ -303,20 +308,25 @@ fn spawn_hints_section(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font
                 .insert(Node {
                     display: Display::None,
                     flex_direction: FlexDirection::Column,
-                    row_gap: px(6),
+                    row_gap: px(4),
                     ..default()
                 })
                 .insert(Pickable::IGNORE)
                 .insert(InspectorHintsContainer)
                 .with_children(|container| {
                     for hint in shortcut_hints() {
-                        spawn_hint_row(container, font, hint);
+                        spawn_hint_row(container, font, symbol_font, hint);
                     }
                 });
         });
 }
 
-fn spawn_hint_row(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font>, hint: &ShortcutHint) {
+fn spawn_hint_row(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    symbol_font: &Handle<Font>,
+    hint: &ShortcutHint,
+) {
     parent
         .spawn_empty()
         .insert(Node {
@@ -336,7 +346,9 @@ fn spawn_hint_row(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font>, hi
                 .with_children(|tokens_parent| {
                     for token in hint.tokens {
                         match token {
-                            ShortcutToken::Key(text) => spawn_keycap(tokens_parent, font, text),
+                            ShortcutToken::Key(text) => {
+                                spawn_keycap(tokens_parent, font, symbol_font, text)
+                            }
                             ShortcutToken::Separator(text) => {
                                 tokens_parent.spawn(hint_separator_bundle(text, font));
                             }
@@ -351,11 +363,64 @@ fn shortcut_hints() -> &'static [ShortcutHint] {
     SHORTCUT_HINTS
 }
 
-fn spawn_keycap(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font>, text: &str) {
+fn keycap_font<'a>(
+    font: &'a Handle<Font>,
+    symbol_font: &'a Handle<Font>,
+    text: &str,
+) -> &'a Handle<Font> {
+    match text {
+        "◀" | "▶" | "▲" | "▼" => symbol_font,
+        _ => font,
+    }
+}
+
+fn is_symbol_keycap(text: &str) -> bool {
+    matches!(text, "◀" | "▶" | "▲" | "▼")
+}
+
+fn symbol_keycap_text_node(text: &str) -> Node {
+    let mut node = Node::default();
+    match text {
+        "◀" => {
+            node.position_type = PositionType::Relative;
+            node.top = px(1.5);
+        }
+        "▶" => {
+            node.position_type = PositionType::Relative;
+            node.top = px(1.5);
+            node.left = px(0.5);
+        }
+        "▲" => {
+            node.position_type = PositionType::Relative;
+            node.top = px(0.75);
+        }
+        "▼" => {
+            node.position_type = PositionType::Relative;
+            node.top = px(1.5);
+        }
+        _ => {}
+    }
+    node
+}
+
+fn spawn_keycap(
+    parent: &mut ChildSpawnerCommands<'_>,
+    font: &Handle<Font>,
+    symbol_font: &Handle<Font>,
+    text: &str,
+) {
+    let is_symbol = is_symbol_keycap(text);
     parent
         .spawn_empty()
         .insert(Node {
-            padding: UiRect::axes(px(7), px(3)),
+            min_width: if is_symbol { px(22) } else { px(0) },
+            justify_content: JustifyContent::Center,
+            align_items: AlignItems::Center,
+            padding: if is_symbol {
+                UiRect::axes(px(5), px(2))
+            } else {
+                UiRect::axes(px(7), px(3))
+            },
             border: UiRect::all(px(1)),
             border_radius: BorderRadius::all(px(8)),
             ..default()
@@ -365,10 +430,15 @@ fn spawn_keycap(parent: &mut ChildSpawnerCommands<'_>, font: &Handle<Font>, text
         .insert(Pickable::IGNORE)
         .with_children(|keycap| {
             keycap.spawn((
+                if is_symbol {
+                    symbol_keycap_text_node(text)
+                } else {
+                    Node::default()
+                },
                 Text::new(text),
                 TextFont {
-                    font: font.clone(),
-                    font_size: 10.5,
+                    font: keycap_font(font, symbol_font, text).clone(),
+                    font_size: if is_symbol { 12.0 } else { 10.5 },
                     ..default()
                 },
                 TextColor(KEYCAP_TEXT),
@@ -610,7 +680,7 @@ pub fn toggle_hints_visibility(
 
     inspector.hints_expanded = !inspector.hints_expanded;
     let display = if inspector.hints_expanded {
-        Display::Block
+        Display::Flex
     } else {
         Display::None
     };
@@ -734,7 +804,7 @@ mod tests {
         assert!(labels.contains(&"orbit camera"));
         assert!(labels.contains(&"snap to axes"));
         assert!(labels.contains(&"save screenshot"));
-        assert!(labels.contains(&"toggle inspector"));
+        assert!(labels.contains(&"toggle UI"));
         assert!(labels.contains(&"toggle keybindings"));
     }
 
@@ -917,7 +987,7 @@ mod tests {
         assert!(app.world().resource::<InspectorState>().hints_expanded);
         assert_eq!(
             app.world().get::<Node>(entity).unwrap().display,
-            Display::Block
+            Display::Flex
         );
     }
 }
