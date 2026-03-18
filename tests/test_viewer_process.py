@@ -119,3 +119,43 @@ def test_viewer_session_proxy_selection_commands_forward_payloads():
         ("remove_selection", ([True, False], 1)),
         ("clear_selection", 2),
     ]
+
+
+def test_viewer_session_proxy_supercell_and_image_selection_commands_forward_payloads():
+    connection = ConnectionSpy()
+    connection._responses.extend(
+        [
+            ("selected_images", [(1, (1, 0, 0))]),
+            ("supercell", ((2, 0, 0), False)),
+        ]
+    )
+    process = ProcessSpy(alive=True)
+    proxy = ViewerSessionProxy(connection, process)
+
+    assert proxy.selected_images(frame_index=1) == [(1, (1, 0, 0))]
+    proxy.set_image_selection([(0, (0, 0, 0))], frame_index=0)
+    proxy.add_image_selection([(1, (1, 0, 0))], frame_index=0)
+    proxy.remove_image_selection([(1, (1, 0, 0))], frame_index=0)
+    proxy.clear_image_selection(frame_index=0)
+    proxy.set_supercell((2, 0, 0))
+    proxy.increment_supercell_axis(0)
+    proxy.decrement_supercell_axis(1)
+    proxy.reset_supercell()
+    proxy.set_ghost_repeated_images(False)
+    proxy.toggle_ghost_repeated_images()
+    assert proxy.supercell() == ((2, 0, 0), False)
+
+    assert connection.messages == [
+        ("selected_images", 1),
+        ("set_image_selection", ([(0, (0, 0, 0))], 0)),
+        ("add_image_selection", ([(1, (1, 0, 0))], 0)),
+        ("remove_image_selection", ([(1, (1, 0, 0))], 0)),
+        ("clear_image_selection", 0),
+        ("set_supercell", (2, 0, 0)),
+        ("increment_supercell_axis", 0),
+        ("decrement_supercell_axis", 1),
+        ("reset_supercell", None),
+        ("set_ghost_repeated_images", False),
+        ("toggle_ghost_repeated_images", None),
+        ("supercell", None),
+    ]

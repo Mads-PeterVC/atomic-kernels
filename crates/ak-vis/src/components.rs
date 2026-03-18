@@ -1,5 +1,11 @@
 use bevy::prelude::*;
 
+#[derive(Component, Clone, Debug, PartialEq, Eq)]
+pub struct DisplayAtomIdentity {
+    pub atom_index: usize,
+    pub image_offset: [i32; 3],
+}
+
 #[derive(Component)]
 pub struct FrameAtom;
 
@@ -52,9 +58,6 @@ pub struct InspectorHintsToggle;
 pub struct InspectorPanelSurface;
 
 #[derive(Component)]
-pub struct AtomIndex(pub usize);
-
-#[derive(Component)]
 pub struct MarqueeSelectionOverlay;
 
 #[derive(Component)]
@@ -73,11 +76,11 @@ pub struct OrientationWidgetLetterStroke {
 #[cfg(test)]
 mod tests {
     use super::{
-        AtomIndex, FrameAtom, FrameAxis, FrameBond, FrameCell, FrameFace, FrameMeasurementCue,
-        FrameSelectionHighlight, InspectorHintsContainer, InspectorHintsToggle,
-        InspectorMeasurementBody, InspectorMeasurementSection, InspectorPanelRoot,
-        InspectorPanelSurface, InspectorSelectionBody, InspectorSelectionSection, MainSceneCamera,
-        MarqueeSelectionOverlay,
+        DisplayAtomIdentity, FrameAtom, FrameAxis, FrameBond, FrameCell, FrameFace,
+        FrameMeasurementCue, FrameSelectionHighlight, InspectorHintsContainer,
+        InspectorHintsToggle, InspectorMeasurementBody, InspectorMeasurementSection,
+        InspectorPanelRoot, InspectorPanelSurface, InspectorSelectionBody,
+        InspectorSelectionSection, MainSceneCamera, MarqueeSelectionOverlay,
         OrientationWidgetCamera, OrientationWidgetLetterStroke, OrientationWidgetRoot,
         ToggleableUI,
     };
@@ -109,11 +112,14 @@ mod tests {
                 InspectorHintsContainer,
                 InspectorHintsToggle,
                 InspectorPanelSurface,
-                AtomIndex(3),
                 MarqueeSelectionOverlay,
                 OrientationWidgetRoot,
                 OrientationWidgetCamera,
             ))
+            .insert(DisplayAtomIdentity {
+                atom_index: 3,
+                image_offset: [1, 0, -1],
+            })
             .insert(OrientationWidgetLetterStroke {
                 direction: Vec3::Z,
                 start: Vec2::new(-0.5, 0.0),
@@ -142,7 +148,13 @@ mod tests {
         assert!(world.get::<InspectorHintsContainer>(entity).is_some());
         assert!(world.get::<InspectorHintsToggle>(entity).is_some());
         assert!(world.get::<InspectorPanelSurface>(entity).is_some());
-        assert_eq!(world.get::<AtomIndex>(entity).unwrap().0, 3);
+        assert_eq!(
+            world.get::<DisplayAtomIdentity>(entity).unwrap(),
+            &DisplayAtomIdentity {
+                atom_index: 3,
+                image_offset: [1, 0, -1],
+            }
+        );
         assert!(world.get::<MarqueeSelectionOverlay>(entity).is_some());
         assert!(world.get::<OrientationWidgetRoot>(entity).is_some());
         assert!(world.get::<OrientationWidgetCamera>(entity).is_some());

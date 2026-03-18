@@ -253,3 +253,11 @@ def click_viewer_at(session, target: ClickTarget) -> ClickDebugInfo:
         resolved_points=resolved_points,
         absolute_points=absolute_points,
     )
+
+
+def send_viewer_key(session, key: str) -> None:
+    window_id = _viewer_window_id(session)
+    subprocess.run(
+        ["xdotool", "key", "--window", window_id, key],
+        check=True,
+    )

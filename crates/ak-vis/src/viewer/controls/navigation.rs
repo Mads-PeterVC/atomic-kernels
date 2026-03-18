@@ -48,6 +48,29 @@ pub fn despawn_current_frame(
 }
 
 pub fn navigate_frames(mut timer: Local<Timer>, mut resources: RenderResources) {
+    let shifted = resources
+        .keys
+        .any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight]);
+    for (axis, key) in [
+        (0usize, KeyCode::Digit1),
+        (1usize, KeyCode::Digit2),
+        (2usize, KeyCode::Digit3),
+    ] {
+        if resources.keys.just_pressed(key) {
+            let _ = resources.viewer.apply_command(if shifted {
+                crate::viewer::ViewerCommand::DecrementSupercellAxis { axis }
+            } else {
+                crate::viewer::ViewerCommand::IncrementSupercellAxis { axis }
+            });
+        }
+    }
+
+    if resources.keys.just_pressed(KeyCode::Digit0) {
+        let _ = resources
+            .viewer
+            .apply_command(crate::viewer::ViewerCommand::ToggleGhostRepeatedImages);
+    }
+
     // Initialize timer on first run (0.1 seconds = 10 frames per second)
     if timer.duration().is_zero() {
         *timer = Timer::from_seconds(0.1, TimerMode::Repeating);
@@ -169,5 +192,26 @@ mod tests {
         app.update();
 
         assert_eq!(app.world().resource::<ViewerState>().current, 1);
+    }
+
+    #[test]
+    fn navigate_frames_adjusts_supercell_and_ghosting_with_digit_hotkeys() {
+        let mut app = App::new();
+        let mut keys = ButtonInput::<KeyCode>::default();
+        keys.press(KeyCode::Digit1);
+        keys.press(KeyCode::Digit0);
+
+        let time = Time::<()>::default();
+
+        app.insert_resource(keys);
+        app.insert_resource(time);
+        app.insert_resource(sample_viewer());
+        app.add_systems(Update, navigate_frames);
+
+        app.update();
+
+        let viewer = app.world().resource::<ViewerState>();
+        assert_eq!(viewer.supercell.repeats, [1, 0, 0]);
+        assert!(!viewer.supercell.ghost_repeated_images);
     }
 }

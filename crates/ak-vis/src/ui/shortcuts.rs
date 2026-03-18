@@ -60,6 +60,28 @@ const SNAP_VIEW_TOKENS: &[ShortcutToken] = &[
 const SCREENSHOT_TOKENS: &[ShortcutToken] = &[ShortcutToken::Key("Space")];
 const TOGGLE_INSPECTOR_TOKENS: &[ShortcutToken] = &[ShortcutToken::Key("U")];
 const TOGGLE_HINTS_TOKENS: &[ShortcutToken] = &[ShortcutToken::Key("H")];
+const REPEAT_A_TOKENS: &[ShortcutToken] = &[
+    ShortcutToken::Key("1"),
+    ShortcutToken::Separator("/"),
+    ShortcutToken::Key("Shift"),
+    ShortcutToken::Separator("+"),
+    ShortcutToken::Key("1"),
+];
+const REPEAT_B_TOKENS: &[ShortcutToken] = &[
+    ShortcutToken::Key("2"),
+    ShortcutToken::Separator("/"),
+    ShortcutToken::Key("Shift"),
+    ShortcutToken::Separator("+"),
+    ShortcutToken::Key("2"),
+];
+const REPEAT_C_TOKENS: &[ShortcutToken] = &[
+    ShortcutToken::Key("3"),
+    ShortcutToken::Separator("/"),
+    ShortcutToken::Key("Shift"),
+    ShortcutToken::Separator("+"),
+    ShortcutToken::Key("3"),
+];
+const TOGGLE_SUPERCELL_DISTINCTION_TOKENS: &[ShortcutToken] = &[ShortcutToken::Key("0")];
 
 const SHORTCUT_HINTS: &[ShortcutHint] = &[
     ShortcutHint {
@@ -101,6 +123,22 @@ const SHORTCUT_HINTS: &[ShortcutHint] = &[
     ShortcutHint {
         tokens: TOGGLE_HINTS_TOKENS,
         label: "toggle keybindings",
+    },
+    ShortcutHint {
+        tokens: REPEAT_A_TOKENS,
+        label: "repeat a",
+    },
+    ShortcutHint {
+        tokens: REPEAT_B_TOKENS,
+        label: "repeat b",
+    },
+    ShortcutHint {
+        tokens: REPEAT_C_TOKENS,
+        label: "repeat c",
+    },
+    ShortcutHint {
+        tokens: TOGGLE_SUPERCELL_DISTINCTION_TOKENS,
+        label: "toggle image ghosting",
     },
 ];
 

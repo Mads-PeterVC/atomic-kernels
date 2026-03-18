@@ -1,5 +1,5 @@
 pub mod atom_visual;
-pub use atom_visual::AtomVisual;
+pub use atom_visual::{AtomIdentity, AtomVisual};
 
 pub mod bond_visual;
 pub use bond_visual::BondVisual;

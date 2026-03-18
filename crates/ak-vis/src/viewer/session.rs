@@ -66,6 +66,35 @@ pub enum ViewerCommand {
     ClearSelection {
         frame_index: Option<usize>,
     },
+    ReplaceImageSelection {
+        selection: Vec<SelectedImageAtom>,
+        frame_index: Option<usize>,
+    },
+    AddImageSelection {
+        selection: Vec<SelectedImageAtom>,
+        frame_index: Option<usize>,
+    },
+    RemoveImageSelection {
+        selection: Vec<SelectedImageAtom>,
+        frame_index: Option<usize>,
+    },
+    ClearImageSelection {
+        frame_index: Option<usize>,
+    },
+    SetSupercell {
+        repeats: [u32; 3],
+    },
+    IncrementSupercellAxis {
+        axis: usize,
+    },
+    DecrementSupercellAxis {
+        axis: usize,
+    },
+    ResetSupercell,
+    SetGhostRepeatedImages {
+        enabled: bool,
+    },
+    ToggleGhostRepeatedImages,
     SetCameraView {
         focus: Option<[f32; 3]>,
         radius: Option<f32>,
@@ -118,10 +147,29 @@ pub struct SelectionFrames {
     ordered: Vec<Vec<usize>>,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct SelectedImageAtom {
+    pub atom_index: usize,
+    pub image_offset: [i32; 3],
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ImageSelectionFrames {
+    frames: Vec<Vec<SelectedImageAtom>>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SupercellSettings {
+    pub repeats: [u32; 3],
+    pub ghost_repeated_images: bool,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ViewerSnapshot {
     pub current_frame: usize,
     pub selection: SelectionFrames,
+    pub image_selection: ImageSelectionFrames,
+    pub supercell: SupercellSettings,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -408,12 +456,114 @@ impl ViewerSessionHandle {
             .map_err(|_| ViewerSessionClosed)
     }
 
+    pub fn replace_image_selection(
+        &self,
+        selection: Vec<SelectedImageAtom>,
+        frame_index: Option<usize>,
+    ) -> Result<(), ViewerSessionClosed> {
+        self.sender
+            .send(ViewerCommand::ReplaceImageSelection {
+                selection,
+                frame_index,
+            })
+            .map_err(|_| ViewerSessionClosed)
+    }
+
+    pub fn add_image_selection(
+        &self,
+        selection: Vec<SelectedImageAtom>,
+        frame_index: Option<usize>,
+    ) -> Result<(), ViewerSessionClosed> {
+        self.sender
+            .send(ViewerCommand::AddImageSelection {
+                selection,
+                frame_index,
+            })
+            .map_err(|_| ViewerSessionClosed)
+    }
+
+    pub fn remove_image_selection(
+        &self,
+        selection: Vec<SelectedImageAtom>,
+        frame_index: Option<usize>,
+    ) -> Result<(), ViewerSessionClosed> {
+        self.sender
+            .send(ViewerCommand::RemoveImageSelection {
+                selection,
+                frame_index,
+            })
+            .map_err(|_| ViewerSessionClosed)
+    }
+
+    pub fn clear_image_selection(
+        &self,
+        frame_index: Option<usize>,
+    ) -> Result<(), ViewerSessionClosed> {
+        self.sender
+            .send(ViewerCommand::ClearImageSelection { frame_index })
+            .map_err(|_| ViewerSessionClosed)
+    }
+
     pub fn selected_atoms(&self, frame_index: Option<usize>) -> Vec<usize> {
         let Ok(snapshot) = self.snapshot.lock() else {
             return Vec::new();
         };
         let target_frame = frame_index.unwrap_or(snapshot.current_frame);
         snapshot.selection.selected_indices(target_frame)
+    }
+
+    pub fn selected_images(&self, frame_index: Option<usize>) -> Vec<SelectedImageAtom> {
+        let Ok(snapshot) = self.snapshot.lock() else {
+            return Vec::new();
+        };
+        let target_frame = frame_index.unwrap_or(snapshot.current_frame);
+        snapshot.image_selection.selected(target_frame)
+    }
+
+    pub fn set_supercell(&self, repeats: [u32; 3]) -> Result<(), ViewerSessionClosed> {
+        self.sender
+            .send(ViewerCommand::SetSupercell { repeats })
+            .map_err(|_| ViewerSessionClosed)
+    }
+
+    pub fn increment_supercell_axis(&self, axis: usize) -> Result<(), ViewerSessionClosed> {
+        self.sender
+            .send(ViewerCommand::IncrementSupercellAxis { axis })
+            .map_err(|_| ViewerSessionClosed)
+    }
+
+    pub fn decrement_supercell_axis(&self, axis: usize) -> Result<(), ViewerSessionClosed> {
+        self.sender
+            .send(ViewerCommand::DecrementSupercellAxis { axis })
+            .map_err(|_| ViewerSessionClosed)
+    }
+
+    pub fn reset_supercell(&self) -> Result<(), ViewerSessionClosed> {
+        self.sender
+            .send(ViewerCommand::ResetSupercell)
+            .map_err(|_| ViewerSessionClosed)
+    }
+
+    pub fn set_ghost_repeated_images(
+        &self,
+        enabled: bool,
+    ) -> Result<(), ViewerSessionClosed> {
+        self.sender
+            .send(ViewerCommand::SetGhostRepeatedImages { enabled })
+            .map_err(|_| ViewerSessionClosed)
+    }
+
+    pub fn toggle_ghost_repeated_images(&self) -> Result<(), ViewerSessionClosed> {
+        self.sender
+            .send(ViewerCommand::ToggleGhostRepeatedImages)
+            .map_err(|_| ViewerSessionClosed)
+    }
+
+    pub fn supercell(&self) -> SupercellSettings {
+        let Ok(snapshot) = self.snapshot.lock() else {
+            return SupercellSettings::default();
+        };
+        snapshot.supercell
     }
 
     pub fn set_camera_view(
@@ -557,6 +707,13 @@ impl Default for ViewerReadiness {
     }
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct DisplayAtom {
+    pub identity: SelectedImageAtom,
+    pub position: [f64; 3],
+    pub is_main_cell: bool,
+}
+
 #[derive(Resource)]
 pub struct ViewerState {
     pub traj: Trajectory,
@@ -568,6 +725,8 @@ pub struct ViewerState {
     pub faces: FaceFrames,
     pub render_style_rules: Vec<RenderStyleRule>,
     pub selection: SelectionFrames,
+    pub image_selection: ImageSelectionFrames,
+    pub supercell: SupercellSettings,
     pub needs_render: bool,
     pub needs_camera_reset: bool,
 }
@@ -577,6 +736,7 @@ impl ViewerState {
         let frame_count = traj.len();
         let current = clamp_frame(initial_frame, traj.len());
         let selection = SelectionFrames::new(&traj);
+        let image_selection = ImageSelectionFrames::new(frame_count);
         Self {
             traj,
             current,
@@ -587,6 +747,8 @@ impl ViewerState {
             faces: FaceFrames::new(frame_count),
             render_style_rules: Vec::new(),
             selection,
+            image_selection,
+            supercell: SupercellSettings::default(),
             needs_render: true,
             needs_camera_reset: true,
         }
@@ -614,6 +776,8 @@ impl ViewerState {
                 self.faces = FaceFrames::new(frame_count);
                 self.render_style_rules.clear();
                 self.selection = SelectionFrames::new(&self.traj);
+                self.image_selection = ImageSelectionFrames::new(frame_count);
+                self.supercell = SupercellSettings::default();
                 self.needs_render = true;
                 self.needs_camera_reset = true;
                 CommandOutcome::default()
@@ -627,6 +791,7 @@ impl ViewerState {
                 self.selection.append_empty_for_atom_count(
                     self.traj.view(self.traj.len() - 1).positions.len(),
                 );
+                self.image_selection.append_empty_frame();
                 if was_empty {
                     self.current = 0;
                     self.needs_render = true;
@@ -747,6 +912,8 @@ impl ViewerState {
                 let target_frame = frame_index.unwrap_or(self.current);
                 if self.validate_selection(target_frame, &selection) {
                     self.selection.replace(target_frame, selection);
+                    self.image_selection
+                        .replace(target_frame, self.selection.selected_main_images(target_frame));
                     self.needs_render = self.current == target_frame;
                 }
                 CommandOutcome::default()
@@ -758,6 +925,8 @@ impl ViewerState {
                 let target_frame = frame_index.unwrap_or(self.current);
                 if self.validate_selection(target_frame, &selection) {
                     self.selection.add(target_frame, &selection);
+                    self.image_selection
+                        .replace(target_frame, self.selection.selected_main_images(target_frame));
                     self.needs_render = self.current == target_frame;
                 }
                 CommandOutcome::default()
@@ -769,6 +938,8 @@ impl ViewerState {
                 let target_frame = frame_index.unwrap_or(self.current);
                 if self.validate_selection(target_frame, &selection) {
                     self.selection.remove(target_frame, &selection);
+                    self.image_selection
+                        .replace(target_frame, self.selection.selected_main_images(target_frame));
                     self.needs_render = self.current == target_frame;
                 }
                 CommandOutcome::default()
@@ -777,8 +948,97 @@ impl ViewerState {
                 let target_frame = frame_index.unwrap_or(self.current);
                 if target_frame < self.traj.len() {
                     self.selection.clear(target_frame);
+                    self.image_selection.clear(target_frame);
                     self.needs_render = self.current == target_frame;
                 }
+                CommandOutcome::default()
+            }
+            ViewerCommand::ReplaceImageSelection {
+                selection,
+                frame_index,
+            } => {
+                let target_frame = frame_index.unwrap_or(self.current);
+                if self.validate_image_selection(target_frame, &selection) {
+                    self.image_selection.replace(target_frame, selection);
+                    self.sync_main_selection_from_images(target_frame);
+                    self.needs_render = self.current == target_frame;
+                }
+                CommandOutcome::default()
+            }
+            ViewerCommand::AddImageSelection {
+                selection,
+                frame_index,
+            } => {
+                let target_frame = frame_index.unwrap_or(self.current);
+                if self.validate_image_selection(target_frame, &selection) {
+                    self.image_selection.add(target_frame, &selection);
+                    self.sync_main_selection_from_images(target_frame);
+                    self.needs_render = self.current == target_frame;
+                }
+                CommandOutcome::default()
+            }
+            ViewerCommand::RemoveImageSelection {
+                selection,
+                frame_index,
+            } => {
+                let target_frame = frame_index.unwrap_or(self.current);
+                if self.validate_image_selection(target_frame, &selection) {
+                    self.image_selection.remove(target_frame, &selection);
+                    self.sync_main_selection_from_images(target_frame);
+                    self.needs_render = self.current == target_frame;
+                }
+                CommandOutcome::default()
+            }
+            ViewerCommand::ClearImageSelection { frame_index } => {
+                let target_frame = frame_index.unwrap_or(self.current);
+                if target_frame < self.traj.len() {
+                    self.image_selection.clear(target_frame);
+                    self.sync_main_selection_from_images(target_frame);
+                    self.needs_render = self.current == target_frame;
+                }
+                CommandOutcome::default()
+            }
+            ViewerCommand::SetSupercell { repeats } => {
+                if self.supercell.repeats != repeats {
+                    self.supercell.repeats = repeats;
+                    self.needs_render = true;
+                }
+                CommandOutcome::default()
+            }
+            ViewerCommand::IncrementSupercellAxis { axis } => {
+                if axis < 3 {
+                    self.supercell.repeats[axis] = self.supercell.repeats[axis].saturating_add(1);
+                    self.needs_render = true;
+                }
+                CommandOutcome::default()
+            }
+            ViewerCommand::DecrementSupercellAxis { axis } => {
+                if axis < 3 {
+                    let next = self.supercell.repeats[axis].saturating_sub(1);
+                    if self.supercell.repeats[axis] != next {
+                        self.supercell.repeats[axis] = next;
+                        self.needs_render = true;
+                    }
+                }
+                CommandOutcome::default()
+            }
+            ViewerCommand::ResetSupercell => {
+                if self.supercell.repeats != [0, 0, 0] {
+                    self.supercell.repeats = [0, 0, 0];
+                    self.needs_render = true;
+                }
+                CommandOutcome::default()
+            }
+            ViewerCommand::SetGhostRepeatedImages { enabled } => {
+                if self.supercell.ghost_repeated_images != enabled {
+                    self.supercell.ghost_repeated_images = enabled;
+                    self.needs_render = true;
+                }
+                CommandOutcome::default()
+            }
+            ViewerCommand::ToggleGhostRepeatedImages => {
+                self.supercell.ghost_repeated_images = !self.supercell.ghost_repeated_images;
+                self.needs_render = true;
                 CommandOutcome::default()
             }
             ViewerCommand::SetCameraView { .. }
@@ -818,16 +1078,69 @@ impl ViewerState {
         self.selection.selected_indices(frame_index)
     }
 
+    pub fn selected_images(&self, frame_index: usize) -> Vec<SelectedImageAtom> {
+        let selected = self.image_selection.selected(frame_index);
+        if selected.is_empty() {
+            self.selection.selected_main_images(frame_index)
+        } else {
+            selected
+        }
+    }
+
     pub fn current_selection(&self) -> &[bool] {
         self.selection.get(self.current).unwrap_or(&[])
     }
 
-    pub fn replace_atom_selection(&mut self, atom_index: usize) -> bool {
-        self.selection.replace_single(self.current, atom_index)
+    pub fn current_image_selection(&self) -> &[SelectedImageAtom] {
+        self.image_selection.get(self.current).unwrap_or(&[])
     }
 
-    pub fn toggle_atom_selection(&mut self, atom_index: usize) -> bool {
-        self.selection.toggle(self.current, atom_index)
+    pub fn current_supercell(&self) -> SupercellSettings {
+        self.supercell
+    }
+
+    pub fn replace_atom_selection(&mut self, atom: SelectedImageAtom) -> bool {
+        let changed = self.image_selection.replace_single(self.current, atom);
+        if changed {
+            self.sync_main_selection_from_images(self.current);
+        }
+        changed
+    }
+
+    pub fn toggle_atom_selection(&mut self, atom: SelectedImageAtom) -> bool {
+        let changed = self.image_selection.toggle(self.current, atom);
+        if changed {
+            self.sync_main_selection_from_images(self.current);
+        }
+        changed
+    }
+
+    pub fn display_atoms(&self, frame_index: usize) -> Vec<DisplayAtom> {
+        if frame_index >= self.traj.len() {
+            return Vec::new();
+        }
+
+        let view = self.traj.view(frame_index);
+        let offsets = supercell_offsets(self.supercell.repeats);
+        let mut atoms = Vec::with_capacity(view.positions.len() * offsets.len());
+        for image_offset in offsets {
+            let shift = scaled_cell_translation(view.cell, image_offset);
+            for (atom_index, position) in view.positions.iter().copied().enumerate() {
+                atoms.push(DisplayAtom {
+                    identity: SelectedImageAtom {
+                        atom_index,
+                        image_offset,
+                    },
+                    position: [
+                        position[0] + shift[0],
+                        position[1] + shift[1],
+                        position[2] + shift[2],
+                    ],
+                    is_main_cell: image_offset == [0, 0, 0],
+                });
+            }
+        }
+        atoms
     }
 
     fn cell_changed(&self, old_index: usize, new_index: usize) -> bool {
@@ -841,6 +1154,17 @@ impl ViewerState {
     fn validate_selection(&self, frame_index: usize, selection: &[bool]) -> bool {
         frame_index < self.traj.len()
             && self.traj.view(frame_index).positions.len() == selection.len()
+    }
+
+    fn validate_image_selection(&self, frame_index: usize, selection: &[SelectedImageAtom]) -> bool {
+        if frame_index >= self.traj.len() {
+            return false;
+        }
+        let atom_count = self.traj.view(frame_index).positions.len();
+        let allowed_offsets = supercell_offsets(self.supercell.repeats);
+        selection.iter().all(|atom| {
+            atom.atom_index < atom_count && allowed_offsets.contains(&atom.image_offset)
+        })
     }
 
     fn store_scalars(&mut self, name: String, frame_index: usize, values: Vec<f32>) {
@@ -859,6 +1183,17 @@ impl ViewerState {
         for values in self.atom_scalars.values_mut() {
             values.resize(frame_count, None);
         }
+    }
+
+    fn sync_main_selection_from_images(&mut self, frame_index: usize) {
+        let Some(selected) = self.image_selection.get(frame_index) else {
+            return;
+        };
+        let atom_count = self.traj.view(frame_index).positions.len();
+        self.selection
+            .replace(frame_index, SelectionFrames::mask_from_images(atom_count, selected));
+        self.selection
+            .set_order(frame_index, SelectionFrames::ordered_atoms_from_images(selected));
     }
 }
 
@@ -1064,44 +1399,117 @@ impl SelectionFrames {
         self.ordered.push(Vec::new());
     }
 
+    pub fn selected_main_images(&self, frame_index: usize) -> Vec<SelectedImageAtom> {
+        self.selected_indices(frame_index)
+            .into_iter()
+            .map(|atom_index| SelectedImageAtom {
+                atom_index,
+                image_offset: [0, 0, 0],
+            })
+            .collect()
+    }
+
     pub fn selected_indices(&self, frame_index: usize) -> Vec<usize> {
         self.ordered.get(frame_index).cloned().unwrap_or_default()
     }
 
-    fn replace_single(&mut self, frame_index: usize, atom_index: usize) -> bool {
-        let Some(selection) = self.frames.get_mut(frame_index) else {
-            return false;
-        };
-        if atom_index >= selection.len() {
-            return false;
+    pub(crate) fn set_order(&mut self, frame_index: usize, ordered: Vec<usize>) {
+        if frame_index < self.ordered.len() {
+            self.ordered[frame_index] = ordered;
         }
-        let changed = selection
-            .iter()
-            .enumerate()
-            .any(|(index, selected)| *selected != (index == atom_index));
-        if changed {
-            selection.fill(false);
-            selection[atom_index] = true;
-            self.ordered[frame_index].clear();
-            self.ordered[frame_index].push(atom_index);
-        }
-        changed
     }
 
-    fn toggle(&mut self, frame_index: usize, atom_index: usize) -> bool {
-        let Some(selection) = self.frames.get_mut(frame_index) else {
+    pub(crate) fn mask_from_images(atom_count: usize, atoms: &[SelectedImageAtom]) -> Vec<bool> {
+        let mut mask = vec![false; atom_count];
+        for atom in atoms {
+            if atom.atom_index < atom_count {
+                mask[atom.atom_index] = true;
+            }
+        }
+        mask
+    }
+
+    pub(crate) fn ordered_atoms_from_images(atoms: &[SelectedImageAtom]) -> Vec<usize> {
+        let mut ordered = Vec::new();
+        for atom in atoms {
+            if !ordered.contains(&atom.atom_index) {
+                ordered.push(atom.atom_index);
+            }
+        }
+        ordered
+    }
+
+}
+
+impl ImageSelectionFrames {
+    pub fn new(frame_count: usize) -> Self {
+        Self {
+            frames: vec![Vec::new(); frame_count],
+        }
+    }
+
+    pub fn get(&self, frame_index: usize) -> Option<&[SelectedImageAtom]> {
+        self.frames.get(frame_index).map(Vec::as_slice)
+    }
+
+    pub fn selected(&self, frame_index: usize) -> Vec<SelectedImageAtom> {
+        self.frames.get(frame_index).cloned().unwrap_or_default()
+    }
+
+    pub fn replace(&mut self, frame_index: usize, selection: Vec<SelectedImageAtom>) {
+        if frame_index < self.frames.len() {
+            self.frames[frame_index] = dedup_image_selection(selection);
+        }
+    }
+
+    pub fn add(&mut self, frame_index: usize, selection: &[SelectedImageAtom]) {
+        let Some(current) = self.frames.get_mut(frame_index) else {
+            return;
+        };
+        for atom in selection.iter().copied() {
+            if !current.contains(&atom) {
+                current.push(atom);
+            }
+        }
+    }
+
+    pub fn remove(&mut self, frame_index: usize, selection: &[SelectedImageAtom]) {
+        let Some(current) = self.frames.get_mut(frame_index) else {
+            return;
+        };
+        current.retain(|atom| !selection.contains(atom));
+    }
+
+    pub fn clear(&mut self, frame_index: usize) {
+        if frame_index < self.frames.len() {
+            self.frames[frame_index].clear();
+        }
+    }
+
+    pub fn append_empty_frame(&mut self) {
+        self.frames.push(Vec::new());
+    }
+
+    fn replace_single(&mut self, frame_index: usize, atom: SelectedImageAtom) -> bool {
+        let Some(current) = self.frames.get_mut(frame_index) else {
             return false;
         };
-        if atom_index >= selection.len() {
+        if current.as_slice() == [atom] {
             return false;
         }
-        selection[atom_index] = !selection[atom_index];
-        if selection[atom_index] {
-            if !self.ordered[frame_index].contains(&atom_index) {
-                self.ordered[frame_index].push(atom_index);
-            }
+        current.clear();
+        current.push(atom);
+        true
+    }
+
+    fn toggle(&mut self, frame_index: usize, atom: SelectedImageAtom) -> bool {
+        let Some(current) = self.frames.get_mut(frame_index) else {
+            return false;
+        };
+        if let Some(index) = current.iter().position(|selected| *selected == atom) {
+            current.remove(index);
         } else {
-            self.ordered[frame_index].retain(|index| *index != atom_index);
+            current.push(atom);
         }
         true
     }
@@ -1235,12 +1643,69 @@ impl Default for ViewerSnapshot {
                 frames: Vec::new(),
                 ordered: Vec::new(),
             },
+            image_selection: ImageSelectionFrames { frames: Vec::new() },
+            supercell: SupercellSettings::default(),
+        }
+    }
+}
+
+impl Default for SupercellSettings {
+    fn default() -> Self {
+        Self {
+            repeats: [0, 0, 0],
+            ghost_repeated_images: true,
         }
     }
 }
 
 fn clamp_frame(index: usize, len: usize) -> usize {
     if len == 0 { 0 } else { index.min(len - 1) }
+}
+
+fn dedup_image_selection(selection: Vec<SelectedImageAtom>) -> Vec<SelectedImageAtom> {
+    let mut deduped = Vec::new();
+    for atom in selection {
+        if !deduped.contains(&atom) {
+            deduped.push(atom);
+        }
+    }
+    deduped
+}
+
+fn axis_offsets(repeat_extent: u32) -> Vec<i32> {
+    let repeat_extent = repeat_extent as i32;
+    (-repeat_extent..=repeat_extent).collect()
+}
+
+fn supercell_offsets(repeats: [u32; 3]) -> Vec<[i32; 3]> {
+    let mut offsets = Vec::new();
+    for ia in axis_offsets(repeats[0]) {
+        for ib in axis_offsets(repeats[1]) {
+            for ic in axis_offsets(repeats[2]) {
+                offsets.push([ia, ib, ic]);
+            }
+        }
+    }
+    offsets.sort_by_key(|offset| {
+        (
+            offset.iter().map(|value| value.abs()).sum::<i32>(),
+            offset[0].abs(),
+            offset[1].abs(),
+            offset[2].abs(),
+            offset[0],
+            offset[1],
+            offset[2],
+        )
+    });
+    offsets
+}
+
+fn scaled_cell_translation(cell: ak_core::geometry::Cell, offset: [i32; 3]) -> [f64; 3] {
+    let a = cell.a();
+    let b = cell.b();
+    let c = cell.c();
+    let shift = a * offset[0] as f64 + b * offset[1] as f64 + c * offset[2] as f64;
+    [shift[0], shift[1], shift[2]]
 }
 
 fn canonicalize_face_atoms(atoms: &[usize]) -> Vec<usize> {
@@ -1297,8 +1762,8 @@ pub fn camera_view_for_frame(viewer: &ViewerState) -> Option<CameraView> {
 mod tests {
     use super::{
         AtomColorRule, BallAndStickStyle, BondFrames, BondList, BondScope, CameraState, Face,
-        FaceFrames, FaceList, RenderStyle, ScalarColorMap, ViewerCommand, ViewerState,
-        camera_view_for_frame,
+        FaceFrames, FaceList, RenderStyle, ScalarColorMap, SelectedImageAtom, ViewerCommand,
+        ViewerState, camera_view_for_frame,
     };
     use ak_core::{Structure, Trajectory};
     use bevy::prelude::Vec3;
@@ -1324,6 +1789,13 @@ mod tests {
             [[10.0, 0.0, 0.0], [0.0, 10.0, 0.0], [0.0, 0.0, 10.0]],
             [false, false, false],
         )
+    }
+
+    fn main_image(atom_index: usize) -> SelectedImageAtom {
+        SelectedImageAtom {
+            atom_index,
+            image_offset: [0, 0, 0],
+        }
     }
 
     #[test]
@@ -1595,9 +2067,9 @@ mod tests {
     fn click_selection_preserves_toggle_order() {
         let mut state = ViewerState::new(Trajectory::new(vec![test_structure4()]), 0);
 
-        assert!(state.toggle_atom_selection(2));
-        assert!(state.toggle_atom_selection(0));
-        assert!(state.toggle_atom_selection(3));
+        assert!(state.toggle_atom_selection(main_image(2)));
+        assert!(state.toggle_atom_selection(main_image(0)));
+        assert!(state.toggle_atom_selection(main_image(3)));
 
         assert_eq!(state.selected_atoms(0), vec![2, 0, 3]);
     }
@@ -1606,9 +2078,9 @@ mod tests {
     fn toggling_atom_off_removes_it_from_selection_order() {
         let mut state = ViewerState::new(Trajectory::new(vec![test_structure4()]), 0);
 
-        assert!(state.toggle_atom_selection(2));
-        assert!(state.toggle_atom_selection(0));
-        assert!(state.toggle_atom_selection(2));
+        assert!(state.toggle_atom_selection(main_image(2)));
+        assert!(state.toggle_atom_selection(main_image(0)));
+        assert!(state.toggle_atom_selection(main_image(2)));
 
         assert_eq!(state.selected_atoms(0), vec![0]);
     }
@@ -1628,6 +2100,29 @@ mod tests {
 
         assert!(state.selected_atoms(0).is_empty());
         assert_eq!(state.current_selection().len(), 4);
+    }
+
+    #[test]
+    fn supercell_commands_do_not_request_camera_reset() {
+        let mut state = ViewerState::new(Trajectory::new(vec![test_structure(0.0)]), 0);
+        state.needs_camera_reset = false;
+
+        state.apply_command(ViewerCommand::IncrementSupercellAxis { axis: 0 });
+        assert_eq!(state.supercell.repeats, [1, 0, 0]);
+        assert!(state.needs_render);
+        assert!(!state.needs_camera_reset);
+
+        state.needs_render = false;
+        state.apply_command(ViewerCommand::SetSupercell { repeats: [2, 1, 0] });
+        assert_eq!(state.supercell.repeats, [2, 1, 0]);
+        assert!(state.needs_render);
+        assert!(!state.needs_camera_reset);
+
+        state.needs_render = false;
+        state.apply_command(ViewerCommand::ResetSupercell);
+        assert_eq!(state.supercell.repeats, [0, 0, 0]);
+        assert!(state.needs_render);
+        assert!(!state.needs_camera_reset);
     }
 
     #[test]

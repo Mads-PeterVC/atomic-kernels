@@ -125,10 +125,12 @@ fn sync_inspector_text_updates_all_sections() {
             SelectedAtomSummary {
                 index: 0,
                 symbol: "H".to_string(),
+                image_offset: [0, 0, 0],
             },
             SelectedAtomSummary {
                 index: 2,
                 symbol: "O".to_string(),
+                image_offset: [0, 0, 0],
             },
         ],
         measurement: MeasurementStatus::Distance {

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import time
 
 import pytest
 from ase import Atoms
@@ -9,6 +10,7 @@ from viewer_integration_helpers import (
     click_viewer_at,
     has_xdotool,
     launch_ready_viewer_session,
+    send_viewer_key,
     single_center_atom_scene,
     ui_viewer_config,
     wait_for_selected_atoms,
@@ -150,3 +152,38 @@ def test_viewer_session_click_selection_works_with_ui_enabled():
         f"ui-enabled click did not select atoms {scene.expected_selection} at "
         f"({scene.click_target.x}, {scene.click_target.y}) for scene: {scene.description}"
     )
+
+
+@pytest.mark.skipif(
+    os.environ.get("ATOMIC_KERNELS_RUN_VIEWER_TESTS") != "1",
+    reason="set ATOMIC_KERNELS_RUN_VIEWER_TESTS=1 to run real viewer smoke tests",
+)
+@pytest.mark.skipif(
+    not _has_windowing_session(),
+    reason="viewer smoke tests require a windowing session",
+)
+@pytest.mark.skipif(
+    not has_xdotool(),
+    reason="viewer hotkey smoke test requires xdotool",
+)
+def test_viewer_supercell_hotkey_updates_session_state():
+    scene = single_center_atom_scene()
+    timeout = _viewer_ready_timeout()
+
+    for attempt in range(_viewer_start_attempts()):
+        session = launch_ready_viewer_session(scene, timeout=timeout)
+        try:
+            assert session.supercell() == {
+                "repeats": (0, 0, 0),
+                "ghost_repeated_images": True,
+            }
+            send_viewer_key(session, "1")
+            deadline = timeout + time.monotonic()
+            while time.monotonic() < deadline:
+                if session.supercell()["repeats"] == (1, 0, 0):
+                    return
+                time.sleep(0.05)
+        finally:
+            session.close()
+
+    raise AssertionError("viewer supercell hotkey did not update session state")

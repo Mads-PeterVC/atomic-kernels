@@ -14,8 +14,9 @@ pub use config::{ColorConfig, LightingConfig, RenderConfig, ViewerConfig};
 
 pub mod session;
 pub use session::{
-    AtomColorRule, BallAndStickStyle, BondFrames, BondList, BondScope, CameraState, Face,
-    FaceFrames, FaceList, RenderStyle, RenderStyleRule, ViewerCommand, ViewerReadiness,
+    AtomColorRule, BallAndStickStyle, BondFrames, BondList, BondScope, CameraState, DisplayAtom,
+    Face, FaceFrames, FaceList, ImageSelectionFrames, RenderStyle, RenderStyleRule,
+    SelectedImageAtom, SelectionFrames, SupercellSettings, ViewerCommand, ViewerReadiness,
     ViewerSessionClosed, ViewerSessionHandle, ViewerState,
 };
 

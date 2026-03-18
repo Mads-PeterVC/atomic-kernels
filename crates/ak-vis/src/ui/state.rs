@@ -28,6 +28,7 @@ pub struct InspectorState {
 pub struct SelectedAtomSummary {
     pub index: usize,
     pub symbol: String,
+    pub image_offset: [i32; 3],
 }
 
 impl Default for MeasurementStatus {
@@ -100,56 +101,69 @@ pub fn sync_inspector_text(
 }
 
 pub fn derive_inspector_state(viewer: &ViewerState) -> InspectorState {
-    let selected_indices = viewer.selected_atoms(viewer.current);
+    let selected_indices = viewer.selected_images(viewer.current);
     let frame = viewer.traj.view(viewer.current);
     let selected_atoms = selected_indices
         .iter()
-        .map(|&index| SelectedAtomSummary {
-            index,
+        .map(|selected| SelectedAtomSummary {
+            index: selected.atom_index,
             symbol: frame
                 .numbers
-                .get(index)
+                .get(selected.atom_index)
                 .map(|&number| PERIODIC_TABLE.get(number).symbol.clone())
                 .unwrap_or_else(|| "?".to_string()),
+            image_offset: selected.image_offset,
         })
         .collect();
 
     InspectorState {
-        measurement: measurement_for_selection(frame.positions, &selected_indices),
+        measurement: measurement_for_selection(&viewer.display_atoms(viewer.current), &selected_indices),
         selected_atoms,
         hints_expanded: false,
     }
 }
 
-fn measurement_for_selection(positions: &[[f64; 3]], selected_indices: &[usize]) -> MeasurementStatus {
+fn measurement_for_selection(
+    positions: &[crate::viewer::DisplayAtom],
+    selected_indices: &[crate::viewer::SelectedImageAtom],
+) -> MeasurementStatus {
     match selected_indices {
         [] => MeasurementStatus::Empty,
         [_] => MeasurementStatus::NeedOneMoreAtom,
         [a, b] => MeasurementStatus::Distance {
-            atoms: [*a, *b],
+            atoms: [a.atom_index, b.atom_index],
             angstrom: distance_between(positions, *a, *b).unwrap_or(0.0),
         },
         [a, b, c] => MeasurementStatus::Angle {
-            atoms: [*a, *b, *c],
+            atoms: [a.atom_index, b.atom_index, c.atom_index],
             degrees: angle_between(positions, *a, *b, *c).unwrap_or(0.0),
         },
         many => MeasurementStatus::UnsupportedCount { count: many.len() },
     }
 }
 
-fn distance_between(positions: &[[f64; 3]], a: usize, b: usize) -> Option<f64> {
-    let pa = positions.get(a)?;
-    let pb = positions.get(b)?;
+fn distance_between(
+    positions: &[crate::viewer::DisplayAtom],
+    a: crate::viewer::SelectedImageAtom,
+    b: crate::viewer::SelectedImageAtom,
+) -> Option<f64> {
+    let pa = positions.iter().find(|atom| atom.identity == a)?.position;
+    let pb = positions.iter().find(|atom| atom.identity == b)?.position;
     let dx = pa[0] - pb[0];
     let dy = pa[1] - pb[1];
     let dz = pa[2] - pb[2];
     Some((dx * dx + dy * dy + dz * dz).sqrt())
 }
 
-fn angle_between(positions: &[[f64; 3]], a: usize, b: usize, c: usize) -> Option<f64> {
-    let pa = positions.get(a)?;
-    let pb = positions.get(b)?;
-    let pc = positions.get(c)?;
+fn angle_between(
+    positions: &[crate::viewer::DisplayAtom],
+    a: crate::viewer::SelectedImageAtom,
+    b: crate::viewer::SelectedImageAtom,
+    c: crate::viewer::SelectedImageAtom,
+) -> Option<f64> {
+    let pa = positions.iter().find(|atom| atom.identity == a)?.position;
+    let pb = positions.iter().find(|atom| atom.identity == b)?.position;
+    let pc = positions.iter().find(|atom| atom.identity == c)?.position;
 
     let ba = [pa[0] - pb[0], pa[1] - pb[1], pa[2] - pb[2]];
     let bc = [pc[0] - pb[0], pc[1] - pb[1], pc[2] - pb[2]];
@@ -181,14 +195,36 @@ fn selection_text(inspector: &InspectorState) -> String {
         inspector
             .selected_atoms
             .iter()
-            .map(|atom| format!("#{} {}", atom.index, atom.symbol))
+            .map(|atom| {
+                if atom.image_offset == [0, 0, 0] {
+                    format!("#{} {}", atom.index, atom.symbol)
+                } else {
+                    format!(
+                        "#{} {} [{}, {}, {}]",
+                        atom.index,
+                        atom.symbol,
+                        atom.image_offset[0],
+                        atom.image_offset[1],
+                        atom.image_offset[2]
+                    )
+                }
+            })
             .collect::<Vec<_>>()
             .join(", ")
     } else {
         inspector
             .selected_atoms
             .iter()
-            .map(|atom| format!("#{}", atom.index))
+            .map(|atom| {
+                if atom.image_offset == [0, 0, 0] {
+                    format!("#{}", atom.index)
+                } else {
+                    format!(
+                        "#{} [{}, {}, {}]",
+                        atom.index, atom.image_offset[0], atom.image_offset[1], atom.image_offset[2]
+                    )
+                }
+            })
             .collect::<Vec<_>>()
             .join(", ")
     };

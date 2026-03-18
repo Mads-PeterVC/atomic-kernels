@@ -1,5 +1,5 @@
 use crate::AtomVisual;
-use crate::components::AtomIndex;
+use crate::components::DisplayAtomIdentity;
 use crate::components::FrameAtom;
 use bevy::prelude::*;
 use std::collections::HashMap;
@@ -13,7 +13,8 @@ pub fn render_atoms(
 ) {
     // Group atoms by (radius, color) to enable instancing
     // Using bits representation for radius as HashMap key (f32 doesn't implement Hash)
-    let mut atom_groups: HashMap<(u32, [u8; 4]), Vec<(usize, Vec3)>> = HashMap::new();
+        let mut atom_groups: HashMap<(u32, [u8; 4]), Vec<(DisplayAtomIdentity, Vec3)>> =
+            HashMap::new();
 
     for atom in visuals.iter() {
         let radius_bits = atom.radius.to_bits();
@@ -29,7 +30,13 @@ pub fn render_atoms(
         atom_groups
             .entry(key)
             .or_default()
-            .push((atom.atom_index, Vec3::new(atom.x(), atom.y(), atom.z())));
+            .push((
+                DisplayAtomIdentity {
+                    atom_index: atom.atom_identity.atom_index,
+                    image_offset: atom.atom_identity.image_offset,
+                },
+                Vec3::new(atom.x(), atom.y(), atom.z()),
+            ));
     }
 
     // Create shared meshes and materials for each unique atom type
@@ -60,13 +67,13 @@ pub fn render_atoms(
 
         // Spawn all atoms of this type - they share the same mesh handle,
         // so Bevy will automatically instance them in a single draw call
-        for (atom_index, position) in positions {
+        for (atom_identity, position) in positions {
             commands.spawn((
                 Mesh3d(shared_mesh.clone()),
                 MeshMaterial3d(shared_material.clone()),
                 Transform::from_translation(*position),
                 FrameAtom,
-                AtomIndex(*atom_index),
+                atom_identity.clone(),
             ));
         }
     }
