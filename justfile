@@ -5,13 +5,13 @@ bump version:
     cargo set-version --workspace {{version}}
 
 bump-patch:
-    cargo set-version --workspace patch
+    cargo set-version --workspace --bump patch
 
 bump-minor:
-    cargo set-version --workspace minor
+    cargo set-version --workspace --bump minor
 
 bump-major:
-    cargo set-version --workspace major
+    cargo set-version --workspace --bump major
 
 test:
     uv run --group test pytest tests -m "not viewer_integration"
