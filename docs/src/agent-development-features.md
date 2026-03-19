@@ -36,7 +36,7 @@ Progress
 Expand the interactive viewer UI beyond the current camera and rendering controls.
 
 - ~~Add distance and angle measurement tools for common inspection workflows.~~
-- Show which image in a trajectory is currently displayed.
+- ~~Show which image in a trajectory is currently displayed.~~
 - Expect additional viewer affordances to emerge once selection and measurement exist,
   so this area should be treated as a broader UI roadmap rather than a closed list.
 
@@ -46,8 +46,9 @@ Progress
 - A structured selection/measurement inspector, keybindings panel, 2-atom distance
   readout, 3-atom angle readout, 3-atom in-scene angle cue, and the follow-up UI
   module split landed in `fb94de0`, `8e2d2f7`, `fd041e5`, and `24496e7`.
-- The next clean slice in this area is a dedicated trajectory status/playback surface,
-  since the current inspector intentionally stays focused on selection and measurement.
+- A dedicated trajectory playback panel with current-frame status, transport controls,
+  speed presets, a Bevy-slider scrubber, and the follow-up playback/build module split
+  landed in `8bf68f7` and `0cefc46`.
 
 ### UI-enabled viewer input smoke test
 
@@ -175,10 +176,17 @@ controls.
 
 ### Trajectory playback controls
 
-Add trajectory playback controls as a first-class viewer feature rather than only basic
-frame switching.
+~~Add trajectory playback controls as a first-class viewer feature rather than only basic
+frame switching.~~
 
-- The viewer UI should support play/pause, frame stepping, and playback speed control.
-- Live and appended trajectories should integrate cleanly with follow-tail behavior.
-- Playback state should be consistent with any trajectory index indicator so users can
-  tell both where they are and how the viewer is advancing through frames.
+- ~~The viewer UI should support play/pause, frame stepping, and playback speed control.~~
+- ~~Live and appended trajectories should integrate cleanly with follow-tail behavior.~~
+- ~~Playback state should be consistent with any trajectory index indicator so users can
+  tell both where they are and how the viewer is advancing through frames.~~
+
+Progress
+
+- Feature completed in `8bf68f7`, `0cefc46`, and `8e7c5d4`.
+- The current implementation is a dedicated playback HUD surface, separate from the
+  selection/measurement inspector, and uses Bevy `ui_widgets` for the scrubber rather
+  than a custom drag path.
