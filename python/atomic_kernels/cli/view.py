@@ -10,6 +10,7 @@ from ase.io import read
 from atomic_kernels.viewer import (
     ColorConfig,
     LightingConfig,
+    QualityPreset,
     RenderConfig,
     ViewerConfig,
     bevy_viewer,
@@ -17,12 +18,13 @@ from atomic_kernels.viewer import (
 
 DEFAULT_WINDOW_WIDTH = 950
 DEFAULT_WINDOW_HEIGHT = 650
+QUALITY_OPTION_METAVAR = "[low (l)|medium (m)|high (h)|very_high (vh)]"
 
 click.rich_click.OPTION_GROUPS = {
     "ak view": [
         {
             "name": "Display Options",
-            "options": ["--width", "--height", "--theme"],
+            "options": ["--width", "--height", "--theme", "--quality"],
         },
         {
             "name": "Toggles",
@@ -39,6 +41,19 @@ def positive_int(ctx: click.Context, param: click.Parameter, value: int | None) 
     return value
 
 
+def quality_value(
+    ctx: click.Context, param: click.Parameter, value: str | None
+) -> str | None:
+    """Normalize and validate CLI quality values."""
+    if value is None:
+        return None
+
+    try:
+        return QualityPreset.from_name(value).name
+    except ValueError as exc:
+        raise click.BadParameter(str(exc)) from exc
+
+
 def load_atoms(path: Path):
     """Load an ASE-readable file, returning one frame or a trajectory."""
     atoms = read(str(path), index=":")
@@ -50,42 +65,38 @@ def load_atoms(path: Path):
 def build_viewer_config(
     *,
     theme: str,
+    quality: str,
     width: int | None,
     height: int | None,
     show_ui: bool,
     show_cell: bool,
 ) -> ViewerConfig:
     """Translate CLI display options into a ViewerConfig."""
-    config = ViewerConfig(
-        render=RenderConfig(
-            show_ui=show_ui,
-            show_cell=show_cell,
-        ),
-        window_width=width if width is not None else DEFAULT_WINDOW_WIDTH,
-        window_height=height if height is not None else DEFAULT_WINDOW_HEIGHT,
-    )
+    config = quality_preset_from_name(quality).apply_to_viewer(ViewerConfig())
 
     if theme == "dark":
-        config = ViewerConfig(
-            color=ColorConfig(
-                background=(0.1, 0.1, 0.1),
-                cell_color=(0.8, 0.8, 0.8),
-            ),
-            lighting=LightingConfig(
-                ambient_brightness=150.0,
-                fill_illuminance=0.0,
-                key_illuminance=0.0,
-                enable_fog=True,
-            ),
-            render=RenderConfig(
-                show_ui=show_ui,
-                show_cell=show_cell,
-            ),
-            window_width=width if width is not None else DEFAULT_WINDOW_WIDTH,
-            window_height=height if height is not None else DEFAULT_WINDOW_HEIGHT,
+        config.color = ColorConfig(
+            background=(0.1, 0.1, 0.1),
+            cell_color=(0.8, 0.8, 0.8),
+        )
+        config.lighting = LightingConfig(
+            ambient_brightness=150.0,
+            fill_illuminance=0.0,
+            key_illuminance=0.0,
+            enable_fog=True,
         )
 
+    render = config.render
+    render.show_ui = show_ui
+    render.show_cell = show_cell
+    config.render = render
+    config.window_width = width if width is not None else DEFAULT_WINDOW_WIDTH
+    config.window_height = height if height is not None else DEFAULT_WINDOW_HEIGHT
     return config
+
+
+def quality_preset_from_name(name: str) -> QualityPreset:
+    return QualityPreset.from_name(name)
 
 
 @click.command("view")
@@ -118,6 +129,16 @@ def build_viewer_config(
     help="Viewer appearance preset.",
 )
 @click.option(
+    "-q",
+    "--quality",
+    type=str,
+    callback=quality_value,
+    metavar=QUALITY_OPTION_METAVAR,
+    default="medium",
+    show_default=True,
+    help="Viewer visual fidelity preset: low (l), medium (m), high (h), very_high (vh).",
+)
+@click.option(
     "--ui/--no-ui",
     "show_ui",
     default=True,
@@ -136,6 +157,7 @@ def view_command(
     width: int | None,
     height: int | None,
     theme: str,
+    quality: str,
     show_ui: bool,
     show_cell: bool,
 ) -> None:
@@ -143,6 +165,7 @@ def view_command(
     atoms = load_atoms(file)
     config = build_viewer_config(
         theme=theme.lower(),
+        quality=quality.lower(),
         width=width,
         height=height,
         show_ui=show_ui,

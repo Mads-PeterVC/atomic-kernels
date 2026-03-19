@@ -60,6 +60,12 @@ Browse the reusable viewer examples:
 - [Viewer Examples](/Users/au616397/Repositories/atomic-kernels/docs/src/viewer-examples.md)
 - [Viewer Scripts](/Users/au616397/Repositories/atomic-kernels/docs/src/viewer-scripts.md)
 
+Launch the CLI viewer with a fidelity preset:
+
+```bash
+uv run ak view structure.xyz -q vh --theme dark
+```
+
 Run Rust tests:
 
 ```bash

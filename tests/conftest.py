@@ -43,7 +43,7 @@ class _RenderConfig:
         show_cell=True,
         show_axes=True,
         show_ui=False,
-        ico_subdiv=5,
+        ico_subdiv=4,
         show_orientation_widget=True,
         orientation_widget_size_px=100,
         orientation_widget_margin_px=0,

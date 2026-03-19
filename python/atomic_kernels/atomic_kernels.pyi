@@ -60,7 +60,7 @@ class RenderConfig:
         supercell_repeat_b: int = 0,
         supercell_repeat_c: int = 0,
         ghost_repeated_images: bool = True,
-        ico_subdiv: int = 5,
+        ico_subdiv: int = 4,
         show_orientation_widget: bool = True,
         orientation_widget_size_px: int = 100,
         orientation_widget_margin_px: int = 0,
@@ -68,6 +68,24 @@ class RenderConfig:
         orientation_widget_offset_y_px: int | None = None,
         orientation_widget_camera_scale: float = 0.065,
     ) -> None: ...
+
+
+class QualityPreset:
+    name: str
+    ico_subdiv: int
+    def __init__(self, name: str, ico_subdiv: int) -> None: ...
+    @classmethod
+    def from_name(cls, name: str) -> "QualityPreset": ...
+    @classmethod
+    def low(cls) -> "QualityPreset": ...
+    @classmethod
+    def medium(cls) -> "QualityPreset": ...
+    @classmethod
+    def high(cls) -> "QualityPreset": ...
+    @classmethod
+    def very_high(cls) -> "QualityPreset": ...
+    def apply_to_render(self, config: "RenderConfig | None" = None) -> "RenderConfig": ...
+    def apply_to_viewer(self, config: "ViewerConfig | None" = None) -> "ViewerConfig": ...
 
 
 class ViewerConfig:

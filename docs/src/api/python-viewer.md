@@ -16,3 +16,4 @@ viewer sessions from ASE `Atoms` objects or trajectories.
         - LightingConfig
         - ColorConfig
         - RenderConfig
+        - QualityPreset
