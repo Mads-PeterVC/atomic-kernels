@@ -5,7 +5,7 @@ use crate::viewer::systems::{
     rerender_if_dirty, setup_camera, setup_camera_light, setup_lighting, sync_viewer_snapshot,
     update_camera_light,
 };
-use crate::ui::InspectorState;
+use crate::ui::{InspectorState, PlaybackState};
 use ak_core::Trajectory;
 use bevy::camera::RenderTarget;
 use bevy::prelude::*;
@@ -105,6 +105,7 @@ pub(crate) fn configure_shared_app(
         .insert_resource(camera_state)
         .insert_resource(config)
         .insert_resource(InspectorState::default())
+        .insert_resource(PlaybackState::default())
         .insert_resource(SharedViewerSnapshot(snapshot))
         .insert_resource(CommandReceiver(receiver.map(Mutex::new)))
         .add_systems(

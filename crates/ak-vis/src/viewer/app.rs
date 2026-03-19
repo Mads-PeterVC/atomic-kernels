@@ -1,11 +1,13 @@
 use ak_core::{Structure, Trajectory};
-use bevy::prelude::*;
-use bevy_panorbit_camera::PanOrbitCameraPlugin;
+use bevy::{input_focus::InputDispatchPlugin, prelude::*, ui_widgets::UiWidgetsPlugins};
+use bevy_panorbit_camera::{PanOrbitCameraPlugin, PanOrbitCameraSystemSet};
 use std::sync::{Arc, Mutex, mpsc};
 use std::thread;
 
 use crate::ui::{
-    setup_ui, sync_inspector_camera, sync_inspector_state, sync_inspector_text,
+    handle_playback_buttons, setup_ui, sync_inspector_camera, set_camera_input_enabled,
+    sync_inspector_state, sync_inspector_text, sync_playback_camera,
+    sync_playback_slider_value, sync_playback_state, sync_playback_text,
     toggle_hints_visibility,
 };
 use crate::viewer::ViewerConfig;
@@ -62,7 +64,13 @@ fn build_app(
         });
     }
 
-    app.add_plugins((plugins, MeshPickingPlugin, PanOrbitCameraPlugin));
+    app.add_plugins((
+        plugins,
+        MeshPickingPlugin,
+        PanOrbitCameraPlugin,
+        UiWidgetsPlugins,
+        InputDispatchPlugin,
+    ));
     configure_shared_app(&mut app, trajectory, config, receiver, snapshot);
     app.insert_resource(MarqueeSelectionState::default());
     app.insert_resource(ViewerLifecycle {
@@ -93,10 +101,30 @@ fn build_app(
 
     if app.world().resource::<ViewerConfig>().render.show_ui {
         app.add_systems(Startup, setup_ui);
-        app.add_systems(Update, (toggle_ui_visibility, toggle_hints_visibility));
+        app.add_systems(
+            Update,
+            (
+                toggle_ui_visibility,
+                toggle_hints_visibility,
+                handle_playback_buttons,
+                sync_playback_slider_value,
+            ),
+        );
         app.add_systems(
             PostUpdate,
-            (sync_inspector_camera, sync_inspector_state, sync_inspector_text).chain(),
+            set_camera_input_enabled.before(PanOrbitCameraSystemSet),
+        );
+        app.add_systems(
+            PostUpdate,
+            (
+                sync_inspector_camera,
+                sync_inspector_state,
+                sync_inspector_text,
+                sync_playback_camera,
+                sync_playback_state,
+                sync_playback_text,
+            )
+                .chain(),
         );
     }
 
