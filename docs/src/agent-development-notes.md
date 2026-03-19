@@ -8,6 +8,41 @@ and format defined in
 
 Entries are listed newest first.
 
+## 2026-03-19 - Python-side viewer quality presets and CLI fidelity aliases
+
+- Commits: `79f72f4`, `92386c8`
+- Agent: `Codex (GPT-5, OpenAI)`
+- Context: The viewer config surface needed a higher-level fidelity control for both the
+  Python API and `ak view` CLI without introducing a new Rust-side preset channel. The
+  work also needed to leave room for future Rust render knobs while keeping the current
+  fidelity mapping centered on mesh subdivision quality.
+- Implementation: Added the Python-side preset value object in
+  `python/atomic_kernels/viewer/_quality.py` and exported `LOW`, `MEDIUM`, `HIGH`, and
+  `VERY_HIGH` through `python/atomic_kernels/viewer/__init__.py`. The CLI builder in
+  `python/atomic_kernels/cli/view.py` now applies a preset first, then layers theme and
+  explicit UI/cell/window overrides on top, and accepts both full preset names and short
+  aliases such as `-q vh` while rendering a custom metavar in `--help`. Normalized the
+  Python-visible `RenderConfig` default `ico_subdiv` to the Rust baseline in
+  `crates/ak-py/src/viewer_config.rs`, updated the stub surface in
+  `python/atomic_kernels/atomic_kernels.pyi`, refreshed docs in
+  `docs/src/viewer-configuration.md`, `docs/src/getting-started.md`, and
+  `docs/src/api/python-viewer.md`, and added coverage in `tests/test_cli.py` plus the
+  new `tests/test_viewer_quality.py`.
+- Difficulty: The main friction was keeping one source of truth for preset resolution
+  while still giving the CLI a clean help display. A raw `click.Choice` exposed aliases
+  as a flat token list, so the stable split was to let `QualityPreset.from_name(...)`
+  remain the canonical resolver and move CLI validation/canonicalization to a callback
+  with a custom metavar instead of duplicating the preset table in the CLI layer. A
+  small follow-up commit was then needed because the user raised the `very_high`
+  subdivision to `7` after the initial implementation and the tests still expected `6`.
+- Constraints: v1 quality presets still control only `RenderConfig.ico_subdiv`; theme,
+  colors, and lighting remain separate concerns. The preset abstraction is intentionally
+  Python-only for now, so Rust still receives fully resolved low-level config fields
+  rather than a symbolic preset enum or channel.
+- Follow-up: If additional fidelity knobs are exposed from Rust later, extend
+  `QualityPreset` first and keep the CLI/Python call sites consuming the resolved config
+  rather than growing a second preset mapping layer.
+
 ## 2026-03-19 - Chemistry helper defaults, topology mutation commands, and viewer UI polish
 
 - Commit: `b841170`
