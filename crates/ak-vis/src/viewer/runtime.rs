@@ -92,12 +92,18 @@ pub(crate) fn configure_shared_app(
     ];
     viewer_state.supercell.ghost_repeated_images = config.render.ghost_repeated_images;
     let mut camera_state = CameraState::new(&viewer_state);
+    let mut has_startup_camera_command = false;
 
     if let Some(receiver_ref) = receiver.as_mut() {
         while let Ok(command) = receiver_ref.try_recv() {
+            has_startup_camera_command |= is_camera_command(&command);
             camera_state.apply_command(&viewer_state, &command);
             let _ = viewer_state.apply_command(command);
         }
+    }
+
+    if has_startup_camera_command {
+        viewer_state.needs_camera_reset = false;
     }
 
     app.insert_resource(ClearColor(config.color.background))
@@ -131,14 +137,72 @@ pub(crate) fn configure_shared_app(
         );
 }
 
+fn is_camera_command(command: &ViewerCommand) -> bool {
+    matches!(
+        command,
+        ViewerCommand::SetCameraView { .. }
+            | ViewerCommand::PanCamera { .. }
+            | ViewerCommand::ZoomCamera { .. }
+            | ViewerCommand::OrbitCamera { .. }
+            | ViewerCommand::FrameAll
+            | ViewerCommand::StartOrbit { .. }
+            | ViewerCommand::StopCameraMotion
+    )
+}
+
 #[cfg(test)]
 mod tests {
-    use super::bundled_asset_root;
+    use super::{bundled_asset_root, configure_shared_app};
+    use crate::viewer::ViewerConfig;
+    use crate::viewer::session::{CameraState, ViewerCommand, ViewerSnapshot, ViewerState};
+    use ak_core::{Structure, Trajectory};
+    use bevy::prelude::App;
+    use std::sync::{Arc, Mutex, mpsc};
 
     #[test]
     fn bundled_asset_root_contains_expected_fonts() {
         let root = bundled_asset_root();
         assert!(root.join("fonts/RobotoMono-VariableFont_wght.ttf").is_file());
         assert!(root.join("fonts/NotoSansSymbols2-Regular.ttf").is_file());
+    }
+
+    fn structure() -> Structure {
+        Structure::new(
+            vec![[0.0, 0.0, 0.0]],
+            vec![1],
+            [[6.0, 0.0, 0.0], [0.0, 6.0, 0.0], [0.0, 0.0, 6.0]],
+            [false; 3],
+        )
+    }
+
+    #[test]
+    fn startup_camera_commands_skip_default_camera_reset() {
+        let (sender, receiver) = mpsc::channel();
+        sender
+            .send(ViewerCommand::SetCameraView {
+                focus: Some([1.0, 2.0, 3.0]),
+                radius: Some(4.0),
+                yaw: Some(0.7),
+                pitch: Some(0.2),
+            })
+            .unwrap();
+
+        let mut app = App::new();
+        configure_shared_app(
+            &mut app,
+            Trajectory::new(vec![structure()]),
+            ViewerConfig::default(),
+            Some(receiver),
+            Arc::new(Mutex::new(ViewerSnapshot::default())),
+        );
+
+        let viewer = app.world().resource::<ViewerState>();
+        let camera = app.world().resource::<CameraState>();
+
+        assert!(!viewer.needs_camera_reset);
+        assert_eq!(camera.focus.to_array(), [1.0, 2.0, 3.0]);
+        assert_eq!(camera.radius, 4.0);
+        assert_eq!(camera.yaw, 0.7);
+        assert_eq!(camera.pitch, 0.2);
     }
 }
