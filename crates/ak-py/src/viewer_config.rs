@@ -178,7 +178,7 @@ pub struct PyRenderConfig {
 impl PyRenderConfig {
     #[new]
     #[allow(clippy::too_many_arguments)]
-    #[pyo3(signature = (show_cell=true, show_axes=true, show_ui=false, supercell_repeat_a=0, supercell_repeat_b=0, supercell_repeat_c=0, ghost_repeated_images=true, ico_subdiv=5, show_orientation_widget=true, orientation_widget_size_px=100, orientation_widget_margin_px=0, orientation_widget_offset_x_px=None, orientation_widget_offset_y_px=None, orientation_widget_camera_scale=0.065))]
+    #[pyo3(signature = (show_cell=true, show_axes=true, show_ui=false, supercell_repeat_a=0, supercell_repeat_b=0, supercell_repeat_c=0, ghost_repeated_images=true, ico_subdiv=4, show_orientation_widget=true, orientation_widget_size_px=100, orientation_widget_margin_px=0, orientation_widget_offset_x_px=None, orientation_widget_offset_y_px=None, orientation_widget_camera_scale=0.065))]
     fn new(
         show_cell: bool,
         show_axes: bool,

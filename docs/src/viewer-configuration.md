@@ -1,7 +1,8 @@
 # Viewer Configuration
 
 Use `ViewerConfig` when you want to change the default viewer appearance before opening
-the window.
+the window. Use `QualityPreset` when you want a small, extendable fidelity shortcut
+instead of setting low-level render knobs manually.
 
 ## Configure the viewer up front
 
@@ -37,6 +38,27 @@ config = ViewerConfig(
 bevy_viewer(atoms, config=config)
 ```
 
+## Start from a quality preset
+
+Quality presets currently control visual fidelity through render mesh subdivision. They
+resolve in Python before the config is handed to Rust, so they can grow as more fidelity
+knobs become available.
+
+```python
+from ase.build import bulk
+
+from atomic_kernels.viewer import MEDIUM, ViewerConfig, bevy_viewer
+
+atoms = bulk("Cu", "fcc", a=3.615).repeat((3, 3, 3))
+
+config = MEDIUM.apply_to_viewer(ViewerConfig())
+render = config.render
+render.show_ui = True
+config.render = render
+
+bevy_viewer(atoms, config=config)
+```
+
 ## Modify a config incrementally
 
 The nested config objects can also be updated step by step before launching the viewer.
@@ -61,3 +83,6 @@ config.render = render
 
 This pattern is useful when the starting point is mostly default settings and only a
 few fields need to change.
+
+You can combine that pattern with a preset by applying `LOW`, `MEDIUM`, `HIGH`, or
+`VERY_HIGH` first and then overriding the specific fields you care about.

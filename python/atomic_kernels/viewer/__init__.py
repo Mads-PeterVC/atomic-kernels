@@ -26,6 +26,7 @@ from ._camera import CameraController
 from ._chemistry import bonds_from_ase, faces_from_coordination, polyhedra_from_neighbors
 from ._color import ColorController, ScalarRangeTracker, ViewerSelection
 from ._process import spawn_process_viewer_session
+from ._quality import HIGH, LOW, MEDIUM, VERY_HIGH, QualityPreset
 from ._render import RenderController
 from ._session import PreparedHeadlessRenderFacade, ViewerSessionFacade
 from ._utils import bonds_from_neighbor_list
@@ -189,6 +190,7 @@ __all__ = [
     "LightingConfig",
     "PreparedHeadlessRender",
     "PreparedViewerSession",
+    "QualityPreset",
     "PreparedHeadlessRenderFacade",
     "RenderController",
     "RenderConfig",
@@ -202,7 +204,11 @@ __all__ = [
     "bonds_from_neighbor_list",
     "faces_from_coordination",
     "headless_viewer_session",
+    "HIGH",
     "launch_viewer",
+    "LOW",
+    "MEDIUM",
+    "VERY_HIGH",
     "polyhedra_from_neighbors",
     "prepare_viewer_session",
     "run_viewer_session",
