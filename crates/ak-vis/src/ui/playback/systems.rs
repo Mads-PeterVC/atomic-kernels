@@ -27,6 +27,21 @@ pub fn sync_playback_state(viewer: Res<ViewerState>, mut playback: ResMut<Playba
     }
 }
 
+pub fn sync_playback_visibility(
+    playback: Res<PlaybackState>,
+    mut roots: Query<&mut Node, With<PlaybackPanelRoot>>,
+) {
+    let display = if playback.total_frames <= 1 {
+        Display::None
+    } else {
+        Display::Flex
+    };
+
+    for mut node in &mut roots {
+        node.display = display;
+    }
+}
+
 pub fn sync_playback_camera(
     mut commands: Commands,
     main_camera: Query<Entity, With<MainSceneCamera>>,

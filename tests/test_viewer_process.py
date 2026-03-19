@@ -121,6 +121,28 @@ def test_viewer_session_proxy_selection_commands_forward_payloads():
     ]
 
 
+def test_viewer_session_proxy_topology_commands_forward_payloads():
+    connection = ConnectionSpy()
+    process = ProcessSpy(alive=True)
+    proxy = ViewerSessionProxy(connection, process)
+
+    proxy.add_bonds([(0, 1)], frame_index=0)
+    proxy.remove_bonds([(0, 1)], frame_index=1)
+    proxy.clear_bonds(frame_index=2)
+    proxy.add_faces([(0, 1, 2)], frame_index=0)
+    proxy.remove_faces([(0, 1, 2)], frame_index=1)
+    proxy.clear_faces(frame_index=2)
+
+    assert connection.messages == [
+        ("add_bonds", ([(0, 1)], 0)),
+        ("remove_bonds", ([(0, 1)], 1)),
+        ("clear_bonds", 2),
+        ("add_faces", ([(0, 1, 2)], (0.2, 0.6, 0.9, 0.35), None, 0)),
+        ("remove_faces", ([(0, 1, 2)], (0.2, 0.6, 0.9, 0.35), None, 1)),
+        ("clear_faces", 2),
+    ]
+
+
 def test_viewer_session_proxy_supercell_and_image_selection_commands_forward_payloads():
     connection = ConnectionSpy()
     connection._responses.extend(

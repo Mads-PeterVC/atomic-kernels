@@ -43,9 +43,26 @@ def _canonical_face_key(face: list[int]) -> tuple[int, ...]:
     return min(rotations)
 
 
+def bonds_from_neighbor_list(neighbors) -> list[tuple[int, int]]:
+    senders = np.asarray(neighbors.i, dtype=np.int64).ravel()
+    receivers = np.asarray(neighbors.j, dtype=np.int64).ravel()
+    if senders.shape != receivers.shape:
+        raise ValueError("neighbor list sender and receiver arrays must have the same shape")
+
+    canonical = {
+        (int(min(i, j)), int(max(i, j)))
+        for i, j in zip(senders.tolist(), receivers.tolist())
+        if int(i) != int(j)
+    }
+    return sorted(canonical)
+
+
 def normalize_bonds(bonds) -> list[tuple[int, int]]:
+    if hasattr(bonds, "i") and hasattr(bonds, "j"):
+        return bonds_from_neighbor_list(bonds)
+
     array = np.asarray(bonds)
-    if array.ndim == 2 and array.shape[0] == array.shape[1]:
+    if array.ndim == 2 and array.shape[0] == array.shape[1] and array.shape[1] != 2:
         return bonds_from_adjacency(array)
 
     pairs = np.asarray(bonds, dtype=np.int64)

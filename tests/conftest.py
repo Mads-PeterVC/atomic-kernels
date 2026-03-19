@@ -127,7 +127,25 @@ class _ViewerSession:
     def set_bonds(self, bonds, frame_index=None):
         return None
 
+    def add_bonds(self, bonds, frame_index=None):
+        return None
+
+    def remove_bonds(self, bonds, frame_index=None):
+        return None
+
+    def clear_bonds(self, frame_index=None):
+        return None
+
     def set_faces(self, faces, color=(0.2, 0.6, 0.9, 0.35), face_colors=None, frame_index=None):
+        return None
+
+    def add_faces(self, faces, color=(0.2, 0.6, 0.9, 0.35), face_colors=None, frame_index=None):
+        return None
+
+    def remove_faces(self, faces, color=(0.2, 0.6, 0.9, 0.35), face_colors=None, frame_index=None):
+        return None
+
+    def clear_faces(self, frame_index=None):
         return None
 
     def set_ball_and_stick_style(

@@ -6,6 +6,7 @@ from ase import Atoms
 
 from atomic_kernels.viewer._utils import (
     bonds_from_adjacency,
+    bonds_from_neighbor_list,
     normalize_bonds,
     normalize_colormap,
     normalize_face_colors,
@@ -13,6 +14,7 @@ from atomic_kernels.viewer._utils import (
     normalize_rgba,
     selection_mask,
 )
+from atomic_kernels.neighbor_list import NeighborList
 
 
 def test_normalize_colormap_adds_alpha_channel():
@@ -49,6 +51,18 @@ def test_bonds_from_adjacency_uses_upper_triangle():
     )
 
     assert bonds_from_adjacency(adjacency) == [(0, 1), (1, 2)]
+
+
+def test_bonds_from_neighbor_list_canonicalizes_bidirectional_edges():
+    neighbors = NeighborList(i=[2, 1, 4, 4], j=[1, 2, 4, 3], S=[])
+
+    assert bonds_from_neighbor_list(neighbors) == [(1, 2), (3, 4)]
+
+
+def test_normalize_bonds_accepts_neighbor_list_objects():
+    neighbors = NeighborList(i=[0, 1, 2], j=[1, 0, 2], S=[])
+
+    assert normalize_bonds(neighbors) == [(0, 1)]
 
 
 def test_normalize_faces_deduplicates_rotations_and_reversals():

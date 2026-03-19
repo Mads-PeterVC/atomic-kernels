@@ -23,10 +23,12 @@ from atomic_kernels._atomic_kernels import (
 )
 
 from ._camera import CameraController
+from ._chemistry import bonds_from_ase, faces_from_coordination, polyhedra_from_neighbors
 from ._color import ColorController, ScalarRangeTracker, ViewerSelection
 from ._process import spawn_process_viewer_session
 from ._render import RenderController
 from ._session import PreparedHeadlessRenderFacade, ViewerSessionFacade
+from ._utils import bonds_from_neighbor_list
 from ._utils import normalize_atoms
 
 
@@ -34,6 +36,12 @@ def _viewer_session_requires_process() -> bool:
     if sys.platform == "darwin":
         return True
     return sys.platform.startswith("linux") and os.environ.get("CI") == "true"
+
+
+def _interactive_default_config(config: Optional[ViewerConfig]) -> ViewerConfig:
+    if config is not None:
+        return config
+    return ViewerConfig(render=RenderConfig(show_ui=True))
 
 
 def bevy_viewer(atoms: Atoms | list[Atoms], config: Optional[ViewerConfig] = None) -> None:
@@ -46,7 +54,7 @@ def bevy_viewer(atoms: Atoms | list[Atoms], config: Optional[ViewerConfig] = Non
     config : ViewerConfig, optional
         Viewer configuration passed to the Rust backend.
     """
-    trajectory_viewer(normalize_atoms(atoms), config)
+    trajectory_viewer(normalize_atoms(atoms), _interactive_default_config(config))
 
 
 def launch_viewer(
@@ -66,7 +74,7 @@ def launch_viewer(
     ViewerSession
         Low-level Rust-backed session object.
     """
-    return _launch_viewer(normalize_atoms(atoms), config)
+    return _launch_viewer(normalize_atoms(atoms), _interactive_default_config(config))
 
 
 def run_viewer_session(
@@ -83,7 +91,9 @@ def run_viewer_session(
     config : ViewerConfig, optional
         Viewer configuration passed to the Rust backend.
     """
-    _run_viewer_session(normalize_atoms(atoms), callback, config)
+    _run_viewer_session(
+        normalize_atoms(atoms), callback, _interactive_default_config(config)
+    )
 
 
 def prepare_viewer_session(
@@ -103,7 +113,9 @@ def prepare_viewer_session(
     PreparedViewerSession
         Prepared session object that can be launched later.
     """
-    return _prepare_viewer_session(normalize_atoms(atoms), config)
+    return _prepare_viewer_session(
+        normalize_atoms(atoms), _interactive_default_config(config)
+    )
 
 
 def viewer_session(
@@ -124,6 +136,7 @@ def viewer_session(
         Python facade exposing camera, color, render, and frame controls.
     """
     frames = normalize_atoms(atoms)
+    config = _interactive_default_config(config)
 
     if _viewer_session_requires_process():
         return ViewerSessionFacade(spawn_process_viewer_session(frames, config), frames)
@@ -185,8 +198,12 @@ __all__ = [
     "ViewerSession",
     "ViewerSessionFacade",
     "bevy_viewer",
+    "bonds_from_ase",
+    "bonds_from_neighbor_list",
+    "faces_from_coordination",
     "headless_viewer_session",
     "launch_viewer",
+    "polyhedra_from_neighbors",
     "prepare_viewer_session",
     "run_viewer_session",
     "viewer_session",

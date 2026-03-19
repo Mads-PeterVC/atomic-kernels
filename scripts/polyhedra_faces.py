@@ -35,14 +35,7 @@ if __name__ == "__main__":
     render = session.render()
     camera = session.camera()
 
-    render.set_bonds(
-        [
-            (0, 1),
-            (0, 2),
-            (0, 3),
-            (0, 4),
-        ]
-    )
+    render.set_bonds(mode="default")
     session.select([0, 1, 2, 3, 4]).ball_and_stick(
         atom_scale=0.4,
         bond_radius=0.08,
@@ -50,12 +43,8 @@ if __name__ == "__main__":
     )
 
     render.set_faces(
-        [
-            [1, 2, 3],
-            [1, 4, 2],
-            [1, 3, 4],
-            [2, 4, 3],
-        ],
+        mode="default",
+        selection=[0],
         face_colors=[
             (0.13, 0.52, 0.78, 0.34),
             (0.18, 0.65, 0.66, 0.30),
