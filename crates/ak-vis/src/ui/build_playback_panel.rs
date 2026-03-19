@@ -7,10 +7,9 @@ use bevy::ui_widgets::{
 
 use crate::components::{
     PlaybackFrameText, PlaybackPanelRoot, PlaybackPanelSurface, PlaybackPlayPauseButton,
-    PlaybackPlayPauseIcon, PlaybackScrubberButton, PlaybackScrubberFill,
-    PlaybackScrubberThumb, PlaybackScrubberTrack, PlaybackSpeedButton, PlaybackSpeedText,
-    PlaybackStatusText, PlaybackStepBackButton, PlaybackStepForwardButton, PlaybackTitleText,
-    ToggleableUI,
+    PlaybackPlayPauseIcon, PlaybackScrubberButton, PlaybackScrubberFill, PlaybackScrubberThumb,
+    PlaybackScrubberTrack, PlaybackSpeedButton, PlaybackSpeedText, PlaybackStatusText,
+    PlaybackStepBackButton, PlaybackStepForwardButton, PlaybackTitleText, ToggleableUI,
 };
 use crate::viewer::ViewerConfig;
 

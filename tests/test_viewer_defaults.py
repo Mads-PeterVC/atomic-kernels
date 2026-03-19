@@ -60,3 +60,11 @@ def test_viewer_session_preserves_explicit_ui_override(monkeypatch):
     _, forwarded = calls[0]
     assert forwarded is config
     assert forwarded.render.show_ui is False
+
+
+def test_render_config_accepts_atom_palette_argument():
+    from atomic_kernels.viewer import RenderConfig
+
+    config = RenderConfig(atom_palette="jmol-metallic")
+
+    assert config.atom_palette == "jmol-metallic"

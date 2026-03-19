@@ -1,7 +1,17 @@
 use ak_vis::viewer::config::{ColorConfig, LightingConfig, RenderConfig, ViewerConfig};
 use bevy::color::Color;
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use std::ops::Deref;
+
+fn validate_atom_palette(atom_palette: &str) -> PyResult<()> {
+    match atom_palette {
+        "jmol" | "jmol-metallic" => Ok(()),
+        _ => Err(PyValueError::new_err(format!(
+            "unsupported atom_palette '{atom_palette}', expected 'jmol' or 'jmol-metallic'"
+        ))),
+    }
+}
 
 /// Python wrapper for LightingConfig
 #[pyclass(name = "LightingConfig")]
@@ -144,6 +154,7 @@ impl Deref for PyColorConfig {
 #[pyclass(name = "RenderConfig")]
 #[derive(Clone)]
 pub struct PyRenderConfig {
+    pub atom_palette: String,
     #[pyo3(get, set)]
     pub show_cell: bool,
     #[pyo3(get, set)]
@@ -178,8 +189,9 @@ pub struct PyRenderConfig {
 impl PyRenderConfig {
     #[new]
     #[allow(clippy::too_many_arguments)]
-    #[pyo3(signature = (show_cell=true, show_axes=true, show_ui=false, supercell_repeat_a=0, supercell_repeat_b=0, supercell_repeat_c=0, ghost_repeated_images=true, ico_subdiv=4, show_orientation_widget=true, orientation_widget_size_px=100, orientation_widget_margin_px=0, orientation_widget_offset_x_px=None, orientation_widget_offset_y_px=None, orientation_widget_camera_scale=0.065))]
+    #[pyo3(signature = (atom_palette="jmol", show_cell=true, show_axes=true, show_ui=false, supercell_repeat_a=0, supercell_repeat_b=0, supercell_repeat_c=0, ghost_repeated_images=true, ico_subdiv=4, show_orientation_widget=true, orientation_widget_size_px=100, orientation_widget_margin_px=0, orientation_widget_offset_x_px=None, orientation_widget_offset_y_px=None, orientation_widget_camera_scale=0.065))]
     fn new(
+        atom_palette: &str,
         show_cell: bool,
         show_axes: bool,
         show_ui: bool,
@@ -194,8 +206,11 @@ impl PyRenderConfig {
         orientation_widget_offset_x_px: Option<u32>,
         orientation_widget_offset_y_px: Option<u32>,
         orientation_widget_camera_scale: f32,
-    ) -> Self {
-        PyRenderConfig {
+    ) -> PyResult<Self> {
+        validate_atom_palette(atom_palette)?;
+
+        Ok(PyRenderConfig {
+            atom_palette: atom_palette.to_string(),
             show_cell,
             show_axes,
             show_ui,
@@ -212,13 +227,26 @@ impl PyRenderConfig {
             orientation_widget_offset_y_px: orientation_widget_offset_y_px
                 .unwrap_or(orientation_widget_margin_px),
             orientation_widget_camera_scale,
-        }
+        })
+    }
+
+    #[getter]
+    fn atom_palette(&self) -> String {
+        self.atom_palette.clone()
+    }
+
+    #[setter]
+    fn set_atom_palette(&mut self, value: String) -> PyResult<()> {
+        validate_atom_palette(&value)?;
+        self.atom_palette = value;
+        Ok(())
     }
 }
 
 impl From<&RenderConfig> for PyRenderConfig {
     fn from(config: &RenderConfig) -> Self {
         PyRenderConfig {
+            atom_palette: config.atom_palette.clone(),
             show_cell: config.show_cell,
             show_axes: config.show_axes,
             show_ui: config.show_ui,
@@ -240,6 +268,7 @@ impl From<&RenderConfig> for PyRenderConfig {
 impl From<&PyRenderConfig> for RenderConfig {
     fn from(py: &PyRenderConfig) -> Self {
         RenderConfig {
+            atom_palette: py.atom_palette.clone(),
             show_cell: py.show_cell,
             show_axes: py.show_axes,
             show_ui: py.show_ui,

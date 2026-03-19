@@ -20,7 +20,7 @@ if __name__ == "__main__":
     session = viewer_session(atoms)
     camera = session.camera()
     render = session.render()
-    colors = session.colors()
+    materials = session.materials()
 
     render.set_bonds(explicit_bonds(atoms))
 
@@ -34,8 +34,8 @@ if __name__ == "__main__":
 
     z = atoms.positions[:, 2]
     z_norm = (z - z.min()) / max(float(z.max() - z.min()), 1e-6)
-    # colors.set_atom_scalars("z", z_norm)
-    # colors.by_scalar("z", palette="plasma")
+    # materials.set_atom_scalars("z", z_norm)
+    # materials.by_scalar("z", channel="color", palette="plasma")
 
     camera.frame_all()
     camera.set_rotation(yaw=-0.9, pitch=0.35)

@@ -109,7 +109,6 @@ impl SelectionFrames {
         }
         ordered
     }
-
 }
 
 impl ImageSelectionFrames {

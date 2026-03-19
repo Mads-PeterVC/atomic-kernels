@@ -85,12 +85,18 @@ fn sync_playback_visibility_hides_panel_for_single_frame() {
         total_frames: 1,
         ..PlaybackState::default()
     });
-    let entity = app.world_mut().spawn((PlaybackPanelRoot, Node::default())).id();
+    let entity = app
+        .world_mut()
+        .spawn((PlaybackPanelRoot, Node::default()))
+        .id();
     app.add_systems(Update, sync_playback_visibility);
 
     app.update();
 
-    assert_eq!(app.world().get::<Node>(entity).unwrap().display, Display::None);
+    assert_eq!(
+        app.world().get::<Node>(entity).unwrap().display,
+        Display::None
+    );
 }
 
 #[test]
@@ -100,10 +106,16 @@ fn sync_playback_visibility_shows_panel_for_multiple_frames() {
         total_frames: 2,
         ..PlaybackState::default()
     });
-    let entity = app.world_mut().spawn((PlaybackPanelRoot, Node::default())).id();
+    let entity = app
+        .world_mut()
+        .spawn((PlaybackPanelRoot, Node::default()))
+        .id();
     app.add_systems(Update, sync_playback_visibility);
 
     app.update();
 
-    assert_eq!(app.world().get::<Node>(entity).unwrap().display, Display::Flex);
+    assert_eq!(
+        app.world().get::<Node>(entity).unwrap().display,
+        Display::Flex
+    );
 }

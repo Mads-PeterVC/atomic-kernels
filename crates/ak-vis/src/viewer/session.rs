@@ -35,14 +35,17 @@ pub enum ViewerCommand {
         values: Vec<f32>,
         frame_index: Option<usize>,
     },
-    ColorByScalar {
+    MapAppearanceByScalar {
         name: String,
-        palette: ScalarColorMap,
+        channel: AppearanceChannel,
+        palette: Option<ScalarColorMap>,
         min: Option<f32>,
         max: Option<f32>,
         append: bool,
     },
-    ResetAtomColors,
+    ResetAtomAppearance {
+        channel: Option<AppearanceChannel>,
+    },
     SetBonds {
         bonds: BondList,
         frame_index: Option<usize>,
@@ -212,10 +215,18 @@ impl std::fmt::Display for ViewerSessionClosed {
 
 impl std::error::Error for ViewerSessionClosed {}
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum AppearanceChannel {
+    Color,
+    Metallic,
+    PerceptualRoughness,
+}
+
 #[derive(Clone, Debug, PartialEq)]
-pub struct AtomColorRule {
+pub struct AtomAppearanceRule {
     pub name: String,
-    pub palette: ScalarColorMap,
+    pub channel: AppearanceChannel,
+    pub palette: Option<ScalarColorMap>,
     pub min: Option<f32>,
     pub max: Option<f32>,
 }
@@ -372,17 +383,19 @@ impl ViewerSessionHandle {
             .map_err(|_| ViewerSessionClosed)
     }
 
-    pub fn color_by_scalar(
+    pub fn map_appearance_by_scalar(
         &self,
         name: String,
-        palette: ScalarColorMap,
+        channel: AppearanceChannel,
+        palette: Option<ScalarColorMap>,
         min: Option<f32>,
         max: Option<f32>,
         append: bool,
     ) -> Result<(), ViewerSessionClosed> {
         self.sender
-            .send(ViewerCommand::ColorByScalar {
+            .send(ViewerCommand::MapAppearanceByScalar {
                 name,
+                channel,
                 palette,
                 min,
                 max,
@@ -391,9 +404,12 @@ impl ViewerSessionHandle {
             .map_err(|_| ViewerSessionClosed)
     }
 
-    pub fn reset_atom_colors(&self) -> Result<(), ViewerSessionClosed> {
+    pub fn reset_atom_appearance(
+        &self,
+        channel: Option<AppearanceChannel>,
+    ) -> Result<(), ViewerSessionClosed> {
         self.sender
-            .send(ViewerCommand::ResetAtomColors)
+            .send(ViewerCommand::ResetAtomAppearance { channel })
             .map_err(|_| ViewerSessionClosed)
     }
 
@@ -625,10 +641,7 @@ impl ViewerSessionHandle {
             .map_err(|_| ViewerSessionClosed)
     }
 
-    pub fn set_ghost_repeated_images(
-        &self,
-        enabled: bool,
-    ) -> Result<(), ViewerSessionClosed> {
+    pub fn set_ghost_repeated_images(&self, enabled: bool) -> Result<(), ViewerSessionClosed> {
         self.sender
             .send(ViewerCommand::SetGhostRepeatedImages { enabled })
             .map_err(|_| ViewerSessionClosed)
@@ -801,7 +814,7 @@ pub struct ViewerState {
     pub current: usize,
     pub follow_tail: bool,
     pub atom_scalars: HashMap<String, Vec<Option<Vec<f32>>>>,
-    pub atom_color_rules: Vec<AtomColorRule>,
+    pub atom_appearance_rules: Vec<AtomAppearanceRule>,
     pub bonds: BondFrames,
     pub faces: FaceFrames,
     pub render_style_rules: Vec<RenderStyleRule>,
@@ -823,7 +836,7 @@ impl ViewerState {
             current,
             follow_tail: false,
             atom_scalars: HashMap::new(),
-            atom_color_rules: Vec::new(),
+            atom_appearance_rules: Vec::new(),
             bonds: BondFrames::new(frame_count),
             faces: FaceFrames::new(frame_count),
             render_style_rules: Vec::new(),
@@ -906,37 +919,49 @@ impl ViewerState {
             } => {
                 let target_frame = frame_index.unwrap_or(self.current);
                 let should_refresh_active_mode = self.current == target_frame
-                    && self.atom_color_rules.iter().any(|rule| rule.name == name);
+                    && self
+                        .atom_appearance_rules
+                        .iter()
+                        .any(|rule| rule.name == name);
                 if self.validate_scalar_values(target_frame, &values) {
                     self.store_scalars(name, target_frame, values);
                     self.needs_render = should_refresh_active_mode;
                 }
                 CommandOutcome::default()
             }
-            ViewerCommand::ColorByScalar {
+            ViewerCommand::MapAppearanceByScalar {
                 name,
+                channel,
                 palette,
                 min,
                 max,
                 append,
             } => {
-                let rule = AtomColorRule {
+                let rule = AtomAppearanceRule {
                     name,
+                    channel,
                     palette,
                     min,
                     max,
                 };
                 if append {
-                    self.atom_color_rules.push(rule);
+                    self.atom_appearance_rules.push(rule);
                 } else {
-                    self.atom_color_rules.clear();
-                    self.atom_color_rules.push(rule);
+                    self.atom_appearance_rules
+                        .retain(|existing| existing.channel != channel);
+                    self.atom_appearance_rules.push(rule);
                 }
                 self.needs_render = true;
                 CommandOutcome::default()
             }
-            ViewerCommand::ResetAtomColors => {
-                self.atom_color_rules.clear();
+            ViewerCommand::ResetAtomAppearance { channel } => {
+                match channel {
+                    Some(channel) => {
+                        self.atom_appearance_rules
+                            .retain(|rule| rule.channel != channel);
+                    }
+                    None => self.atom_appearance_rules.clear(),
+                }
                 self.needs_render = true;
                 CommandOutcome::default()
             }
@@ -996,10 +1021,8 @@ impl ViewerState {
                 let target_frame = frame_index.unwrap_or(self.current);
                 if target_frame < self.traj.len() {
                     let atom_count = self.traj.view(target_frame).positions.len();
-                    self.faces.remove(
-                        target_frame,
-                        &faces.validated_for_atom_count(atom_count),
-                    );
+                    self.faces
+                        .remove(target_frame, &faces.validated_for_atom_count(atom_count));
                     self.needs_render = self.current == target_frame;
                 }
                 CommandOutcome::default()
@@ -1047,8 +1070,10 @@ impl ViewerState {
                 let target_frame = frame_index.unwrap_or(self.current);
                 if self.validate_selection(target_frame, &selection) {
                     self.selection.replace(target_frame, selection);
-                    self.image_selection
-                        .replace(target_frame, self.selection.selected_main_images(target_frame));
+                    self.image_selection.replace(
+                        target_frame,
+                        self.selection.selected_main_images(target_frame),
+                    );
                     self.needs_render = self.current == target_frame;
                 }
                 CommandOutcome::default()
@@ -1060,8 +1085,10 @@ impl ViewerState {
                 let target_frame = frame_index.unwrap_or(self.current);
                 if self.validate_selection(target_frame, &selection) {
                     self.selection.add(target_frame, &selection);
-                    self.image_selection
-                        .replace(target_frame, self.selection.selected_main_images(target_frame));
+                    self.image_selection.replace(
+                        target_frame,
+                        self.selection.selected_main_images(target_frame),
+                    );
                     self.needs_render = self.current == target_frame;
                 }
                 CommandOutcome::default()
@@ -1073,8 +1100,10 @@ impl ViewerState {
                 let target_frame = frame_index.unwrap_or(self.current);
                 if self.validate_selection(target_frame, &selection) {
                     self.selection.remove(target_frame, &selection);
-                    self.image_selection
-                        .replace(target_frame, self.selection.selected_main_images(target_frame));
+                    self.image_selection.replace(
+                        target_frame,
+                        self.selection.selected_main_images(target_frame),
+                    );
                     self.needs_render = self.current == target_frame;
                 }
                 CommandOutcome::default()
@@ -1303,7 +1332,11 @@ impl ViewerState {
             && self.traj.view(frame_index).positions.len() == selection.len()
     }
 
-    fn validate_image_selection(&self, frame_index: usize, selection: &[SelectedImageAtom]) -> bool {
+    fn validate_image_selection(
+        &self,
+        frame_index: usize,
+        selection: &[SelectedImageAtom],
+    ) -> bool {
         if frame_index >= self.traj.len() {
             return false;
         }
@@ -1337,10 +1370,14 @@ impl ViewerState {
             return;
         };
         let atom_count = self.traj.view(frame_index).positions.len();
-        self.selection
-            .replace(frame_index, SelectionFrames::mask_from_images(atom_count, selected));
-        self.selection
-            .set_order(frame_index, SelectionFrames::ordered_atoms_from_images(selected));
+        self.selection.replace(
+            frame_index,
+            SelectionFrames::mask_from_images(atom_count, selected),
+        );
+        self.selection.set_order(
+            frame_index,
+            SelectionFrames::ordered_atoms_from_images(selected),
+        );
     }
 }
 
@@ -1376,11 +1413,7 @@ impl BondList {
 
     pub fn without(&self, other: &BondList) -> Self {
         let removals: BTreeSet<_> = other.iter().copied().collect();
-        Self::new(
-            self.iter()
-                .copied()
-                .filter(|edge| !removals.contains(edge)),
-        )
+        Self::new(self.iter().copied().filter(|edge| !removals.contains(edge)))
     }
 }
 

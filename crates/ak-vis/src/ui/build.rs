@@ -9,11 +9,7 @@ use crate::viewer::ViewerConfig;
 
 use super::{ACCENT_COLOR, BODY_COLOR};
 
-pub fn setup_ui(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
-    config: Res<ViewerConfig>,
-) {
+pub fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>, config: Res<ViewerConfig>) {
     let font = asset_server.load("fonts/RobotoMono-VariableFont_wght.ttf");
     let symbol_font = asset_server.load("fonts/NotoSansSymbols2-Regular.ttf");
 

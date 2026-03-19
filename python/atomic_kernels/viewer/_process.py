@@ -43,10 +43,10 @@ def viewer_process_main(
                 session.follow_tail(payload)
             elif command == "set_atom_scalars":
                 session.set_atom_scalars(*payload)
-            elif command == "color_by_scalar":
-                session.color_by_scalar(*payload)
-            elif command == "reset_atom_colors":
-                session.reset_atom_colors()
+            elif command == "material_by_scalar":
+                session.material_by_scalar(*payload)
+            elif command == "reset_atom_materials":
+                session.reset_atom_materials(payload)
             elif command == "set_bonds":
                 session.set_bonds(*payload)
             elif command == "add_bonds":
@@ -186,9 +186,10 @@ class ViewerSessionProxy:
     ) -> None:
         self._send("set_atom_scalars", (name, list(values), frame_index))
 
-    def color_by_scalar(
+    def material_by_scalar(
         self,
         name: str,
+        channel: str,
         palette: str = "viridis",
         colors=None,
         min: float | None = None,
@@ -196,10 +197,13 @@ class ViewerSessionProxy:
         append: bool = False,
     ) -> None:
         normalized = None if colors is None else normalize_colormap(colors)
-        self._send("color_by_scalar", (name, palette, normalized, min, max, append))
+        self._send(
+            "material_by_scalar",
+            (name, channel, palette, normalized, min, max, append),
+        )
 
-    def reset_atom_colors(self) -> None:
-        self._send("reset_atom_colors")
+    def reset_atom_materials(self, channel: str | None = None) -> None:
+        self._send("reset_atom_materials", channel)
 
     def set_bonds(self, bonds, frame_index: int | None = None) -> None:
         self._send("set_bonds", (list(bonds), frame_index))

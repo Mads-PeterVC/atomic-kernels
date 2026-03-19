@@ -46,16 +46,18 @@ if __name__ == "__main__":
 
     # Layer two independent coloring rules onto the same frame: Cu atoms use
     # inferno while Ni atoms use plasma.
-    session.select(copper_mask).color_by_scalar(
+    session.select(copper_mask).material_by_scalar(
         "copper_atomic_energy",
         energies,
+        channel="color",
         palette="inferno",
         min=float(copper_energies.min()),
         max=float(copper_energies.max()),
     )
-    session.select(nickel_mask).color_by_scalar(
+    session.select(nickel_mask).material_by_scalar(
         "nickel_atomic_energy",
         energies,
+        channel="color",
         palette="plasma",
         min=float(nickel_energies.min()),
         max=float(nickel_energies.max()),

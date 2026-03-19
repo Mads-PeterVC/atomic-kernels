@@ -1,8 +1,8 @@
+use super::shortcuts::shortcut_hints;
 use super::{
     InspectorState, MeasurementStatus, SelectedAtomSummary, derive_inspector_state,
     sync_inspector_camera, sync_inspector_text, toggle_hints_visibility,
 };
-use super::shortcuts::shortcut_hints;
 use crate::components::{
     InspectorHintsContainer, InspectorHintsToggle, InspectorMeasurementBody,
     InspectorMeasurementSection, InspectorPanelRoot, InspectorSelectionBody,
@@ -23,7 +23,10 @@ fn structure(points: &[[f64; 3]], numbers: &[i32]) -> Structure {
 
 #[test]
 fn derive_inspector_state_reports_distance_for_two_selected_atoms() {
-    let traj = Trajectory::new(vec![structure(&[[0.0, 0.0, 0.0], [0.0, 3.0, 4.0]], &[1, 8])]);
+    let traj = Trajectory::new(vec![structure(
+        &[[0.0, 0.0, 0.0], [0.0, 3.0, 4.0]],
+        &[1, 8],
+    )]);
     let mut viewer = ViewerState::new(traj, 0);
     viewer.selection.replace(0, vec![true, true]);
 
@@ -189,10 +192,7 @@ fn sync_inspector_text_updates_all_sections() {
             .0
             .contains("1.234")
     );
-    assert_eq!(
-        app.world().get::<Text>(hints_toggle).unwrap().0,
-        ")"
-    );
+    assert_eq!(app.world().get::<Text>(hints_toggle).unwrap().0, ")");
 }
 
 #[test]
@@ -226,7 +226,10 @@ fn sync_inspector_text_hides_selection_section_when_empty() {
 
     app.update();
 
-    assert_eq!(app.world().get::<Node>(section).unwrap().display, Display::None);
+    assert_eq!(
+        app.world().get::<Node>(section).unwrap().display,
+        Display::None
+    );
 }
 
 #[test]
@@ -258,13 +261,19 @@ fn sync_inspector_text_hides_measurement_section_without_result() {
 
     app.update();
 
-    assert_eq!(app.world().get::<Node>(section).unwrap().display, Display::None);
+    assert_eq!(
+        app.world().get::<Node>(section).unwrap().display,
+        Display::None
+    );
 }
 
 #[test]
 fn sync_inspector_camera_targets_main_scene_camera() {
     let mut app = App::new();
-    let main_camera = app.world_mut().spawn((Camera::default(), MainSceneCamera)).id();
+    let main_camera = app
+        .world_mut()
+        .spawn((Camera::default(), MainSceneCamera))
+        .id();
     let inspector = app.world_mut().spawn(InspectorPanelRoot).id();
     app.add_systems(Update, sync_inspector_camera);
 

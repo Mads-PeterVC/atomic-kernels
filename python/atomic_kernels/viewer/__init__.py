@@ -24,7 +24,7 @@ from atomic_kernels._atomic_kernels import (
 
 from ._camera import CameraController
 from ._chemistry import bonds_from_ase, faces_from_coordination, polyhedra_from_neighbors
-from ._color import ColorController, ScalarRangeTracker, ViewerSelection
+from ._color import MaterialController, ScalarRangeTracker, ViewerSelection
 from ._process import spawn_process_viewer_session
 from ._quality import HIGH, LOW, MEDIUM, VERY_HIGH, QualityPreset
 from ._render import RenderController
@@ -134,7 +134,7 @@ def viewer_session(
     Returns
     -------
     ViewerSessionFacade
-        Python facade exposing camera, color, render, and frame controls.
+        Python facade exposing camera, appearance, render, and frame controls.
     """
     frames = normalize_atoms(atoms)
     config = _interactive_default_config(config)
@@ -185,9 +185,9 @@ def headless_viewer_session(
 
 __all__ = [
     "ColorConfig",
-    "ColorController",
     "CameraController",
     "LightingConfig",
+    "MaterialController",
     "PreparedHeadlessRender",
     "PreparedViewerSession",
     "QualityPreset",

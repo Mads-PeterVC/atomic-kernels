@@ -1,4 +1,4 @@
-use crate::{AtomIdentity, AtomVisual, AxisVisual, CellVisual, ColorScheme};
+use crate::{AtomIdentity, AtomVisual, AxisVisual, CellVisual, ColorScheme, DEFAULT_ATOM_MATERIAL};
 use ak_core::{PERIODIC_TABLE, StructureView};
 use bevy::math::Vec3;
 use bevy::prelude::*;
@@ -28,6 +28,7 @@ pub fn convert_structure<C: ColorScheme>(view: &StructureView, scheme: &C) -> Ve
             },
             position: structure_position_to_world(view.positions[i]).to_array(),
             color,
+            material: DEFAULT_ATOM_MATERIAL,
             radius,
         };
         visuals.push(atom_visual);

@@ -6,15 +6,13 @@ use bevy_panorbit_camera::PanOrbitCamera;
 
 use crate::components::{
     MainSceneCamera, PlaybackFrameText, PlaybackPanelRoot, PlaybackPlayPauseButton,
-    PlaybackPlayPauseIcon, PlaybackScrubberButton, PlaybackScrubberFill,
-    PlaybackScrubberThumb, PlaybackSpeedButton, PlaybackSpeedText, PlaybackTitleText,
+    PlaybackPlayPauseIcon, PlaybackScrubberButton, PlaybackScrubberFill, PlaybackScrubberThumb,
+    PlaybackSpeedButton, PlaybackSpeedText, PlaybackTitleText,
 };
 use crate::viewer::ViewerState;
 
 use super::state::PlaybackState;
-use crate::ui::{
-    BUTTON_ACTIVE_BACKGROUND, BUTTON_BACKGROUND, BUTTON_HOVER_BACKGROUND,
-};
+use crate::ui::{BUTTON_ACTIVE_BACKGROUND, BUTTON_BACKGROUND, BUTTON_HOVER_BACKGROUND};
 
 pub fn sync_playback_state(viewer: Res<ViewerState>, mut playback: ResMut<PlaybackState>) {
     let next_total = viewer.trajectory_len();
@@ -97,10 +95,22 @@ pub fn sync_playback_text(
             Without<PlaybackSpeedText>,
         ),
     >,
-    mut scrubber_fill: Query<&mut Node, (With<PlaybackScrubberFill>, Without<PlaybackScrubberThumb>)>,
-    mut scrubber_thumb: Query<&mut Node, (With<PlaybackScrubberThumb>, Without<PlaybackScrubberFill>)>,
+    mut scrubber_fill: Query<
+        &mut Node,
+        (With<PlaybackScrubberFill>, Without<PlaybackScrubberThumb>),
+    >,
+    mut scrubber_thumb: Query<
+        &mut Node,
+        (With<PlaybackScrubberThumb>, Without<PlaybackScrubberFill>),
+    >,
     slider: Query<
-        (Entity, &SliderValue, &SliderRange, &Hovered, &CoreSliderDragState),
+        (
+            Entity,
+            &SliderValue,
+            &SliderRange,
+            &Hovered,
+            &CoreSliderDragState,
+        ),
         With<PlaybackScrubberButton>,
     >,
     button_children: Query<&Children>,
@@ -118,7 +128,12 @@ pub fn sync_playback_text(
         (With<Button>, With<PlaybackPlayPauseButton>),
     >,
     speed_buttons: Query<
-        (Entity, &PlaybackSpeedButton, &Interaction, &mut BackgroundColor),
+        (
+            Entity,
+            &PlaybackSpeedButton,
+            &Interaction,
+            &mut BackgroundColor,
+        ),
         (With<Button>, Without<PlaybackPlayPauseButton>),
     >,
 ) {
@@ -175,7 +190,14 @@ pub fn sync_playback_text(
 
 pub fn handle_playback_buttons(
     mut interactions: ParamSet<(
-        Query<&Interaction, (Changed<Interaction>, With<Button>, With<PlaybackPlayPauseButton>)>,
+        Query<
+            &Interaction,
+            (
+                Changed<Interaction>,
+                With<Button>,
+                With<PlaybackPlayPauseButton>,
+            ),
+        >,
         Query<
             &Interaction,
             (

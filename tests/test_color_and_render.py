@@ -16,15 +16,22 @@ class BackendSpy:
     def set_atom_scalars(self, name, values, frame_index=None):
         self.calls.append(("set_atom_scalars", name, values, frame_index))
 
-    def color_by_scalar(
-        self, name, palette="viridis", colors=None, min=None, max=None, append=False
+    def material_by_scalar(
+        self,
+        name,
+        channel,
+        palette="viridis",
+        colors=None,
+        min=None,
+        max=None,
+        append=False,
     ):
         self.calls.append(
-            ("color_by_scalar", name, palette, colors, min, max, append)
+            ("material_by_scalar", name, channel, palette, colors, min, max, append)
         )
 
-    def reset_atom_colors(self):
-        self.calls.append(("reset_atom_colors",))
+    def reset_atom_materials(self, channel=None):
+        self.calls.append(("reset_atom_materials", channel))
 
     def set_faces(self, faces, color=(0.2, 0.6, 0.9, 0.35), face_colors=None, frame_index=None):
         self.calls.append(("set_faces", faces, color, face_colors, frame_index))
@@ -154,14 +161,17 @@ def test_selection_set_atom_scalars_masks_unselected_atoms():
     assert call[2][2] == pytest.approx(-1.0)
 
 
-def test_selection_color_by_scalar_appends_overlay():
+def test_selection_material_by_scalar_appends_overlay():
     session = make_session()
 
-    session.select([0, 2]).color_by_scalar("charge", [1.0, -1.0], palette="plasma")
+    session.select([0, 2]).material_by_scalar(
+        "charge", [1.0, -1.0], channel="color", palette="plasma"
+    )
 
     assert session._backend.calls[1] == (
-        "color_by_scalar",
+        "material_by_scalar",
         "charge",
+        "color",
         "plasma",
         None,
         None,

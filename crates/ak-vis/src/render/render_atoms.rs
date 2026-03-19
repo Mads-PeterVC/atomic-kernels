@@ -11,10 +11,10 @@ pub fn render_atoms(
     meshes: &mut ResMut<Assets<Mesh>>,
     quality: u32,
 ) {
-    // Group atoms by (radius, color) to enable instancing
+    // Group atoms by (radius, color, material) to enable instancing
     // Using bits representation for radius as HashMap key (f32 doesn't implement Hash)
-        let mut atom_groups: HashMap<(u32, [u8; 4]), Vec<(DisplayAtomIdentity, Vec3)>> =
-            HashMap::new();
+    let mut atom_groups: HashMap<(u32, [u8; 4], [u32; 2]), Vec<(DisplayAtomIdentity, Vec3)>> =
+        HashMap::new();
 
     for atom in visuals.iter() {
         let radius_bits = atom.radius.to_bits();
@@ -26,21 +26,23 @@ pub fn render_atoms(
             (atom.color.to_srgba().alpha * 255.0) as u8,
         ];
 
-        let key = (radius_bits, color_key);
-        atom_groups
-            .entry(key)
-            .or_default()
-            .push((
-                DisplayAtomIdentity {
-                    atom_index: atom.atom_identity.atom_index,
-                    image_offset: atom.atom_identity.image_offset,
-                },
-                Vec3::new(atom.x(), atom.y(), atom.z()),
-            ));
+        let material_key = [
+            atom.material.metallic.to_bits(),
+            atom.material.perceptual_roughness.to_bits(),
+        ];
+
+        let key = (radius_bits, color_key, material_key);
+        atom_groups.entry(key).or_default().push((
+            DisplayAtomIdentity {
+                atom_index: atom.atom_identity.atom_index,
+                image_offset: atom.atom_identity.image_offset,
+            },
+            Vec3::new(atom.x(), atom.y(), atom.z()),
+        ));
     }
 
     // Create shared meshes and materials for each unique atom type
-    for ((radius_bits, color_bytes), positions) in atom_groups.iter() {
+    for ((radius_bits, color_bytes, material_bits), positions) in atom_groups.iter() {
         let radius = f32::from_bits(*radius_bits);
         let color = Color::srgba(
             color_bytes[0] as f32 / 255.0,
@@ -48,6 +50,8 @@ pub fn render_atoms(
             color_bytes[2] as f32 / 255.0,
             color_bytes[3] as f32 / 255.0,
         );
+        let metallic = f32::from_bits(material_bits[0]);
+        let perceptual_roughness = f32::from_bits(material_bits[1]);
 
         // Create ONE mesh for this atom type (shared by all instances)
         let shared_mesh = meshes.add(
@@ -60,8 +64,8 @@ pub fn render_atoms(
         // Create ONE material for this atom type (shared by all instances)
         let shared_material = materials.add(StandardMaterial {
             base_color: color,
-            metallic: 0.0,
-            perceptual_roughness: 0.4,
+            metallic,
+            perceptual_roughness,
             ..default()
         });
 

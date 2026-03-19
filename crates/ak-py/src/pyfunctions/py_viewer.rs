@@ -2,10 +2,10 @@ use crate::{PyStructure, PyTrajectory, PyViewerConfig};
 #[cfg(not(target_os = "macos"))]
 use ak_vis::launch;
 use ak_vis::{
-    BallAndStickStyle, BondList, BondScope, Face, FaceList, HeadlessRenderConfig, RenderStyle,
-    ScalarColorMap, SelectedImageAtom, ViewerReadiness, ViewerSessionHandle, export_image,
-    export_image_with_session, export_prepared_image, run, run_default, run_prepared,
-    run_structure, run_structure_default, run_with_session,
+    AppearanceChannel, BallAndStickStyle, BondList, BondScope, Face, FaceList,
+    HeadlessRenderConfig, RenderStyle, ScalarColorMap, SelectedImageAtom, ViewerReadiness,
+    ViewerSessionHandle, export_image, export_image_with_session, export_prepared_image, run,
+    run_default, run_prepared, run_structure, run_structure_default, run_with_session,
 };
 use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
@@ -77,49 +77,89 @@ impl PyViewerSession {
             .map_err(Self::send_error)
     }
 
-    #[pyo3(signature = (name, palette="viridis", colors=None, min=None, max=None, append=false))]
-    fn color_by_scalar(
+    #[pyo3(signature = (name, channel, palette="viridis", colors=None, min=None, max=None, append=false))]
+    fn material_by_scalar(
         &self,
         name: String,
+        channel: &str,
         palette: &str,
         colors: Option<Vec<(f32, f32, f32, f32)>>,
         min: Option<f32>,
         max: Option<f32>,
         append: bool,
     ) -> PyResult<()> {
-        let palette = match colors {
-            Some(colors) => {
-                if colors.len() < 2 {
+        let channel = match channel {
+            "color" => AppearanceChannel::Color,
+            "metallic" => AppearanceChannel::Metallic,
+            "perceptual_roughness" => AppearanceChannel::PerceptualRoughness,
+            _ => {
+                return Err(PyValueError::new_err(
+                    "unsupported channel, expected 'color', 'metallic', or 'perceptual_roughness'",
+                ));
+            }
+        };
+        let palette = match channel {
+            AppearanceChannel::Color => Some(match colors {
+                Some(colors) => {
+                    if colors.len() < 2 {
+                        return Err(PyValueError::new_err(
+                            "custom colormap requires at least two RGBA samples",
+                        ));
+                    }
+                    ScalarColorMap::Sampled(
+                        colors
+                            .into_iter()
+                            .map(|(r, g, b, a)| [r, g, b, a])
+                            .collect(),
+                    )
+                }
+                None => match palette {
+                    "viridis" => ScalarColorMap::Viridis,
+                    "inferno" => ScalarColorMap::Inferno,
+                    "plasma" => ScalarColorMap::Plasma,
+                    _ => {
+                        return Err(PyValueError::new_err(format!(
+                            "unsupported palette '{palette}', expected 'viridis', 'inferno', or 'plasma'"
+                        )));
+                    }
+                },
+            }),
+            _ => {
+                if colors.is_some() {
                     return Err(PyValueError::new_err(
-                        "custom colormap requires at least two RGBA samples",
+                        "colors can only be provided when channel='color'",
                     ));
                 }
-                ScalarColorMap::Sampled(
-                    colors
-                        .into_iter()
-                        .map(|(r, g, b, a)| [r, g, b, a])
-                        .collect(),
-                )
-            }
-            None => match palette {
-                "viridis" => ScalarColorMap::Viridis,
-                "inferno" => ScalarColorMap::Inferno,
-                "plasma" => ScalarColorMap::Plasma,
-                _ => {
-                    return Err(PyValueError::new_err(format!(
-                        "unsupported palette '{palette}', expected 'viridis', 'inferno', or 'plasma'"
-                    )));
+                if palette != "viridis" {
+                    return Err(PyValueError::new_err(
+                        "palette can only be customized when channel='color'",
+                    ));
                 }
-            },
+                None
+            }
         };
 
         self.handle
-            .color_by_scalar(name, palette, min, max, append)
+            .map_appearance_by_scalar(name, channel, palette, min, max, append)
             .map_err(Self::send_error)
     }
 
-    fn reset_atom_colors(&self) -> PyResult<()> {
-        self.handle.reset_atom_colors().map_err(Self::send_error)
+    #[pyo3(signature = (channel=None))]
+    fn reset_atom_materials(&self, channel: Option<&str>) -> PyResult<()> {
+        let channel = match channel {
+            None => None,
+            Some("color") => Some(AppearanceChannel::Color),
+            Some("metallic") => Some(AppearanceChannel::Metallic),
+            Some("perceptual_roughness") => Some(AppearanceChannel::PerceptualRoughness),
+            Some(_) => {
+                return Err(PyValueError::new_err(
+                    "unsupported channel, expected 'color', 'metallic', or 'perceptual_roughness'",
+                ));
+            }
+        };
+        self.handle
+            .reset_atom_appearance(channel)
+            .map_err(Self::send_error)
     }
 
     #[pyo3(signature = (bonds, frame_index=None))]
@@ -137,11 +177,7 @@ impl PyViewerSession {
     }
 
     #[pyo3(signature = (bonds, frame_index=None))]
-    fn remove_bonds(
-        &self,
-        bonds: Vec<(usize, usize)>,
-        frame_index: Option<usize>,
-    ) -> PyResult<()> {
+    fn remove_bonds(&self, bonds: Vec<(usize, usize)>, frame_index: Option<usize>) -> PyResult<()> {
         self.handle
             .remove_bonds(BondList::new(bonds), frame_index)
             .map_err(Self::send_error)
@@ -149,7 +185,9 @@ impl PyViewerSession {
 
     #[pyo3(signature = (frame_index=None))]
     fn clear_bonds(&self, frame_index: Option<usize>) -> PyResult<()> {
-        self.handle.clear_bonds(frame_index).map_err(Self::send_error)
+        self.handle
+            .clear_bonds(frame_index)
+            .map_err(Self::send_error)
     }
 
     #[pyo3(signature = (faces, color=(0.2, 0.6, 0.9, 0.35), face_colors=None, frame_index=None))]
@@ -217,7 +255,9 @@ impl PyViewerSession {
 
     #[pyo3(signature = (frame_index=None))]
     fn clear_faces(&self, frame_index: Option<usize>) -> PyResult<()> {
-        self.handle.clear_faces(frame_index).map_err(Self::send_error)
+        self.handle
+            .clear_faces(frame_index)
+            .map_err(Self::send_error)
     }
 
     #[allow(clippy::too_many_arguments)]

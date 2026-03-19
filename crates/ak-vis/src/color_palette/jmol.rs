@@ -1,8 +1,12 @@
-use crate::ColorPalette;
+use crate::{AtomMaterial, ColorPalette, DEFAULT_ATOM_MATERIAL};
 use bevy::color::Color;
+use std::sync::LazyLock;
+
+const METAL_MATERIAL: AtomMaterial = AtomMaterial::new(0.5, 0.2);
 
 pub const JMOL: ColorPalette = {
     let mut colors = [None; 110];
+    let materials = [None; 110];
     colors[1] = Some(Color::srgb_u8(255, 255, 255));
     colors[2] = Some(Color::srgb_u8(217, 255, 255));
     colors[3] = Some(Color::srgb_u8(204, 128, 255));
@@ -114,6 +118,55 @@ pub const JMOL: ColorPalette = {
     colors[109] = Some(Color::srgb_u8(235, 0, 38));
 
     let fallback = Color::srgb_u8(255, 255, 255);
+    let fallback_material = DEFAULT_ATOM_MATERIAL;
 
-    ColorPalette { colors, fallback }
+    ColorPalette {
+        colors,
+        materials,
+        fallback,
+        fallback_material,
+    }
 };
+
+pub static JMOL_METALLIC: LazyLock<ColorPalette> = LazyLock::new(|| {
+    let mut materials = [None; 110];
+
+    for atomic_number in [
+        3_u8, 4, 11, 12, 13, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 37, 38, 39, 40,
+        41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67,
+        68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 87, 88, 89, 90, 91, 92, 93,
+        94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109,
+    ] {
+        materials[atomic_number as usize] = Some(METAL_MATERIAL);
+    }
+
+    ColorPalette {
+        colors: JMOL.colors,
+        materials,
+        fallback: JMOL.fallback,
+        fallback_material: JMOL.fallback_material,
+    }
+});
+
+#[cfg(test)]
+mod tests {
+    use super::{JMOL, JMOL_METALLIC};
+    use crate::AtomMaterial;
+    use ak_core::geometry::AtomicNumber;
+
+    #[test]
+    fn default_jmol_palette_uses_default_atom_material() {
+        let iron = AtomicNumber::new(26).unwrap();
+
+        assert_eq!(JMOL.material(iron), AtomMaterial::default());
+    }
+
+    #[test]
+    fn metallic_jmol_palette_marks_metals_without_affecting_nonmetals() {
+        let gold = AtomicNumber::new(79).unwrap();
+        let oxygen = AtomicNumber::new(8).unwrap();
+
+        assert!((JMOL_METALLIC.material(gold).metallic - 0.5).abs() < 1e-6);
+        assert_eq!(JMOL_METALLIC.material(oxygen), AtomMaterial::default());
+    }
+}

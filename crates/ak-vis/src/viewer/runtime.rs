@@ -1,3 +1,4 @@
+use crate::ui::{InspectorState, PlaybackState};
 use crate::viewer::ViewerConfig;
 use crate::viewer::session::{CameraState, ViewerCommand, ViewerSnapshot, ViewerState};
 use crate::viewer::systems::{
@@ -5,14 +6,13 @@ use crate::viewer::systems::{
     rerender_if_dirty, setup_camera, setup_camera_light, setup_lighting, sync_viewer_snapshot,
     update_camera_light,
 };
-use crate::ui::{InspectorState, PlaybackState};
 use ak_core::Trajectory;
 use bevy::camera::RenderTarget;
 use bevy::prelude::*;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex, mpsc};
 use std::sync::OnceLock;
+use std::sync::{Arc, Mutex, mpsc};
 
 const ROBOTO_MONO_FONT: &[u8] = include_bytes!(concat!(
     env!("CARGO_MANIFEST_DIR"),
@@ -162,7 +162,10 @@ mod tests {
     #[test]
     fn bundled_asset_root_contains_expected_fonts() {
         let root = bundled_asset_root();
-        assert!(root.join("fonts/RobotoMono-VariableFont_wght.ttf").is_file());
+        assert!(
+            root.join("fonts/RobotoMono-VariableFont_wght.ttf")
+                .is_file()
+        );
         assert!(root.join("fonts/NotoSansSymbols2-Regular.ttf").is_file());
     }
 

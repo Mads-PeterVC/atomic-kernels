@@ -41,16 +41,17 @@ if __name__ == "__main__":
     slab, top_layer = build_deformed_slab()
     session = viewer_session(slab)
     camera = session.camera()
-    colors = session.colors()
+    materials = session.materials()
     session.follow_tail(True)
     camera.frame_all()
-    energy_scale = colors.range_tracker()
+    energy_scale = materials.range_tracker()
 
     initial_energies = atomic_energies(slab)
     energy_min, energy_max = energy_scale.update(initial_energies[top_layer])
-    session.select(top_layer, frame_index=0).color_by_scalar(
+    session.select(top_layer, frame_index=0).material_by_scalar(
         "atomic_energy",
         initial_energies,
+        channel="color",
         palette="inferno",
         min=energy_min,
         max=energy_max,
@@ -65,9 +66,10 @@ if __name__ == "__main__":
         frame_energies = atomic_energies(slab)
         session.append_frame(frame)
         energy_min, energy_max = energy_scale.update(frame_energies[top_layer])
-        session.select(top_layer, frame_index=next_frame_index[0]).color_by_scalar(
+        session.select(top_layer, frame_index=next_frame_index[0]).material_by_scalar(
             "atomic_energy",
             frame_energies,
+            channel="color",
             palette="viridis",
             min=energy_min,
             max=energy_max,

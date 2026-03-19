@@ -40,9 +40,14 @@ class _LightingConfig:
 class _RenderConfig:
     def __init__(
         self,
+        atom_palette="jmol",
         show_cell=True,
         show_axes=True,
         show_ui=False,
+        supercell_repeat_a=0,
+        supercell_repeat_b=0,
+        supercell_repeat_c=0,
+        ghost_repeated_images=True,
         ico_subdiv=4,
         show_orientation_widget=True,
         orientation_widget_size_px=100,
@@ -51,9 +56,14 @@ class _RenderConfig:
         orientation_widget_offset_y_px=0,
         orientation_widget_camera_scale=0.065,
     ):
+        self.atom_palette = atom_palette
         self.show_cell = show_cell
         self.show_axes = show_axes
         self.show_ui = show_ui
+        self.supercell_repeat_a = supercell_repeat_a
+        self.supercell_repeat_b = supercell_repeat_b
+        self.supercell_repeat_c = supercell_repeat_c
+        self.ghost_repeated_images = ghost_repeated_images
         self.ico_subdiv = ico_subdiv
         self.show_orientation_widget = show_orientation_widget
         self.orientation_widget_size_px = orientation_widget_size_px
@@ -116,12 +126,19 @@ class _ViewerSession:
     def set_atom_scalars(self, name, values, frame_index=None):
         return None
 
-    def color_by_scalar(
-        self, name, palette="viridis", colors=None, min=None, max=None, append=False
+    def material_by_scalar(
+        self,
+        name,
+        channel,
+        palette="viridis",
+        colors=None,
+        min=None,
+        max=None,
+        append=False,
     ):
         return None
 
-    def reset_atom_colors(self):
+    def reset_atom_materials(self, channel=None):
         return None
 
     def set_bonds(self, bonds, frame_index=None):
