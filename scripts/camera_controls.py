@@ -19,14 +19,14 @@ if __name__ == "__main__":
 
     session = viewer_session(atoms)
     camera = session.camera()
-    colors = session.colors()
+    materials = session.materials()
 
     z = atoms.get_positions()[:, 2]
     z_min = float(z.min())
     z_span = float(z.max() - z_min)
     heights = (z - z_min) / z_span if z_span > 0.0 else z * 0.0
-    colors.set_atom_scalars("height", heights)
-    colors.by_scalar("height", palette="viridis")
+    materials.set_atom_scalars("height", heights)
+    materials.by_scalar("height", channel="color", palette="viridis")
 
     camera.frame_all()
     camera.set_rotation(yaw=-1.1, pitch=0.45)

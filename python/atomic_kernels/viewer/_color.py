@@ -44,8 +44,8 @@ class ScalarRangeTracker:
         return self._min, self._max
 
 
-class ColorController:
-    """Manage scalar fields and color mappings for the current viewer session."""
+class MaterialController:
+    """Manage scalar fields and appearance mappings for the current viewer session."""
 
     def __init__(self, session: "ViewerSessionFacade") -> None:
         self._session = session
@@ -72,22 +72,25 @@ class ColorController:
     def by_scalar(
         self,
         name: str,
+        channel: str,
         palette: str = "viridis",
         colors=None,
         min: float | None = None,
         max: float | None = None,
         append: bool = False,
     ) -> None:
-        """Color atoms by a named scalar field.
+        """Map a named scalar field into an appearance channel.
 
         Parameters
         ----------
         name : str
             Scalar field name to visualize.
+        channel : {"color", "metallic", "perceptual_roughness"}
+            Appearance channel to drive from the scalar field.
         palette : str, default="viridis"
-            Built-in colormap name.
+            Built-in colormap name. Only valid for ``channel="color"``.
         colors : sequence, optional
-            Explicit sampled colors used instead of a built-in palette.
+            Explicit sampled colors used instead of a built-in palette for ``channel="color"``.
         min : float or None, optional
             Lower bound for scalar normalization.
         max : float or None, optional
@@ -95,8 +98,14 @@ class ColorController:
         append : bool, default=False
             If ``True``, append the rule instead of replacing existing color rules.
         """
-        self._session._backend.color_by_scalar(
+        if channel != "color" and colors is not None:
+            raise ValueError("colors can only be provided when channel='color'")
+        if channel != "color" and palette != "viridis":
+            raise ValueError("palette can only be customized when channel='color'")
+
+        self._session._backend.material_by_scalar(
             name,
+            channel=channel,
             palette=palette,
             colors=colors,
             min=min,
@@ -104,9 +113,9 @@ class ColorController:
             append=append,
         )
 
-    def reset(self) -> None:
-        """Restore default element-based coloring."""
-        self._session._backend.reset_atom_colors()
+    def reset(self, channel: str | None = None) -> None:
+        """Restore palette-based appearance defaults for one channel or all channels."""
+        self._session._backend.reset_atom_materials(channel=channel)
 
     def range_tracker(self) -> ScalarRangeTracker:
         """Create a helper for keeping a fixed scalar range across frames.
@@ -120,7 +129,7 @@ class ColorController:
 
 
 class ViewerSelection:
-    """Apply scalar and color operations to a subset of atoms."""
+    """Apply scalar and appearance operations to a subset of atoms."""
 
     def __init__(
         self,
@@ -177,22 +186,23 @@ class ViewerSelection:
                 "values must be a scalar, a full-length array, or an array matching the selection size"
             )
 
-        self._session.colors().set_atom_scalars(
+        self._session.materials().set_atom_scalars(
             name, scalar_values, frame_index=frame_index
         )
         return self._session
 
-    def color_by_scalar(
+    def material_by_scalar(
         self,
         name: str,
         values,
+        channel: str,
         palette: str = "viridis",
         colors=None,
         min: float | None = None,
         max: float | None = None,
         frame_index: int | None = None,
     ) -> "ViewerSessionFacade":
-        """Color the selection by scalar values while leaving other atoms unchanged.
+        """Map selection scalars into one appearance channel while leaving other atoms unchanged.
 
         Parameters
         ----------
@@ -200,10 +210,12 @@ class ViewerSelection:
             Scalar field name.
         values
             Scalar value, full-length array, or selection-length array.
+        channel : {"color", "metallic", "perceptual_roughness"}
+            Appearance channel to drive from the scalar field.
         palette : str, default="viridis"
-            Built-in colormap name.
+            Built-in colormap name when ``channel="color"``.
         colors : sequence, optional
-            Explicit sampled colors used instead of a built-in palette.
+            Explicit sampled colors used instead of a built-in palette for ``channel="color"``.
         min : float or None, optional
             Lower bound for scalar normalization.
         max : float or None, optional
@@ -217,8 +229,9 @@ class ViewerSelection:
             Session facade to support fluent scripting.
         """
         self.set_atom_scalars(name, values, frame_index=frame_index)
-        self._session.colors().by_scalar(
+        self._session.materials().by_scalar(
             name,
+            channel=channel,
             palette=palette,
             colors=colors,
             min=min,

@@ -133,16 +133,17 @@ class ViewerSession:
     def set_atom_scalars(
         self, name: str, values: list[float], frame_index: int | None = None
     ) -> None: ...
-    def color_by_scalar(
+    def material_by_scalar(
         self,
         name: str,
+        channel: str,
         palette: str = "viridis",
         colors: object | None = None,
         min: float | None = None,
         max: float | None = None,
         append: bool = False,
     ) -> None: ...
-    def reset_atom_colors(self) -> None: ...
+    def reset_atom_materials(self, channel: str | None = None) -> None: ...
     def set_bonds(
         self, bonds: list[tuple[int, int]], frame_index: int | None = None
     ) -> None: ...
@@ -239,20 +240,21 @@ class ScalarRangeTracker:
     def limits(self) -> tuple[float, float]: ...
 
 
-class ColorController:
+class MaterialController:
     def set_atom_scalars(
         self, name: str, values: object, frame_index: int | None = None
     ) -> None: ...
     def by_scalar(
         self,
         name: str,
+        channel: str,
         palette: str = "viridis",
         colors: object | None = None,
         min: float | None = None,
         max: float | None = None,
         append: bool = False,
     ) -> None: ...
-    def reset(self) -> None: ...
+    def reset(self, channel: str | None = None) -> None: ...
     def range_tracker(self) -> ScalarRangeTracker: ...
 
 
@@ -278,10 +280,11 @@ class ViewerSelection:
     def set_atom_scalars(
         self, name: str, values: object, frame_index: int | None = None
     ) -> ViewerSessionFacade: ...
-    def color_by_scalar(
+    def material_by_scalar(
         self,
         name: str,
         values: object,
+        channel: str,
         palette: str = "viridis",
         colors: object | None = None,
         min: float | None = None,
@@ -334,7 +337,7 @@ class ViewerSessionFacade:
     def supercell(self) -> dict: ...
     def wait_until_ready(self, timeout: float | None = None) -> bool: ...
     def camera(self) -> CameraController: ...
-    def colors(self) -> ColorController: ...
+    def materials(self) -> MaterialController: ...
     def render(self) -> RenderController: ...
     def select(
         self, selection: object, frame_index: int | None = None

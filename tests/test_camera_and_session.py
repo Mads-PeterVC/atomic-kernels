@@ -195,6 +195,16 @@ def test_viewer_session_facade_wait_until_ready_delegates_to_backend():
     assert backend.calls == [("wait_until_ready", 1.5)]
 
 
+def test_viewer_session_facade_exposes_material_controller_only():
+    backend = BackendSpy()
+    facade = ViewerSessionFacade(backend, [Atoms("H")])
+
+    controller = facade.materials()
+
+    assert controller is not None
+    assert not hasattr(facade, "colors")
+
+
 def test_viewer_session_facade_selection_methods_normalize_masks():
     atoms = Atoms("H2O")
     backend = BackendSpy()

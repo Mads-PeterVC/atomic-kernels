@@ -1,7 +1,7 @@
 use super::{
-    AtomColorRule, BallAndStickStyle, BondFrames, BondList, BondScope, CameraState, Face,
-    FaceFrames, FaceList, RenderStyle, ScalarColorMap, SelectedImageAtom, ViewerCommand,
-    ViewerState, camera_view_for_frame,
+    AppearanceChannel, AtomAppearanceRule, BallAndStickStyle, BondFrames, BondList, BondScope,
+    CameraState, Face, FaceFrames, FaceList, RenderStyle, ScalarColorMap, SelectedImageAtom,
+    ViewerCommand, ViewerState, camera_view_for_frame,
 };
 use ak_core::{Structure, Trajectory};
 use bevy::prelude::Vec3;
@@ -126,22 +126,24 @@ fn set_atom_scalars_stores_current_frame_values() {
 }
 
 #[test]
-fn color_by_scalar_switches_color_mode() {
+fn map_appearance_by_scalar_replaces_existing_channel_rules() {
     let mut state = ViewerState::new(Trajectory::new(vec![test_structure(0.0)]), 0);
 
-    state.apply_command(ViewerCommand::ColorByScalar {
+    state.apply_command(ViewerCommand::MapAppearanceByScalar {
         name: "energy".to_string(),
-        palette: ScalarColorMap::Viridis,
+        channel: AppearanceChannel::Color,
+        palette: Some(ScalarColorMap::Viridis),
         min: None,
         max: None,
         append: false,
     });
 
     assert_eq!(
-        state.atom_color_rules,
-        vec![AtomColorRule {
+        state.atom_appearance_rules,
+        vec![AtomAppearanceRule {
             name: "energy".to_string(),
-            palette: ScalarColorMap::Viridis,
+            channel: AppearanceChannel::Color,
+            palette: Some(ScalarColorMap::Viridis),
             min: None,
             max: None,
         }]
@@ -149,27 +151,98 @@ fn color_by_scalar_switches_color_mode() {
 }
 
 #[test]
-fn append_color_rule_preserves_existing_rules() {
+fn append_appearance_rule_preserves_existing_rules_for_same_channel() {
     let mut state = ViewerState::new(Trajectory::new(vec![test_structure(0.0)]), 0);
 
-    state.apply_command(ViewerCommand::ColorByScalar {
+    state.apply_command(ViewerCommand::MapAppearanceByScalar {
         name: "energy".to_string(),
-        palette: ScalarColorMap::Viridis,
+        channel: AppearanceChannel::Color,
+        palette: Some(ScalarColorMap::Viridis),
         min: None,
         max: None,
         append: false,
     });
-    state.apply_command(ViewerCommand::ColorByScalar {
+    state.apply_command(ViewerCommand::MapAppearanceByScalar {
         name: "charge".to_string(),
-        palette: ScalarColorMap::Plasma,
+        channel: AppearanceChannel::Color,
+        palette: Some(ScalarColorMap::Plasma),
         min: Some(-1.0),
         max: Some(1.0),
         append: true,
     });
 
-    assert_eq!(state.atom_color_rules.len(), 2);
-    assert_eq!(state.atom_color_rules[0].name, "energy");
-    assert_eq!(state.atom_color_rules[1].name, "charge");
+    assert_eq!(state.atom_appearance_rules.len(), 2);
+    assert_eq!(state.atom_appearance_rules[0].name, "energy");
+    assert_eq!(state.atom_appearance_rules[1].name, "charge");
+}
+
+#[test]
+fn replacing_one_channel_preserves_other_channels() {
+    let mut state = ViewerState::new(Trajectory::new(vec![test_structure(0.0)]), 0);
+
+    state.apply_command(ViewerCommand::MapAppearanceByScalar {
+        name: "energy".to_string(),
+        channel: AppearanceChannel::Color,
+        palette: Some(ScalarColorMap::Viridis),
+        min: None,
+        max: None,
+        append: false,
+    });
+    state.apply_command(ViewerCommand::MapAppearanceByScalar {
+        name: "charge".to_string(),
+        channel: AppearanceChannel::Metallic,
+        palette: None,
+        min: Some(0.0),
+        max: Some(1.0),
+        append: false,
+    });
+    state.apply_command(ViewerCommand::MapAppearanceByScalar {
+        name: "height".to_string(),
+        channel: AppearanceChannel::Color,
+        palette: Some(ScalarColorMap::Plasma),
+        min: None,
+        max: None,
+        append: false,
+    });
+
+    assert_eq!(state.atom_appearance_rules.len(), 2);
+    assert_eq!(
+        state.atom_appearance_rules[0].channel,
+        AppearanceChannel::Metallic
+    );
+    assert_eq!(state.atom_appearance_rules[1].name, "height");
+}
+
+#[test]
+fn resetting_one_channel_preserves_other_channels() {
+    let mut state = ViewerState::new(Trajectory::new(vec![test_structure(0.0)]), 0);
+
+    state.apply_command(ViewerCommand::MapAppearanceByScalar {
+        name: "energy".to_string(),
+        channel: AppearanceChannel::Color,
+        palette: Some(ScalarColorMap::Viridis),
+        min: None,
+        max: None,
+        append: false,
+    });
+    state.apply_command(ViewerCommand::MapAppearanceByScalar {
+        name: "charge".to_string(),
+        channel: AppearanceChannel::PerceptualRoughness,
+        palette: None,
+        min: Some(0.0),
+        max: Some(1.0),
+        append: false,
+    });
+
+    state.apply_command(ViewerCommand::ResetAtomAppearance {
+        channel: Some(AppearanceChannel::Color),
+    });
+
+    assert_eq!(state.atom_appearance_rules.len(), 1);
+    assert_eq!(
+        state.atom_appearance_rules[0].channel,
+        AppearanceChannel::PerceptualRoughness
+    );
 }
 
 #[test]

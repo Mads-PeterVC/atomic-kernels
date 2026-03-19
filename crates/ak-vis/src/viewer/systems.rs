@@ -12,8 +12,8 @@ use crate::viewer::controls::default_camera_state;
 use crate::viewer::controls::despawn_current_frame;
 use crate::viewer::runtime::{CommandReceiver, MainCameraRenderTarget, SharedViewerSnapshot};
 use crate::viewer::{
-    AtomColorRule, BallAndStickStyle, BondList, BondScope, CameraState, DisplayAtom, RenderStyle,
-    SelectedImageAtom, SelectionFrames, ViewerState,
+    AppearanceChannel, AtomAppearanceRule, BallAndStickStyle, BondList, BondScope, CameraState,
+    DisplayAtom, RenderStyle, SelectedImageAtom, SelectionFrames, ViewerState,
 };
 use bevy::ecs::system::SystemParam;
 use bevy::light::{NotShadowCaster, NotShadowReceiver};
@@ -53,10 +53,10 @@ struct AngleMeasurementCue {
     angle_radians: f32,
 }
 
-fn scalar_colors_for_rule(
+fn normalized_scalar_values_for_rule(
     viewer: &ViewerState,
-    rule: &AtomColorRule,
-) -> Option<Vec<Option<Color>>> {
+    rule: &AtomAppearanceRule,
+) -> Option<Vec<Option<f32>>> {
     let values = viewer
         .atom_scalars
         .get(&rule.name)
@@ -90,7 +90,7 @@ fn scalar_colors_for_rule(
             .iter()
             .map(|value| {
                 if value.is_finite() {
-                    Some(rule.palette.color((value - min) / span))
+                    Some(((value - min) / span).clamp(0.0, 1.0))
                 } else {
                     None
                 }
@@ -100,7 +100,7 @@ fn scalar_colors_for_rule(
 }
 
 fn scalar_colors_for_current_frame(viewer: &ViewerState) -> Option<Vec<Option<Color>>> {
-    if viewer.atom_color_rules.is_empty() {
+    if viewer.atom_appearance_rules.is_empty() {
         return None;
     }
 
@@ -108,19 +108,57 @@ fn scalar_colors_for_current_frame(viewer: &ViewerState) -> Option<Vec<Option<Co
     let mut layered_colors = vec![None; atom_count];
     let mut applied_any = false;
 
-    for rule in &viewer.atom_color_rules {
-        let Some(rule_colors) = scalar_colors_for_rule(viewer, rule) else {
+    for rule in viewer
+        .atom_appearance_rules
+        .iter()
+        .filter(|rule| rule.channel == AppearanceChannel::Color)
+    {
+        let Some(rule_values) = normalized_scalar_values_for_rule(viewer, rule) else {
             continue;
         };
-        for (slot, color) in layered_colors.iter_mut().zip(rule_colors) {
-            if color.is_some() {
-                *slot = color;
+        let Some(palette) = rule.palette.as_ref() else {
+            continue;
+        };
+        for (slot, value) in layered_colors.iter_mut().zip(rule_values) {
+            if let Some(value) = value {
+                *slot = Some(palette.color(value));
                 applied_any = true;
             }
         }
     }
 
     applied_any.then_some(layered_colors)
+}
+
+fn scalar_material_channel_for_current_frame(
+    viewer: &ViewerState,
+    channel: AppearanceChannel,
+) -> Option<Vec<Option<f32>>> {
+    if viewer.atom_appearance_rules.is_empty() {
+        return None;
+    }
+
+    let atom_count = viewer.traj.view(viewer.current).positions.len();
+    let mut layered_values = vec![None; atom_count];
+    let mut applied_any = false;
+
+    for rule in viewer
+        .atom_appearance_rules
+        .iter()
+        .filter(|rule| rule.channel == channel)
+    {
+        let Some(rule_values) = normalized_scalar_values_for_rule(viewer, rule) else {
+            continue;
+        };
+        for (slot, value) in layered_values.iter_mut().zip(rule_values) {
+            if value.is_some() {
+                *slot = value;
+                applied_any = true;
+            }
+        }
+    }
+
+    applied_any.then_some(layered_values)
 }
 
 fn resolved_atom_styles_for_current_frame(
@@ -238,6 +276,10 @@ fn displayed_atom_visuals_for_current_frame(
     let view = viewer.traj.view(viewer.current);
     let atom_palette = named_palette(atom_palette_name);
     let scalar_colors = scalar_colors_for_current_frame(viewer);
+    let scalar_metallic =
+        scalar_material_channel_for_current_frame(viewer, AppearanceChannel::Metallic);
+    let scalar_roughness =
+        scalar_material_channel_for_current_frame(viewer, AppearanceChannel::PerceptualRoughness);
     let ball_and_stick_styles = resolved_atom_styles_for_current_frame(viewer);
 
     viewer
@@ -246,11 +288,21 @@ fn displayed_atom_visuals_for_current_frame(
         .map(|atom| {
             let atomic_number = view.numbers[atom.identity.atom_index];
             let mut color = atom_palette.color(&view, atom.identity.atom_index);
-            let material = atom_palette.material(atomic_number);
+            let mut material = atom_palette.material(atomic_number);
             if let Some(colors) = scalar_colors.as_ref()
                 && let Some(mapped) = colors[atom.identity.atom_index]
             {
                 color = mapped;
+            }
+            if let Some(values) = scalar_metallic.as_ref()
+                && let Some(mapped) = values[atom.identity.atom_index]
+            {
+                material.metallic = mapped;
+            }
+            if let Some(values) = scalar_roughness.as_ref()
+                && let Some(mapped) = values[atom.identity.atom_index]
+            {
+                material.perceptual_roughness = mapped;
             }
 
             let mut radius = 0.9

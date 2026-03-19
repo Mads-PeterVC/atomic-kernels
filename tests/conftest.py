@@ -126,12 +126,19 @@ class _ViewerSession:
     def set_atom_scalars(self, name, values, frame_index=None):
         return None
 
-    def color_by_scalar(
-        self, name, palette="viridis", colors=None, min=None, max=None, append=False
+    def material_by_scalar(
+        self,
+        name,
+        channel,
+        palette="viridis",
+        colors=None,
+        min=None,
+        max=None,
+        append=False,
     ):
         return None
 
-    def reset_atom_colors(self):
+    def reset_atom_materials(self, channel=None):
         return None
 
     def set_bonds(self, bonds, frame_index=None):

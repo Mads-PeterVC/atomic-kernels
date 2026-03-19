@@ -14,10 +14,10 @@ pub use config::{ColorConfig, LightingConfig, RenderConfig, ViewerConfig};
 
 pub mod session;
 pub use session::{
-    AtomColorRule, BallAndStickStyle, BondFrames, BondList, BondScope, CameraState, DisplayAtom,
-    Face, FaceFrames, FaceList, ImageSelectionFrames, RenderStyle, RenderStyleRule,
-    SelectedImageAtom, SelectionFrames, SupercellSettings, ViewerCommand, ViewerReadiness,
-    ViewerSessionClosed, ViewerSessionHandle, ViewerState,
+    AppearanceChannel, AtomAppearanceRule, BallAndStickStyle, BondFrames, BondList, BondScope,
+    CameraState, DisplayAtom, Face, FaceFrames, FaceList, ImageSelectionFrames, RenderStyle,
+    RenderStyleRule, SelectedImageAtom, SelectionFrames, SupercellSettings, ViewerCommand,
+    ViewerReadiness, ViewerSessionClosed, ViewerSessionHandle, ViewerState,
 };
 
 mod orientation_widget;

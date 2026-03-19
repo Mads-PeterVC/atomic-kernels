@@ -3,7 +3,7 @@ from __future__ import annotations
 from ase import Atoms
 
 from ._camera import CameraController
-from ._color import ColorController, ViewerSelection
+from ._color import MaterialController, ViewerSelection
 from ._render import RenderController
 from ._utils import normalized_selection_mask
 
@@ -20,7 +20,7 @@ class ViewerSessionFacade:
         self._frames = [frame.copy() for frame in atoms]
         self._current_frame = 0
         self._camera = CameraController(self)
-        self._colors = ColorController(self)
+        self._materials = MaterialController(self)
         self._render = RenderController(self)
 
     def _resolve_frame_index(self, frame_index: int | None = None) -> int:
@@ -190,15 +190,15 @@ class ViewerSessionFacade:
         """
         return self._camera
 
-    def colors(self) -> ColorController:
-        """Return the color controller for this session.
+    def materials(self) -> MaterialController:
+        """Return the appearance controller for this session.
 
         Returns
         -------
-        ColorController
-            Color control facade bound to this session.
+        MaterialController
+            Appearance control facade bound to this session.
         """
-        return self._colors
+        return self._materials
 
     def render(self) -> RenderController:
         """Return the rendering controller for this session.
@@ -227,7 +227,7 @@ class ViewerSessionFacade:
         Returns
         -------
         ViewerSelection
-            Selection helper that scopes color and render changes to a subset of atoms.
+            Selection helper that scopes appearance and render changes to a subset of atoms.
         """
         return ViewerSelection(self, selection, frame_index=frame_index)
 
