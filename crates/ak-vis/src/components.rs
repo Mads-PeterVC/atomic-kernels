@@ -58,6 +58,53 @@ pub struct InspectorHintsToggle;
 pub struct InspectorPanelSurface;
 
 #[derive(Component)]
+pub struct PlaybackPanelRoot;
+
+#[derive(Component)]
+pub struct PlaybackPanelSurface;
+
+#[derive(Component)]
+pub struct PlaybackStatusText;
+
+#[derive(Component)]
+pub struct PlaybackTitleText;
+
+#[derive(Component)]
+pub struct PlaybackFrameText;
+
+#[derive(Component)]
+pub struct PlaybackSpeedText;
+
+#[derive(Component)]
+pub struct PlaybackPlayPauseButton;
+
+#[derive(Component)]
+pub struct PlaybackPlayPauseIcon;
+
+#[derive(Component)]
+pub struct PlaybackStepBackButton;
+
+#[derive(Component)]
+pub struct PlaybackStepForwardButton;
+
+#[derive(Component)]
+pub struct PlaybackSpeedButton {
+    pub index: usize,
+}
+
+#[derive(Component)]
+pub struct PlaybackScrubberButton;
+
+#[derive(Component)]
+pub struct PlaybackScrubberFill;
+
+#[derive(Component)]
+pub struct PlaybackScrubberTrack;
+
+#[derive(Component)]
+pub struct PlaybackScrubberThumb;
+
+#[derive(Component)]
 pub struct MarqueeSelectionOverlay;
 
 #[derive(Component)]
@@ -82,7 +129,11 @@ mod tests {
         InspectorPanelRoot, InspectorPanelSurface, InspectorSelectionBody,
         InspectorSelectionSection, MainSceneCamera, MarqueeSelectionOverlay,
         OrientationWidgetCamera, OrientationWidgetLetterStroke, OrientationWidgetRoot,
-        ToggleableUI,
+        PlaybackPanelRoot, PlaybackPanelSurface, PlaybackPlayPauseButton,
+        PlaybackPlayPauseIcon, PlaybackScrubberButton, PlaybackScrubberFill,
+        PlaybackScrubberThumb, PlaybackScrubberTrack, PlaybackSpeedButton,
+        PlaybackStatusText, PlaybackStepBackButton, PlaybackStepForwardButton,
+        PlaybackTitleText, PlaybackFrameText, PlaybackSpeedText, ToggleableUI,
     };
     use bevy::prelude::*;
 
@@ -103,19 +154,32 @@ mod tests {
                 ToggleableUI,
                 MainSceneCamera,
             ))
-            .insert((
-                InspectorPanelRoot,
-                InspectorSelectionSection,
-                InspectorSelectionBody,
-                InspectorMeasurementSection,
-                InspectorMeasurementBody,
-                InspectorHintsContainer,
-                InspectorHintsToggle,
-                InspectorPanelSurface,
-                MarqueeSelectionOverlay,
-                OrientationWidgetRoot,
-                OrientationWidgetCamera,
-            ))
+            .insert(InspectorPanelRoot)
+            .insert(InspectorSelectionSection)
+            .insert(InspectorSelectionBody)
+            .insert(InspectorMeasurementSection)
+            .insert(InspectorMeasurementBody)
+            .insert(InspectorHintsContainer)
+            .insert(InspectorHintsToggle)
+            .insert(InspectorPanelSurface)
+            .insert(PlaybackPanelRoot)
+            .insert(PlaybackPanelSurface)
+            .insert(PlaybackStatusText)
+            .insert(PlaybackTitleText)
+            .insert(PlaybackFrameText)
+            .insert(PlaybackSpeedText)
+            .insert(PlaybackPlayPauseButton)
+            .insert(PlaybackPlayPauseIcon)
+            .insert(PlaybackStepBackButton)
+            .insert(PlaybackStepForwardButton)
+            .insert(PlaybackScrubberButton)
+            .insert(PlaybackScrubberFill)
+            .insert(PlaybackScrubberTrack)
+            .insert(PlaybackScrubberThumb)
+            .insert(MarqueeSelectionOverlay)
+            .insert(OrientationWidgetRoot)
+            .insert(OrientationWidgetCamera)
+            .insert(PlaybackSpeedButton { index: 1 })
             .insert(DisplayAtomIdentity {
                 atom_index: 3,
                 image_offset: [1, 0, -1],
@@ -148,6 +212,24 @@ mod tests {
         assert!(world.get::<InspectorHintsContainer>(entity).is_some());
         assert!(world.get::<InspectorHintsToggle>(entity).is_some());
         assert!(world.get::<InspectorPanelSurface>(entity).is_some());
+        assert!(world.get::<PlaybackPanelRoot>(entity).is_some());
+        assert!(world.get::<PlaybackPanelSurface>(entity).is_some());
+        assert!(world.get::<PlaybackStatusText>(entity).is_some());
+        assert!(world.get::<PlaybackTitleText>(entity).is_some());
+        assert!(world.get::<PlaybackFrameText>(entity).is_some());
+        assert!(world.get::<PlaybackSpeedText>(entity).is_some());
+        assert!(world.get::<PlaybackPlayPauseButton>(entity).is_some());
+        assert!(world.get::<PlaybackPlayPauseIcon>(entity).is_some());
+        assert!(world.get::<PlaybackStepBackButton>(entity).is_some());
+        assert!(world.get::<PlaybackStepForwardButton>(entity).is_some());
+        assert!(world.get::<PlaybackScrubberButton>(entity).is_some());
+        assert!(world.get::<PlaybackScrubberFill>(entity).is_some());
+        assert!(world.get::<PlaybackScrubberTrack>(entity).is_some());
+        assert!(world.get::<PlaybackScrubberThumb>(entity).is_some());
+        assert_eq!(
+            world.get::<PlaybackSpeedButton>(entity).unwrap().index,
+            1
+        );
         assert_eq!(
             world.get::<DisplayAtomIdentity>(entity).unwrap(),
             &DisplayAtomIdentity {

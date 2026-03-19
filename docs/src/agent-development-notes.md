@@ -8,6 +8,53 @@ and format defined in
 
 Entries are listed newest first.
 
+## 2026-03-19 - Trajectory playback panel, Bevy slider adoption, and startup camera fix
+
+- Commits: `8bf68f7`, `0cefc46`, `8e7c5d4`
+- Agent: `Codex (GPT-5, OpenAI)`
+- Context: The viewer had frame stepping and follow-tail session controls, but no
+  dedicated trajectory playback surface. This work added a first-class playback panel
+  with transport controls, a trajectory scrubber, speed presets, and clearer current
+  frame status, then followed up with the module split and CI/headless fixes needed to
+  make that implementation durable.
+- Implementation: Added playback-specific UI state, systems, widgets, and tests under
+  `crates/ak-vis/src/ui/playback/{state,systems,widgets,tests}.rs`, plus the module
+  entrypoint `crates/ak-vis/src/ui/playback.rs`. Extended
+  `crates/ak-vis/src/viewer/app.rs`,
+  `crates/ak-vis/src/viewer/controls/navigation.rs`,
+  `crates/ak-vis/src/viewer/runtime.rs`, and
+  `crates/ak-vis/src/viewer/session.rs` so timed playback, delayed key-repeat frame
+  stepping, and session-driven frame/camera behavior share the same viewer state path.
+  Reworked the panel build path into
+  `crates/ak-vis/src/ui/{build.rs,build_inspector.rs,build_playback_panel.rs}` and
+  replaced the custom scrubber interaction with Bevy `ui_widgets` slider support via
+  `crates/ak-vis/Cargo.toml`. The final follow-up in
+  `crates/ak-vis/src/viewer/runtime.rs` preserves startup-scripted camera commands for
+  prepared headless renders by preventing the default initial camera reset from
+  clobbering them.
+- Difficulty: The hard part was not the timer-based playback logic itself but the UI
+  interaction path. The first custom scrubber implementation repeatedly mis-mapped the
+  cursor, leaked drag gestures into camera orbiting, and was hard to grab at frame
+  zero, so the final solution abandoned that path and switched to Bevy's experimental
+  slider widget. The Rust 2018 module split also hit an easy-to-miss repository
+  constraint: putting submodules under `crates/ak-vis/src/ui/build/` looked natural
+  locally, but the top-level `.gitignore` ignores `build/`, so CI checked out a tree
+  missing those files until the split was moved to non-ignored paths. The last bug was
+  even subtler: startup-queued camera commands for prepared headless renders were
+  applied correctly and then silently overwritten by the normal first-frame camera
+  reset, which made scripted and default renders identical in CI.
+- Constraints: The playback panel is currently viewer-only and intentionally narrow. It
+  exposes play/pause, prev/next, a scrubber, speed presets, and a current-frame
+  readout, but it does not yet add loop modes, timeline annotations, or Python-facing
+  play/pause APIs. The scrubber now depends on Bevy's experimental `ui_widgets` slider
+  support, and the playback panel remains a separate HUD surface from the inspector
+  rather than a generalized UI framework.
+- Follow-up: If playback grows further, keep using the separated
+  `ui/playback/{state,systems,widgets}` structure instead of folding more behavior back
+  into `ui.rs` or `ui/build.rs`. If headless scripting adds more startup-time scene
+  configuration, preserve the current rule that queued camera commands must survive app
+  initialization rather than being treated as disposable pre-start state.
+
 ## 2026-03-18 - Supercell viewer state, image-aware selection, and repeat hotkeys
 
 - Commit: `c24f53c`

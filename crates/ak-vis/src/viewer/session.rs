@@ -1074,11 +1074,23 @@ impl ViewerState {
             return false;
         }
 
+        self.set_current_frame_index(next)
+    }
+
+    pub fn set_current_frame_index(&mut self, index: usize) -> bool {
+        if index >= self.traj.len() || index == self.current {
+            return false;
+        }
+
         let previous = self.current;
-        self.current = next;
+        self.current = index;
         self.needs_render = true;
         self.needs_camera_reset = self.cell_changed(previous, self.current);
         true
+    }
+
+    pub fn is_at_last_frame(&self) -> bool {
+        self.has_frames() && self.current + 1 >= self.traj.len()
     }
 
     pub fn selected_atoms(&self, frame_index: usize) -> Vec<usize> {
