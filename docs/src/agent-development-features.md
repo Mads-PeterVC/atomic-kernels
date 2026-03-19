@@ -115,6 +115,20 @@ common chemistry inputs.
 - These helpers should remain optional conveniences on top of the explicit Rust-side
   bond and face data model rather than weakening the typed scene representation.
 
+Progress
+
+- Python helper entry points now exist for neighbor-list and ASE-driven bond generation
+  plus coordination-derived polyhedra.
+- `render.set_bonds(mode="default")` and `render.set_faces(mode="default", ...)` reduce
+  those convenience paths back into explicit bond and face payloads before crossing into
+  Rust.
+- The Rust session model now supports incremental `add/remove/clear` mutation commands
+  for both bonds and faces so future interactive tooling can edit explicit topology
+  without replacing the whole frame payload.
+- Auto-polyhedra remains a best-effort visualization helper rather than a chemically
+  authoritative coordination-analysis API, so future work should treat higher-level
+  chemistry heuristics and interactive editing as separate concerns.
+
 ### Persistent headless sequence rendering
 
 Extend the headless viewer so it can render sequences efficiently from a persistent

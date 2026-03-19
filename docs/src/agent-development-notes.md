@@ -8,6 +8,54 @@ and format defined in
 
 Entries are listed newest first.
 
+## 2026-03-19 - Chemistry helper defaults, topology mutation commands, and viewer UI polish
+
+- Commit: `b841170`
+- Agent: `Codex (GPT-5, OpenAI)`
+- Context: The viewer already supported explicit bonds, explicit faces, and
+  selection-scoped ball-and-stick styling, but common chemistry workflows still
+  required callers to derive all topology themselves. At the same time, the Python
+  interactive viewer path still inherited the Rust-side `show_ui=false` default, and
+  the new playback panel remained visible even for single-frame scenes where it did not
+  add useful controls.
+- Implementation: Added Python-side chemistry helpers in
+  `python/atomic_kernels/viewer/_chemistry.py` and exposed them through
+  `python/atomic_kernels/viewer/__init__.py` plus the render facade in
+  `python/atomic_kernels/viewer/_render.py`. `render.set_bonds(mode="default")` now
+  derives connectivity from ASE natural cutoffs, and
+  `render.set_faces(mode="default", selection=...)` derives best-effort ligand-shell
+  polyhedra from coordination environments while still reducing to explicit Rust-side
+  bond and face lists. Added incremental Rust session commands for
+  `add/remove/clear` on both bonds and faces in
+  `crates/ak-vis/src/viewer/session.rs`, exposed them through
+  `crates/ak-py/src/pyfunctions/py_viewer.rs`, and bridged them across the macOS
+  subprocess path in `python/atomic_kernels/viewer/_process.py`. On the UX side,
+  interactive Python viewer launches in `python/atomic_kernels/viewer/__init__.py` now
+  synthesize a `show_ui=true` config when callers omit one, and
+  `crates/ak-vis/src/ui/playback/systems.rs` now hides the playback panel root when the
+  trajectory has only one frame. Examples and docs were updated in
+  `scripts/polyhedra_faces.py`, `scripts/polyhedra_minimal.py`,
+  `docs/src/viewer-examples.md`, and `docs/src/viewer-scripts.md`.
+- Difficulty: The main friction was not the Rust mutation path but the Python-side
+  ergonomics and visibility story. Auto-polyhedra generation itself worked, but a
+  "minimal" example that only added translucent faces was visually misleading because
+  the default space-filling atoms largely occluded the shell, so the minimal workflow
+  still needed auto bonds plus whole-structure ball-and-stick styling to read as
+  intended. The default bond path also exposed a subtle normalization edge case: a
+  `2x2` array of explicit bond pairs was initially misread as an adjacency matrix until
+  the explicit-pair interpretation was made to win in that ambiguous shape.
+- Constraints: The chemistry helpers are still convenience APIs rather than chemically
+  authoritative analysis tools. Auto-bonds use ASE natural cutoffs with the current
+  default multiplier, auto-polyhedra use a local convex-hull style construction and
+  skip degenerate/non-hullable environments, and the Rust viewer still stores only
+  explicit per-frame bond and face topology. Hiding the playback panel for single-frame
+  scenes only changes UI visibility; it does not remove playback state resources or
+  special-case the rest of the viewer loop.
+- Follow-up: Replace `TBD` with the actual implementation commit hash once the feature
+  commit exists. If future interactive keybindings need selection-driven topology
+  editing, build them on top of the new `add/remove/clear` session commands instead of
+  adding a second mutation path.
+
 ## 2026-03-19 - Trajectory playback panel, Bevy slider adoption, and startup camera fix
 
 - Commits: `8bf68f7`, `0cefc46`, `8e7c5d4`
