@@ -51,10 +51,9 @@ Entries are listed newest first.
   explicit per-frame bond and face topology. Hiding the playback panel for single-frame
   scenes only changes UI visibility; it does not remove playback state resources or
   special-case the rest of the viewer loop.
-- Follow-up: Replace `TBD` with the actual implementation commit hash once the feature
-  commit exists. If future interactive keybindings need selection-driven topology
-  editing, build them on top of the new `add/remove/clear` session commands instead of
-  adding a second mutation path.
+- Follow-up: If future interactive keybindings need selection-driven topology editing,
+  build them on top of the new `add/remove/clear` session commands instead of adding a
+  second mutation path.
 
 ## 2026-03-19 - Trajectory playback panel, Bevy slider adoption, and startup camera fix
 
@@ -639,7 +638,7 @@ Entries are listed newest first.
 
 ## 2026-03-10 - Documentation system introduced
 
-- Commit: `TBD`
+- Commit: `d4f469f`
 - Agent: `Codex (GPT-5, OpenAI)`
 - Context: The repository had reached a size where architecture and workflow knowledge
   was no longer recoverable from source layout alone, and the top-level README did not
@@ -654,8 +653,10 @@ Entries are listed newest first.
 - Constraints: This is intentionally light on generated API reference for now. The
   priority is maintainable engineering documentation, not fully automated reference
   extraction.
-- Follow-up: Replace `TBD` with the actual feature commit hash once the docs workflow is
-  being followed from the start, and append future entries with concrete commit ids.
+- Follow-up: Keep appending future entries with concrete commit ids and continue
+  treating the docs site as the durable home for project-level architecture and
+  workflow context rather than scattering that knowledge across README fragments and
+  recent chat history.
 
 ## 2026-03-10 - Selection-aware ball-and-stick rendering
 
