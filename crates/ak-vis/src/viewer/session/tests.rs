@@ -29,6 +29,18 @@ fn test_structure4() -> Structure {
     )
 }
 
+fn test_structure_with_numbers(x: f64, numbers: &[i32]) -> Structure {
+    let positions = (0..numbers.len())
+        .map(|index| [x + index as f64, 0.0, 0.0])
+        .collect();
+    Structure::new(
+        positions,
+        numbers.to_vec(),
+        [[10.0, 0.0, 0.0], [0.0, 10.0, 0.0], [0.0, 0.0, 10.0]],
+        [false, false, false],
+    )
+}
+
 fn main_image(atom_index: usize) -> SelectedImageAtom {
     SelectedImageAtom {
         atom_index,
@@ -79,6 +91,58 @@ fn follow_tail_on_moves_to_latest_frame_after_append() {
 
     assert_eq!(state.current, 1);
     assert!(state.needs_render);
+}
+
+#[test]
+fn follow_tail_append_copies_selection_to_compatible_frame() {
+    let mut state = ViewerState::new(Trajectory::new(vec![test_structure(0.0)]), 0);
+    state.apply_command(ViewerCommand::SetFollowTail { enabled: true });
+    state.apply_command(ViewerCommand::SetSupercell { repeats: [1, 0, 0] });
+    state.apply_command(ViewerCommand::ReplaceImageSelection {
+        selection: vec![
+            SelectedImageAtom {
+                atom_index: 1,
+                image_offset: [1, 0, 0],
+            },
+            main_image(0),
+        ],
+        frame_index: Some(0),
+    });
+
+    state.apply_command(ViewerCommand::AppendFrame {
+        frame: test_structure(1.0),
+    });
+
+    assert_eq!(state.current, 1);
+    assert_eq!(
+        state.selected_images(1),
+        vec![
+            SelectedImageAtom {
+                atom_index: 1,
+                image_offset: [1, 0, 0],
+            },
+            main_image(0),
+        ]
+    );
+    assert_eq!(state.selected_atoms(1), vec![1, 0]);
+}
+
+#[test]
+fn follow_tail_append_leaves_incompatible_frame_selection_unchanged() {
+    let mut state = ViewerState::new(Trajectory::new(vec![test_structure(0.0)]), 0);
+    state.apply_command(ViewerCommand::SetFollowTail { enabled: true });
+    state.apply_command(ViewerCommand::ReplaceSelection {
+        selection: vec![true, false],
+        frame_index: Some(0),
+    });
+
+    state.apply_command(ViewerCommand::AppendFrame {
+        frame: test_structure_with_numbers(1.0, &[8, 1]),
+    });
+
+    assert_eq!(state.current, 1);
+    assert!(state.selected_atoms(1).is_empty());
+    assert!(state.selected_images(1).is_empty());
 }
 
 #[test]
@@ -491,6 +555,118 @@ fn selection_state_is_frame_scoped() {
 
     assert_eq!(state.selected_atoms(0), vec![0]);
     assert_eq!(state.selected_atoms(1), vec![1]);
+}
+
+#[test]
+fn set_current_frame_copies_selection_to_compatible_frame() {
+    let mut state = ViewerState::new(
+        Trajectory::new(vec![test_structure(0.0), test_structure(1.0)]),
+        0,
+    );
+
+    state.apply_command(ViewerCommand::ReplaceSelection {
+        selection: vec![false, true],
+        frame_index: Some(0),
+    });
+    state.apply_command(ViewerCommand::SetCurrentFrame { index: 1 });
+
+    assert_eq!(state.current, 1);
+    assert_eq!(state.selected_atoms(1), vec![1]);
+}
+
+#[test]
+fn set_current_frame_copies_selection_order_to_compatible_frame() {
+    let mut state = ViewerState::new(
+        Trajectory::new(vec![test_structure4(), test_structure4()]),
+        0,
+    );
+
+    assert!(state.toggle_atom_selection(main_image(2)));
+    assert!(state.toggle_atom_selection(main_image(0)));
+    assert!(state.toggle_atom_selection(main_image(3)));
+
+    state.apply_command(ViewerCommand::SetCurrentFrame { index: 1 });
+
+    assert_eq!(state.selected_atoms(1), vec![2, 0, 3]);
+}
+
+#[test]
+fn set_current_frame_overwrites_existing_selection_on_compatible_frame() {
+    let mut state = ViewerState::new(
+        Trajectory::new(vec![test_structure(0.0), test_structure(1.0)]),
+        0,
+    );
+
+    state.apply_command(ViewerCommand::ReplaceSelection {
+        selection: vec![true, false],
+        frame_index: Some(0),
+    });
+    state.apply_command(ViewerCommand::ReplaceSelection {
+        selection: vec![false, true],
+        frame_index: Some(1),
+    });
+
+    state.apply_command(ViewerCommand::SetCurrentFrame { index: 1 });
+
+    assert_eq!(state.selected_atoms(1), vec![0]);
+}
+
+#[test]
+fn set_current_frame_does_not_copy_selection_to_incompatible_frame() {
+    let mut state = ViewerState::new(
+        Trajectory::new(vec![
+            test_structure_with_numbers(0.0, &[1, 8]),
+            test_structure_with_numbers(1.0, &[8, 1]),
+        ]),
+        0,
+    );
+
+    state.apply_command(ViewerCommand::ReplaceSelection {
+        selection: vec![true, false],
+        frame_index: Some(0),
+    });
+    state.apply_command(ViewerCommand::ReplaceSelection {
+        selection: vec![false, true],
+        frame_index: Some(1),
+    });
+
+    state.apply_command(ViewerCommand::SetCurrentFrame { index: 1 });
+
+    assert_eq!(state.selected_atoms(1), vec![1]);
+}
+
+#[test]
+fn step_frame_copies_image_selection_to_compatible_frame() {
+    let mut state = ViewerState::new(
+        Trajectory::new(vec![test_structure(0.0), test_structure(1.0)]),
+        0,
+    );
+    state.apply_command(ViewerCommand::SetSupercell { repeats: [1, 0, 0] });
+    state.apply_command(ViewerCommand::ReplaceImageSelection {
+        selection: vec![
+            SelectedImageAtom {
+                atom_index: 1,
+                image_offset: [1, 0, 0],
+            },
+            main_image(0),
+        ],
+        frame_index: Some(0),
+    });
+
+    assert!(state.step_frame(1));
+
+    assert_eq!(state.current, 1);
+    assert_eq!(
+        state.selected_images(1),
+        vec![
+            SelectedImageAtom {
+                atom_index: 1,
+                image_offset: [1, 0, 0],
+            },
+            main_image(0),
+        ]
+    );
+    assert_eq!(state.selected_atoms(1), vec![1, 0]);
 }
 
 #[test]

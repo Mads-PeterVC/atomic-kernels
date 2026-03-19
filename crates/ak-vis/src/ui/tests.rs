@@ -105,6 +105,69 @@ fn derive_inspector_state_uses_current_frame_coordinates() {
 }
 
 #[test]
+fn derive_inspector_state_reports_distance_after_compatible_frame_change() {
+    let traj = Trajectory::new(vec![
+        structure(&[[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]], &[1, 1]),
+        structure(&[[0.0, 0.0, 0.0], [2.5, 0.0, 0.0]], &[1, 1]),
+    ]);
+    let mut viewer = ViewerState::new(traj, 0);
+    viewer.selection.replace(0, vec![true, true]);
+
+    assert!(viewer.set_current_frame_index(1));
+
+    let inspector = derive_inspector_state(&viewer);
+
+    assert!(matches!(
+        inspector.measurement,
+        MeasurementStatus::Distance { angstrom, .. } if (angstrom - 2.5).abs() < 1e-9
+    ));
+}
+
+#[test]
+fn derive_inspector_state_reports_angle_after_compatible_frame_change_with_image_offsets() {
+    let traj = Trajectory::new(vec![
+        structure(
+            &[[1.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+            &[1, 6, 8],
+        ),
+        structure(
+            &[[2.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 2.0, 0.0]],
+            &[1, 6, 8],
+        ),
+    ]);
+    let mut viewer = ViewerState::new(traj, 0);
+    viewer.supercell.repeats = [1, 0, 0];
+    viewer.image_selection.replace(
+        0,
+        vec![
+            crate::viewer::SelectedImageAtom {
+                atom_index: 0,
+                image_offset: [1, 0, 0],
+            },
+            crate::viewer::SelectedImageAtom {
+                atom_index: 1,
+                image_offset: [0, 0, 0],
+            },
+            crate::viewer::SelectedImageAtom {
+                atom_index: 2,
+                image_offset: [0, 0, 0],
+            },
+        ],
+    );
+    viewer.selection.replace(0, vec![true, true, true]);
+    viewer.selection.set_order(0, vec![0, 1, 2]);
+
+    assert!(viewer.set_current_frame_index(1));
+
+    let inspector = derive_inspector_state(&viewer);
+
+    assert!(matches!(
+        inspector.measurement,
+        MeasurementStatus::Angle { degrees, .. } if (degrees - 90.0).abs() < 1e-9
+    ));
+}
+
+#[test]
 fn shortcut_hints_cover_current_viewer_controls() {
     let labels: Vec<&str> = shortcut_hints().iter().map(|hint| hint.label).collect();
 

@@ -9,7 +9,7 @@ use crate::components::{
     PlaybackPlayPauseIcon, PlaybackScrubberButton, PlaybackScrubberFill, PlaybackScrubberThumb,
     PlaybackSpeedButton, PlaybackSpeedText, PlaybackTitleText,
 };
-use crate::viewer::ViewerState;
+use crate::viewer::{MarqueeSelectionState, ViewerState};
 
 use super::state::PlaybackState;
 use crate::ui::{BUTTON_ACTIVE_BACKGROUND, BUTTON_BACKGROUND, BUTTON_HOVER_BACKGROUND};
@@ -279,11 +279,15 @@ pub fn sync_playback_slider_value(
 
 pub fn set_camera_input_enabled(
     sliders: Query<&CoreSliderDragState, With<PlaybackScrubberButton>>,
+    marquee: Option<Res<MarqueeSelectionState>>,
     mut cameras: Query<&mut PanOrbitCamera>,
 ) {
     let dragging = sliders.iter().any(|drag| drag.dragging);
+    let marquee_active = marquee
+        .as_ref()
+        .is_some_and(|marquee| marquee.is_tracking());
     for mut camera in &mut cameras {
-        camera.enabled = !dragging;
+        camera.enabled = !(dragging || marquee_active);
     }
 }
 

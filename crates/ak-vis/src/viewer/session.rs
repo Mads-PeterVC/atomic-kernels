@@ -891,7 +891,11 @@ impl ViewerState {
                     self.needs_render = true;
                     self.needs_camera_reset = true;
                 } else if self.follow_tail {
-                    self.current = self.traj.len() - 1;
+                    let next = self.traj.len() - 1;
+                    if let Some(previous) = previous {
+                        self.copy_selection_between_compatible_frames(previous, next);
+                    }
+                    self.current = next;
                     self.needs_render = true;
                     self.needs_camera_reset = previous
                         .map(|old| self.cell_changed(old, self.current))
@@ -902,6 +906,7 @@ impl ViewerState {
             ViewerCommand::SetCurrentFrame { index } => {
                 if index < self.traj.len() && index != self.current {
                     let previous = self.current;
+                    self.copy_selection_between_compatible_frames(previous, index);
                     self.current = index;
                     self.needs_render = true;
                     self.needs_camera_reset = self.cell_changed(previous, self.current);
@@ -1240,6 +1245,7 @@ impl ViewerState {
         }
 
         let previous = self.current;
+        self.copy_selection_between_compatible_frames(previous, index);
         self.current = index;
         self.needs_render = true;
         self.needs_camera_reset = self.cell_changed(previous, self.current);
@@ -1321,6 +1327,34 @@ impl ViewerState {
 
     fn cell_changed(&self, old_index: usize, new_index: usize) -> bool {
         self.traj.view(old_index).cell != self.traj.view(new_index).cell
+    }
+
+    fn frames_have_matching_atom_identity(&self, source_index: usize, target_index: usize) -> bool {
+        if source_index >= self.traj.len() || target_index >= self.traj.len() {
+            return false;
+        }
+
+        let source = self.traj.view(source_index);
+        let target = self.traj.view(target_index);
+        source.positions.len() == target.positions.len() && source.numbers == target.numbers
+    }
+
+    fn copy_selection_between_compatible_frames(
+        &mut self,
+        source_index: usize,
+        target_index: usize,
+    ) {
+        if !self.frames_have_matching_atom_identity(source_index, target_index) {
+            return;
+        }
+
+        let selection = self.selected_images(source_index);
+        if !self.validate_image_selection(target_index, &selection) {
+            return;
+        }
+
+        self.image_selection.replace(target_index, selection);
+        self.sync_main_selection_from_images(target_index);
     }
 
     fn validate_scalar_values(&self, frame_index: usize, values: &[f32]) -> bool {

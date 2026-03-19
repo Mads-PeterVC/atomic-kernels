@@ -3,7 +3,7 @@ use super::{
     sync_playback_visibility,
 };
 use crate::components::{PlaybackPanelRoot, PlaybackScrubberButton};
-use crate::viewer::ViewerState;
+use crate::viewer::{MarqueeSelectionState, ViewerState};
 use ak_core::{Structure, Trajectory};
 use bevy::picking::hover::Hovered;
 use bevy::prelude::*;
@@ -70,6 +70,20 @@ fn set_camera_input_enabled_disables_camera_while_scrubbing() {
     let mut drag_state = CoreSliderDragState::default();
     drag_state.dragging = true;
     app.world_mut().spawn((PlaybackScrubberButton, drag_state));
+    let camera = app.world_mut().spawn(PanOrbitCamera::default()).id();
+    app.add_systems(Update, set_camera_input_enabled);
+
+    app.update();
+
+    assert!(!app.world().get::<PanOrbitCamera>(camera).unwrap().enabled);
+}
+
+#[test]
+fn set_camera_input_enabled_disables_camera_while_marquee_tracking() {
+    let mut app = App::new();
+    let mut marquee = MarqueeSelectionState::default();
+    marquee.begin(Vec2::new(10.0, 10.0));
+    app.insert_resource(marquee);
     let camera = app.world_mut().spawn(PanOrbitCamera::default()).id();
     app.add_systems(Update, set_camera_input_enabled);
 

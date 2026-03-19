@@ -627,11 +627,11 @@ fn render_angle_measurement_cue(
 }
 
 impl MarqueeSelectionState {
-    fn is_tracking(&self) -> bool {
+    pub(crate) fn is_tracking(&self) -> bool {
         self.drag_start.is_some()
     }
 
-    fn begin(&mut self, cursor: Vec2) {
+    pub(crate) fn begin(&mut self, cursor: Vec2) {
         self.drag_start = Some(cursor);
         self.drag_current = Some(cursor);
         self.drag_active = false;

@@ -25,6 +25,7 @@ mod orientation_widget;
 mod runtime;
 
 mod systems;
+pub(crate) use systems::MarqueeSelectionState;
 
 mod controls;
 
