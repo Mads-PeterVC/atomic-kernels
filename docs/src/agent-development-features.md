@@ -1,9 +1,9 @@
 # Agentic Development Features
 
-This page tracks notable feature ideas that should shape future agent-driven work.
-It is intentionally forward-looking, unlike
+This page tracks notable feature ideas for future agent-driven work together with a
+small record of features that have already been completed. It remains distinct from
 [`docs/src/agent-development-notes.md`](/Users/au616397/Repositories/atomic-kernels/docs/src/agent-development-notes.md),
-which records completed implementation work.
+which captures the implementation details and constraints behind completed work.
 
 ## Candidate features
 
@@ -17,28 +17,15 @@ WebGL or WebGPU.
 - Define the minimum supported feature set for a first version rather than assuming the
   desktop viewer should map over directly.
 
-### Rust and Python API documentation
-
-~~Add proper API reference documentation for both the Rust crates and the Python package.~~
-
-- ~~Rust docs should make crate boundaries and intended public entry points clearer.~~
-- ~~Python docs should cover the exposed viewer, structure, and workflow APIs with
-  examples where signatures alone would be too thin.~~
-- ~~If generated docs are introduced, keep the docs build explicit about whether it must
-  build the local extension module.~~
-
-Progress
-
-- Feature completed in `9a78507`.
-
 ### Viewer UI feature expansion
 
 Expand the interactive viewer UI beyond the current camera and rendering controls.
 
-- ~~Add distance and angle measurement tools for common inspection workflows.~~
-- ~~Show which image in a trajectory is currently displayed.~~
-- Expect additional viewer affordances to emerge once selection and measurement exist,
-  so this area should be treated as a broader UI roadmap rather than a closed list.
+- Build on the existing inspector, measurement, and playback surfaces rather than
+  treating them as the final UI shape.
+- Prioritize the next viewer affordances that benefit directly from the new selection
+  model, such as annotations, richer trajectory status, and export-oriented overlays.
+- Treat this as an ongoing UI roadmap rather than a closed list of one-off controls.
 
 Progress
 
@@ -49,85 +36,6 @@ Progress
 - A dedicated trajectory playback panel with current-frame status, transport controls,
   speed presets, a Bevy-slider scrubber, and the follow-up playback/build module split
   landed in `8bf68f7` and `0cefc46`.
-
-### UI-enabled viewer input smoke test
-
-~~Add one real viewer integration smoke test that proves atom click-picking still works
-when the UI is enabled.~~
-
-- ~~The test should run in the existing Xvfb-based viewer integration lane rather than
-  relying only on in-process unit tests.~~
-- ~~The scene setup should be reusable and manually launchable so the click target can
-  be inspected visually before CI green is trusted.~~
-
-Progress
-
-- Feature completed in `294787b`.
-
-### Interactive picking and selection state
-
-~~Add a proper viewer-side picking and selection model that is shared between the UI
-and the Python API.~~
-
-- ~~Picking should identify atoms in the live viewer and expose that state in a durable
-  way rather than only as a transient visual highlight.~~
-- ~~Python should be able to query, replace, extend, and clear the current
-  selection.~~
-- ~~The design should support future selection-driven workflows such as measurements,
-  annotations, and subset-specific rendering without duplicating selection logic across
-  the Rust viewer and Python facade layers.~~
-
-Progress
-
-- Feature completed in `bd816a4`.
-
-### Supercell visualization and selection semantics
-
-~~Add the ability to display repeated periodic images while preserving a clear notion of
-the original cell.~~
-
-- ~~Users should be able to repeat the structure in one or more periodic directions.~~
-- ~~The viewer should visually distinguish atoms in the main cell from atoms shown only
-  because of repetition.~~
-- ~~Python-side selection should remain convenient for both the main cell and repeated
-  images instead of flattening everything into a single ambiguous atom set.~~
-- ~~The design should avoid forcing the displayed supercell to replace the canonical
-  original-cell representation in the API.~~
-
-Progress
-
-- Feature completed in `c24f53c`.
-- The current viewer keeps initial framing and `X`/`Y`/`Z` snap views cell-based even
-  when repeated images are displayed, so future camera work should treat supercell
-  display fit and default/snap framing as separate decisions rather than one shared
-  camera policy.
-
-### Higher-level chemistry helpers for bonds and polyhedra
-
-Add higher-level Python helpers that derive viewer-ready topology and overlays from
-common chemistry inputs.
-
-- Bond generation should be easy to drive from neighbor lists, ASE inputs, or other
-  common structure-analysis results.
-- Polyhedra helpers should derive face definitions from coordination environments or
-  similar chemistry concepts instead of requiring users to enumerate polygon faces by
-  hand.
-- These helpers should remain optional conveniences on top of the explicit Rust-side
-  bond and face data model rather than weakening the typed scene representation.
-
-Progress
-
-- Python helper entry points now exist for neighbor-list and ASE-driven bond generation
-  plus coordination-derived polyhedra.
-- `render.set_bonds(mode="default")` and `render.set_faces(mode="default", ...)` reduce
-  those convenience paths back into explicit bond and face payloads before crossing into
-  Rust.
-- The Rust session model now supports incremental `add/remove/clear` mutation commands
-  for both bonds and faces so future interactive tooling can edit explicit topology
-  without replacing the whole frame payload.
-- Auto-polyhedra remains a best-effort visualization helper rather than a chemically
-  authoritative coordination-analysis API, so future work should treat higher-level
-  chemistry heuristics and interactive editing as separate concerns.
 
 ### Persistent headless sequence rendering
 
@@ -156,25 +64,32 @@ precompiled packages.
 
 Progress
 
-- Wheels for MacOS Arm, MacOS x86 and Many linux added in ``01b7d6f`, `b84b0a4`, `3ffc69b`, `87c72c8`, `e164e0f`, `5c55fa2`,`9b5929a`. 
+- Wheels for macOS arm64, macOS x86_64, and Linux x86_64 landed in `01b7d6f`,
+  `b84b0a4`, `3ffc69b`, `87c72c8`, `e164e0f`, `5c55fa2`, and `9b5929a`, but the
+  end-to-end PyPI publishing flow still is not in place.
 
-### Dedicated viewer integration CI
+### Python CLI expansion beyond `ak view`
 
-~~Add a dedicated CI lane for real viewer and headless-render integration coverage with
-explicit runtime assumptions.~~
+Extend the installed Python CLI from a viewer launcher into a practical automation and
+rendering entry point.
 
-- ~~GUI and headless viewer tests should not be folded blindly into the default unit-test
-  path because they depend on graphics/runtime details that differ from normal library
-  tests.~~
-- ~~The job should define and document the display, renderer, or software-rendering
-  environment it expects so failures are actionable rather than flaky.~~
-- ~~Once this exists, it should cover the real viewer lifecycle more directly than the
-  current stub-heavy Python tests.~~
+- Add headless screenshot and sequence-render commands so common batch workflows do not
+  require ad hoc Python scripts.
+- Reuse the existing viewer/session/headless APIs instead of introducing a CLI-only
+  execution path that drifts from the Python library surface.
+- Keep the command tree explicit about which features are interactive viewer controls
+  versus automation-friendly rendering/export commands.
 
-Progress
+### Viewer annotations and export overlays
 
-- Feature completed in `e043738`, `56b64dd`, `5c07633`, `bf15327`, `9a9a986`,
-  `2221f78`, `9d6b5da`.
+Add first-class annotations that can survive beyond transient selection state.
+
+- Support labels, callouts, and measurement overlays that are useful both in the live
+  viewer and in rendered exports.
+- Build annotations on top of the existing selection and explicit topology model rather
+  than introducing a second scene-description path.
+- Decide early which annotation primitives are durable public API and which remain UI
+  conveniences layered on top.
 
 ### Camera tuning as public configuration
 
@@ -188,19 +103,99 @@ controls.
 - The feature should clarify which camera semantics are stable public API versus which
   remain implementation details of the current backend.
 
+## Completed
+
+### Rust and Python API documentation
+
+Add proper API reference documentation for both the Rust crates and the Python package.
+
+- Rust docs make crate boundaries and intended public entry points clearer.
+- Python docs cover the exposed viewer, structure, and workflow APIs with examples
+  where signatures alone would be too thin.
+- The docs build is explicit about whether it stages generated Rust API output.
+
+Completed in `9a78507`.
+
+### UI-enabled viewer input smoke test
+
+Add one real viewer integration smoke test that proves atom click-picking still works
+when the UI is enabled.
+
+- The test runs in the existing Xvfb-based viewer integration lane rather than relying
+  only on in-process unit tests.
+- The scene setup is reusable and manually launchable so the click target can be
+  inspected visually before CI green is trusted.
+
+Completed in `294787b`.
+
+### Interactive picking and selection state
+
+Add a proper viewer-side picking and selection model that is shared between the UI and
+the Python API.
+
+- Picking identifies atoms in the live viewer and exposes that state durably rather
+  than only as a transient visual highlight.
+- Python can query, replace, extend, and clear the current selection.
+- The design supports future selection-driven workflows such as measurements,
+  annotations, and subset-specific rendering without duplicating selection logic across
+  the Rust viewer and Python facade layers.
+
+Completed in `bd816a4`.
+
+### Supercell visualization and selection semantics
+
+Add the ability to display repeated periodic images while preserving a clear notion of
+the original cell.
+
+- Users can repeat the structure in one or more periodic directions.
+- The viewer visually distinguishes atoms in the main cell from atoms shown only
+  because of repetition.
+- Python-side selection remains workable for both the main cell and repeated images
+  instead of flattening everything into a single ambiguous atom set.
+- The canonical original-cell representation remains distinct from the displayed
+  supercell state.
+
+Completed in `c24f53c`.
+
+### Higher-level chemistry helpers for bonds and polyhedra
+
+Add higher-level Python helpers that derive viewer-ready topology and overlays from
+common chemistry inputs.
+
+- Bond generation is easy to drive from neighbor lists, ASE inputs, or other common
+  structure-analysis results.
+- Polyhedra helpers derive face definitions from coordination environments or similar
+  chemistry concepts instead of requiring users to enumerate polygon faces by hand.
+- These helpers remain optional conveniences on top of the explicit Rust-side bond and
+  face data model rather than weakening the typed scene representation.
+
+Completed in `b841170`.
+
+### Dedicated viewer integration CI
+
+Add a dedicated CI lane for real viewer and headless-render integration coverage with
+explicit runtime assumptions.
+
+- GUI and headless viewer tests are not folded blindly into the default unit-test path
+  because they depend on graphics/runtime details that differ from normal library
+  tests.
+- The job defines and documents the display, renderer, and software-rendering
+  environment it expects so failures are actionable rather than flaky.
+- The lane covers the real viewer lifecycle more directly than the earlier stub-heavy
+  Python tests.
+
+Completed in `e043738`, `56b64dd`, `5c07633`, `bf15327`, `9a9a986`, `2221f78`, and
+`9d6b5da`.
+
 ### Trajectory playback controls
 
-~~Add trajectory playback controls as a first-class viewer feature rather than only basic
-frame switching.~~
+Add trajectory playback controls as a first-class viewer feature rather than only basic
+frame switching.
 
-- ~~The viewer UI should support play/pause, frame stepping, and playback speed control.~~
-- ~~Live and appended trajectories should integrate cleanly with follow-tail behavior.~~
-- ~~Playback state should be consistent with any trajectory index indicator so users can
-  tell both where they are and how the viewer is advancing through frames.~~
+- The viewer UI supports play/pause, frame stepping, playback speed control, and a
+  scrubber.
+- Live and appended trajectories integrate with follow-tail behavior.
+- Playback state is consistent with the trajectory index indicator so users can tell
+  both where they are and how the viewer is advancing through frames.
 
-Progress
-
-- Feature completed in `8bf68f7`, `0cefc46`, and `8e7c5d4`.
-- The current implementation is a dedicated playback HUD surface, separate from the
-  selection/measurement inspector, and uses Bevy `ui_widgets` for the scrubber rather
-  than a custom drag path.
+Completed in `8bf68f7`, `0cefc46`, and `8e7c5d4`.
