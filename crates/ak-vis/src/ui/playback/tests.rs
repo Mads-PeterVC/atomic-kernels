@@ -1,7 +1,8 @@
 use super::{
     PlaybackState, set_camera_input_enabled, sync_playback_slider_value, sync_playback_state,
+    sync_playback_visibility,
 };
-use crate::components::PlaybackScrubberButton;
+use crate::components::{PlaybackPanelRoot, PlaybackScrubberButton};
 use crate::viewer::ViewerState;
 use ak_core::{Structure, Trajectory};
 use bevy::picking::hover::Hovered;
@@ -75,4 +76,34 @@ fn set_camera_input_enabled_disables_camera_while_scrubbing() {
     app.update();
 
     assert!(!app.world().get::<PanOrbitCamera>(camera).unwrap().enabled);
+}
+
+#[test]
+fn sync_playback_visibility_hides_panel_for_single_frame() {
+    let mut app = App::new();
+    app.insert_resource(PlaybackState {
+        total_frames: 1,
+        ..PlaybackState::default()
+    });
+    let entity = app.world_mut().spawn((PlaybackPanelRoot, Node::default())).id();
+    app.add_systems(Update, sync_playback_visibility);
+
+    app.update();
+
+    assert_eq!(app.world().get::<Node>(entity).unwrap().display, Display::None);
+}
+
+#[test]
+fn sync_playback_visibility_shows_panel_for_multiple_frames() {
+    let mut app = App::new();
+    app.insert_resource(PlaybackState {
+        total_frames: 2,
+        ..PlaybackState::default()
+    });
+    let entity = app.world_mut().spawn((PlaybackPanelRoot, Node::default())).id();
+    app.add_systems(Update, sync_playback_visibility);
+
+    app.update();
+
+    assert_eq!(app.world().get::<Node>(entity).unwrap().display, Display::Flex);
 }

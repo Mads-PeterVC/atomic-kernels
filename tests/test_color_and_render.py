@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 from ase import Atoms
 
+from atomic_kernels.viewer import bonds_from_ase, faces_from_coordination
 from atomic_kernels.viewer._color import ScalarRangeTracker
 from atomic_kernels.viewer._session import ViewerSessionFacade
 
@@ -27,6 +28,29 @@ class BackendSpy:
 
     def set_faces(self, faces, color=(0.2, 0.6, 0.9, 0.35), face_colors=None, frame_index=None):
         self.calls.append(("set_faces", faces, color, face_colors, frame_index))
+
+    def add_faces(self, faces, color=(0.2, 0.6, 0.9, 0.35), face_colors=None, frame_index=None):
+        self.calls.append(("add_faces", faces, color, face_colors, frame_index))
+
+    def remove_faces(
+        self, faces, color=(0.2, 0.6, 0.9, 0.35), face_colors=None, frame_index=None
+    ):
+        self.calls.append(("remove_faces", faces, color, face_colors, frame_index))
+
+    def clear_faces(self, frame_index=None):
+        self.calls.append(("clear_faces", frame_index))
+
+    def set_bonds(self, bonds, frame_index=None):
+        self.calls.append(("set_bonds", bonds, frame_index))
+
+    def add_bonds(self, bonds, frame_index=None):
+        self.calls.append(("add_bonds", bonds, frame_index))
+
+    def remove_bonds(self, bonds, frame_index=None):
+        self.calls.append(("remove_bonds", bonds, frame_index))
+
+    def clear_bonds(self, frame_index=None):
+        self.calls.append(("clear_bonds", frame_index))
 
     def set_ball_and_stick_style(
         self,
@@ -72,7 +96,33 @@ class BackendSpy:
 
 
 def make_session():
-    atoms = Atoms("H2O")
+    atoms = Atoms(
+        "H2O",
+        positions=[
+            [0.0, 0.76, 0.0],
+            [0.0, -0.76, 0.0],
+            [0.0, 0.0, 0.0],
+        ],
+    )
+    return ViewerSessionFacade(BackendSpy(), [atoms])
+
+
+def make_tetrahedral_session():
+    atoms = Atoms(
+        symbols=["Ti", "O", "O", "O", "O"],
+        positions=np.array(
+            [
+                [0.0, 0.0, 0.0],
+                [1.0, 1.0, 1.0],
+                [1.0, -1.0, -1.0],
+                [-1.0, 1.0, -1.0],
+                [-1.0, -1.0, 1.0],
+            ]
+        ),
+        cell=[12.0, 12.0, 12.0],
+        pbc=False,
+    )
+    atoms.center()
     return ViewerSessionFacade(BackendSpy(), [atoms])
 
 
@@ -153,3 +203,108 @@ def test_set_faces_normalizes_polygons_and_broadcasts_color():
             0,
         )
     ]
+
+
+def test_set_bonds_default_generates_expected_water_connectivity():
+    session = make_session()
+
+    session.render().set_bonds(mode="default")
+
+    assert session._backend.calls == [("set_bonds", [(0, 2), (1, 2)], 0)]
+
+
+def test_set_bonds_default_respects_selection_subgraph():
+    session = make_session()
+
+    session.render().set_bonds(mode="default", selection=[0, 2])
+
+    assert session._backend.calls == [("set_bonds", [(0, 2)], 0)]
+
+
+def test_set_bonds_rejects_mixed_explicit_and_default_inputs():
+    session = make_session()
+
+    with pytest.raises(ValueError, match="explicit bonds cannot be combined"):
+        session.render().set_bonds([(0, 2)], mode="default")
+
+
+def test_add_remove_and_clear_bonds_forward_normalized_payloads():
+    session = make_session()
+
+    session.render().add_bonds([(2, 0), (0, 2)])
+    session.render().remove_bonds([(0, 2)])
+    session.render().clear_bonds()
+
+    assert session._backend.calls == [
+        ("add_bonds", [(0, 2)], None),
+        ("remove_bonds", [(0, 2)], None),
+        ("clear_bonds", None),
+    ]
+
+
+def test_bonds_from_ase_matches_water_connectivity():
+    atoms = make_session()._frame()
+
+    assert bonds_from_ase(atoms) == [(0, 2), (1, 2)]
+
+
+def test_set_faces_default_generates_tetrahedral_shell_faces():
+    session = make_tetrahedral_session()
+
+    session.render().set_faces(mode="default", selection=[0])
+
+    call = session._backend.calls[0]
+    assert call[0] == "set_faces"
+    assert sorted(call[1]) == [[1, 2, 3], [1, 2, 4], [1, 3, 4], [2, 3, 4]]
+    assert call[4] == 0
+
+
+def test_set_faces_default_skips_centers_without_polyhedron():
+    session = make_tetrahedral_session()
+
+    session.render().set_faces(mode="default", selection=[1])
+
+    assert session._backend.calls == [
+        ("set_faces", [], pytest.approx((0.2, 0.6, 0.9, 0.35)), [], 0)
+    ]
+
+
+def test_set_faces_rejects_mixed_explicit_and_default_inputs():
+    session = make_tetrahedral_session()
+
+    with pytest.raises(ValueError, match="explicit faces cannot be combined"):
+        session.render().set_faces([[1, 2, 3]], mode="default")
+
+
+def test_add_remove_and_clear_faces_forward_normalized_payloads():
+    session = make_tetrahedral_session()
+
+    session.render().add_faces([(1, 2, 3), (2, 3, 1)], color=(0.3, 0.4, 0.5))
+    session.render().remove_faces([(1, 2, 3)], color=(0.1, 0.2, 0.3))
+    session.render().clear_faces()
+
+    assert session._backend.calls == [
+        (
+            "add_faces",
+            [[1, 2, 3]],
+            pytest.approx((0.3, 0.4, 0.5, 1.0)),
+            [pytest.approx((0.3, 0.4, 0.5, 1.0))],
+            None,
+        ),
+        (
+            "remove_faces",
+            [[1, 2, 3]],
+            pytest.approx((0.1, 0.2, 0.3, 1.0)),
+            [pytest.approx((0.1, 0.2, 0.3, 1.0))],
+            None,
+        ),
+        ("clear_faces", None),
+    ]
+
+
+def test_faces_from_coordination_builds_tetrahedral_faces():
+    session = make_tetrahedral_session()
+
+    faces = faces_from_coordination(session._frame(), selection=[0])
+
+    assert sorted(faces) == [[1, 2, 3], [1, 2, 4], [1, 3, 4], [2, 3, 4]]

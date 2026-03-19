@@ -9,6 +9,8 @@ distilled documentation examples.
   selection-scoped ball-and-stick with explicit bonds
 - [`polyhedra_faces.py`](/Users/au616397/Repositories/atomic-kernels/scripts/polyhedra_faces.py):
   explicit face overlays for a tetrahedral cluster
+- [`polyhedra_minimal.py`](/Users/au616397/Repositories/atomic-kernels/scripts/polyhedra_minimal.py):
+  minimal auto-polyhedra example from an `Atoms` object
 - [`property_coloring.py`](/Users/au616397/Repositories/atomic-kernels/scripts/property_coloring.py):
   scalar coloring and palette changes
 - [`camera_controls.py`](/Users/au616397/Repositories/atomic-kernels/scripts/camera_controls.py):

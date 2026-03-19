@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 from ase import Atoms
 
+from atomic_kernels.neighbor_list import NeighborList
 from atomic_kernels.viewer._camera import CameraController, _structure_to_world
 from atomic_kernels.viewer._session import ViewerSessionFacade
 
@@ -25,6 +26,38 @@ class BackendSpy:
 
     def close(self):
         self.calls.append(("close",))
+
+    def set_bonds(self, bonds, frame_index=None):
+        self.calls.append(("set_bonds", bonds, frame_index))
+
+    def set_faces(self, faces, color=(0.2, 0.6, 0.9, 0.35), face_colors=None, frame_index=None):
+        self.calls.append(("set_faces", faces, color, face_colors, frame_index))
+
+    def set_ball_and_stick_style(
+        self,
+        selection,
+        atom_scale=0.45,
+        bond_radius=0.08,
+        bond_color=(0.7, 0.7, 0.7, 1.0),
+        bond_scope="both_selected",
+        frame_index=None,
+        append=False,
+    ):
+        self.calls.append(
+            (
+                "set_ball_and_stick_style",
+                selection,
+                atom_scale,
+                bond_radius,
+                bond_color,
+                bond_scope,
+                frame_index,
+                append,
+            )
+        )
+
+    def reset_render_style(self):
+        self.calls.append(("reset_render_style",))
 
     def selected_atoms(self, frame_index=None):
         self.calls.append(("selected_atoms", frame_index))
@@ -222,3 +255,13 @@ def test_viewer_session_facade_exposes_image_selection_and_supercell_controls():
         ("toggle_ghost_repeated_images",),
         ("supercell",),
     ]
+
+
+def test_render_controller_accepts_neighbor_list_shortcut_for_bonds():
+    atoms = Atoms("H2O")
+    backend = BackendSpy()
+    facade = ViewerSessionFacade(backend, [atoms])
+
+    facade.render().set_bonds(NeighborList(i=[2, 0, 1], j=[0, 2, 1], S=[]))
+
+    assert backend.calls == [("set_bonds", [(0, 2)], None)]

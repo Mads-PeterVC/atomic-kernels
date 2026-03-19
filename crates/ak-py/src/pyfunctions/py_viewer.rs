@@ -129,6 +129,29 @@ impl PyViewerSession {
             .map_err(Self::send_error)
     }
 
+    #[pyo3(signature = (bonds, frame_index=None))]
+    fn add_bonds(&self, bonds: Vec<(usize, usize)>, frame_index: Option<usize>) -> PyResult<()> {
+        self.handle
+            .add_bonds(BondList::new(bonds), frame_index)
+            .map_err(Self::send_error)
+    }
+
+    #[pyo3(signature = (bonds, frame_index=None))]
+    fn remove_bonds(
+        &self,
+        bonds: Vec<(usize, usize)>,
+        frame_index: Option<usize>,
+    ) -> PyResult<()> {
+        self.handle
+            .remove_bonds(BondList::new(bonds), frame_index)
+            .map_err(Self::send_error)
+    }
+
+    #[pyo3(signature = (frame_index=None))]
+    fn clear_bonds(&self, frame_index: Option<usize>) -> PyResult<()> {
+        self.handle.clear_bonds(frame_index).map_err(Self::send_error)
+    }
+
     #[pyo3(signature = (faces, color=(0.2, 0.6, 0.9, 0.35), face_colors=None, frame_index=None))]
     fn set_faces(
         &self,
@@ -162,6 +185,39 @@ impl PyViewerSession {
         self.handle
             .set_faces(normalized, frame_index)
             .map_err(Self::send_error)
+    }
+
+    #[pyo3(signature = (faces, color=(0.2, 0.6, 0.9, 0.35), face_colors=None, frame_index=None))]
+    fn add_faces(
+        &self,
+        faces: Vec<Vec<usize>>,
+        color: (f32, f32, f32, f32),
+        face_colors: Option<Vec<(f32, f32, f32, f32)>>,
+        frame_index: Option<usize>,
+    ) -> PyResult<()> {
+        let normalized = normalize_faces(faces, color, face_colors)?;
+        self.handle
+            .add_faces(normalized, frame_index)
+            .map_err(Self::send_error)
+    }
+
+    #[pyo3(signature = (faces, color=(0.2, 0.6, 0.9, 0.35), face_colors=None, frame_index=None))]
+    fn remove_faces(
+        &self,
+        faces: Vec<Vec<usize>>,
+        color: (f32, f32, f32, f32),
+        face_colors: Option<Vec<(f32, f32, f32, f32)>>,
+        frame_index: Option<usize>,
+    ) -> PyResult<()> {
+        let normalized = normalize_faces(faces, color, face_colors)?;
+        self.handle
+            .remove_faces(normalized, frame_index)
+            .map_err(Self::send_error)
+    }
+
+    #[pyo3(signature = (frame_index=None))]
+    fn clear_faces(&self, frame_index: Option<usize>) -> PyResult<()> {
+        self.handle.clear_faces(frame_index).map_err(Self::send_error)
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -387,6 +443,35 @@ impl PyViewerSession {
     fn stop_camera_motion(&self) -> PyResult<()> {
         self.handle.stop_camera_motion().map_err(Self::send_error)
     }
+}
+
+fn normalize_faces(
+    faces: Vec<Vec<usize>>,
+    color: (f32, f32, f32, f32),
+    face_colors: Option<Vec<(f32, f32, f32, f32)>>,
+) -> PyResult<FaceList> {
+    let default_color = [color.0, color.1, color.2, color.3];
+    let face_colors = match face_colors {
+        Some(colors) => {
+            if colors.len() != faces.len() {
+                return Err(PyValueError::new_err(
+                    "face_colors must have the same length as faces",
+                ));
+            }
+            colors
+                .into_iter()
+                .map(|(r, g, b, a)| [r, g, b, a])
+                .collect::<Vec<_>>()
+        }
+        None => vec![default_color; faces.len()],
+    };
+
+    Ok(FaceList::new(
+        faces
+            .into_iter()
+            .zip(face_colors)
+            .filter_map(|(atoms, color)| Face::new(atoms, color)),
+    ))
 }
 
 fn normalize_image_selection(selection: Vec<(usize, (i32, i32, i32))>) -> Vec<SelectedImageAtom> {

@@ -59,22 +59,15 @@ if __name__ == "__main__":
 
 If you also need custom connectivity, add `render.set_bonds(...)` separately.
 
-## Explicit bonds
+## Automatic bonds
 
-Use `render.set_bonds(...)` when the viewer should draw only the bond pairs you supply.
+Use `render.set_bonds(mode="default")` when the viewer should derive bonds from the
+current frame using ASE-style natural cutoffs.
 
 ```python
-import numpy as np
 from ase.build import add_adsorbate, fcc111, molecule
-from ase.neighborlist import natural_cutoffs, neighbor_list
 
 from atomic_kernels import viewer_session
-
-
-def adsorbate_bonds(atoms) -> np.ndarray:
-    cutoffs = natural_cutoffs(atoms, mult=1.2)
-    senders, receivers = neighbor_list("ij", atoms, cutoffs)
-    return np.column_stack([senders, receivers])
 
 
 def main() -> None:
@@ -86,7 +79,7 @@ def main() -> None:
     slab.center(axis=2)
 
     session = viewer_session(slab)
-    session.render().set_bonds(adsorbate_bonds(adsorbate) + slab_atom_count)
+    session.render().set_bonds(mode="default")
 
 
 if __name__ == "__main__":
@@ -95,8 +88,8 @@ if __name__ == "__main__":
 
 ## Polyhedral faces
 
-Use `render.set_faces(...)` when you want to overlay polygon faces defined by atom
-indices.
+Use `render.set_faces(mode="default", ...)` when you want to derive best-effort
+polyhedra from coordination environments instead of enumerating faces by hand.
 
 ```python
 import numpy as np
@@ -124,12 +117,8 @@ def main() -> None:
 
     session = viewer_session(atoms)
     session.render().set_faces(
-        [
-            [1, 2, 3],
-            [1, 4, 2],
-            [1, 3, 4],
-            [2, 4, 3],
-        ],
+        mode="default",
+        selection=[0],
         face_colors=[
             (0.13, 0.52, 0.78, 0.34),
             (0.18, 0.65, 0.66, 0.30),

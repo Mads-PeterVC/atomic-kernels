@@ -47,8 +47,30 @@ pub enum ViewerCommand {
         bonds: BondList,
         frame_index: Option<usize>,
     },
+    AddBonds {
+        bonds: BondList,
+        frame_index: Option<usize>,
+    },
+    RemoveBonds {
+        bonds: BondList,
+        frame_index: Option<usize>,
+    },
+    ClearBonds {
+        frame_index: Option<usize>,
+    },
     SetFaces {
         faces: FaceList,
+        frame_index: Option<usize>,
+    },
+    AddFaces {
+        faces: FaceList,
+        frame_index: Option<usize>,
+    },
+    RemoveFaces {
+        faces: FaceList,
+        frame_index: Option<usize>,
+    },
+    ClearFaces {
         frame_index: Option<usize>,
     },
     SetRenderStyle {
@@ -385,6 +407,32 @@ impl ViewerSessionHandle {
             .map_err(|_| ViewerSessionClosed)
     }
 
+    pub fn add_bonds(
+        &self,
+        bonds: BondList,
+        frame_index: Option<usize>,
+    ) -> Result<(), ViewerSessionClosed> {
+        self.sender
+            .send(ViewerCommand::AddBonds { bonds, frame_index })
+            .map_err(|_| ViewerSessionClosed)
+    }
+
+    pub fn remove_bonds(
+        &self,
+        bonds: BondList,
+        frame_index: Option<usize>,
+    ) -> Result<(), ViewerSessionClosed> {
+        self.sender
+            .send(ViewerCommand::RemoveBonds { bonds, frame_index })
+            .map_err(|_| ViewerSessionClosed)
+    }
+
+    pub fn clear_bonds(&self, frame_index: Option<usize>) -> Result<(), ViewerSessionClosed> {
+        self.sender
+            .send(ViewerCommand::ClearBonds { frame_index })
+            .map_err(|_| ViewerSessionClosed)
+    }
+
     pub fn set_faces(
         &self,
         faces: FaceList,
@@ -392,6 +440,32 @@ impl ViewerSessionHandle {
     ) -> Result<(), ViewerSessionClosed> {
         self.sender
             .send(ViewerCommand::SetFaces { faces, frame_index })
+            .map_err(|_| ViewerSessionClosed)
+    }
+
+    pub fn add_faces(
+        &self,
+        faces: FaceList,
+        frame_index: Option<usize>,
+    ) -> Result<(), ViewerSessionClosed> {
+        self.sender
+            .send(ViewerCommand::AddFaces { faces, frame_index })
+            .map_err(|_| ViewerSessionClosed)
+    }
+
+    pub fn remove_faces(
+        &self,
+        faces: FaceList,
+        frame_index: Option<usize>,
+    ) -> Result<(), ViewerSessionClosed> {
+        self.sender
+            .send(ViewerCommand::RemoveFaces { faces, frame_index })
+            .map_err(|_| ViewerSessionClosed)
+    }
+
+    pub fn clear_faces(&self, frame_index: Option<usize>) -> Result<(), ViewerSessionClosed> {
+        self.sender
+            .send(ViewerCommand::ClearFaces { frame_index })
             .map_err(|_| ViewerSessionClosed)
     }
 
@@ -874,12 +948,66 @@ impl ViewerState {
                 }
                 CommandOutcome::default()
             }
+            ViewerCommand::AddBonds { bonds, frame_index } => {
+                let target_frame = frame_index.unwrap_or(self.current);
+                if target_frame < self.traj.len() {
+                    self.bonds.add(target_frame, bonds);
+                    self.needs_render = self.current == target_frame;
+                }
+                CommandOutcome::default()
+            }
+            ViewerCommand::RemoveBonds { bonds, frame_index } => {
+                let target_frame = frame_index.unwrap_or(self.current);
+                if target_frame < self.traj.len() {
+                    self.bonds.remove(target_frame, &bonds);
+                    self.needs_render = self.current == target_frame;
+                }
+                CommandOutcome::default()
+            }
+            ViewerCommand::ClearBonds { frame_index } => {
+                let target_frame = frame_index.unwrap_or(self.current);
+                if target_frame < self.traj.len() {
+                    self.bonds.clear(target_frame);
+                    self.needs_render = self.current == target_frame;
+                }
+                CommandOutcome::default()
+            }
             ViewerCommand::SetFaces { faces, frame_index } => {
                 let target_frame = frame_index.unwrap_or(self.current);
                 if target_frame < self.traj.len() {
                     let atom_count = self.traj.view(target_frame).positions.len();
                     self.faces
                         .set(target_frame, faces.validated_for_atom_count(atom_count));
+                    self.needs_render = self.current == target_frame;
+                }
+                CommandOutcome::default()
+            }
+            ViewerCommand::AddFaces { faces, frame_index } => {
+                let target_frame = frame_index.unwrap_or(self.current);
+                if target_frame < self.traj.len() {
+                    let atom_count = self.traj.view(target_frame).positions.len();
+                    self.faces
+                        .add(target_frame, faces.validated_for_atom_count(atom_count));
+                    self.needs_render = self.current == target_frame;
+                }
+                CommandOutcome::default()
+            }
+            ViewerCommand::RemoveFaces { faces, frame_index } => {
+                let target_frame = frame_index.unwrap_or(self.current);
+                if target_frame < self.traj.len() {
+                    let atom_count = self.traj.view(target_frame).positions.len();
+                    self.faces.remove(
+                        target_frame,
+                        &faces.validated_for_atom_count(atom_count),
+                    );
+                    self.needs_render = self.current == target_frame;
+                }
+                CommandOutcome::default()
+            }
+            ViewerCommand::ClearFaces { frame_index } => {
+                let target_frame = frame_index.unwrap_or(self.current);
+                if target_frame < self.traj.len() {
+                    self.faces.clear(target_frame);
                     self.needs_render = self.current == target_frame;
                 }
                 CommandOutcome::default()
@@ -1241,6 +1369,19 @@ impl BondList {
     pub fn is_empty(&self) -> bool {
         self.edges.is_empty()
     }
+
+    pub fn merged(&self, other: &BondList) -> Self {
+        Self::new(self.iter().copied().chain(other.iter().copied()))
+    }
+
+    pub fn without(&self, other: &BondList) -> Self {
+        let removals: BTreeSet<_> = other.iter().copied().collect();
+        Self::new(
+            self.iter()
+                .copied()
+                .filter(|edge| !removals.contains(edge)),
+        )
+    }
 }
 
 impl BondFrames {
@@ -1253,6 +1394,33 @@ impl BondFrames {
     pub fn set(&mut self, frame_index: usize, bonds: BondList) {
         if frame_index < self.frames.len() {
             self.frames[frame_index] = Some(bonds);
+        }
+    }
+
+    pub fn add(&mut self, frame_index: usize, bonds: BondList) {
+        if frame_index >= self.frames.len() {
+            return;
+        }
+        let merged = match self.frames[frame_index].take() {
+            Some(existing) => existing.merged(&bonds),
+            None => bonds,
+        };
+        self.frames[frame_index] = Some(merged);
+    }
+
+    pub fn remove(&mut self, frame_index: usize, bonds: &BondList) {
+        if frame_index >= self.frames.len() {
+            return;
+        }
+        if let Some(existing) = self.frames[frame_index].take() {
+            let updated = existing.without(bonds);
+            self.frames[frame_index] = (!updated.is_empty()).then_some(updated);
+        }
+    }
+
+    pub fn clear(&mut self, frame_index: usize) {
+        if frame_index < self.frames.len() {
+            self.frames[frame_index] = None;
         }
     }
 
@@ -1324,6 +1492,20 @@ impl FaceList {
                 .cloned(),
         )
     }
+
+    pub fn merged(&self, other: &FaceList) -> Self {
+        Self::new(self.iter().cloned().chain(other.iter().cloned()))
+    }
+
+    pub fn without(&self, other: &FaceList) -> Self {
+        let removals: BTreeSet<_> = other.iter().map(Face::canonical_atoms).collect();
+        Self::new(
+            self.faces
+                .iter()
+                .filter(|face| !removals.contains(&face.canonical_atoms()))
+                .cloned(),
+        )
+    }
 }
 
 impl FaceFrames {
@@ -1336,6 +1518,33 @@ impl FaceFrames {
     pub fn set(&mut self, frame_index: usize, faces: FaceList) {
         if frame_index < self.frames.len() {
             self.frames[frame_index] = Some(faces);
+        }
+    }
+
+    pub fn add(&mut self, frame_index: usize, faces: FaceList) {
+        if frame_index >= self.frames.len() {
+            return;
+        }
+        let merged = match self.frames[frame_index].take() {
+            Some(existing) => existing.merged(&faces),
+            None => faces,
+        };
+        self.frames[frame_index] = Some(merged);
+    }
+
+    pub fn remove(&mut self, frame_index: usize, faces: &FaceList) {
+        if frame_index >= self.frames.len() {
+            return;
+        }
+        if let Some(existing) = self.frames[frame_index].take() {
+            let updated = existing.without(faces);
+            self.frames[frame_index] = (!updated.is_empty()).then_some(updated);
+        }
+    }
+
+    pub fn clear(&mut self, frame_index: usize) {
+        if frame_index < self.frames.len() {
+            self.frames[frame_index] = None;
         }
     }
 
