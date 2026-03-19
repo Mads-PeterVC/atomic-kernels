@@ -15,7 +15,7 @@ def test_quality_presets_map_to_expected_ico_subdiv():
     assert LOW.ico_subdiv == 3
     assert MEDIUM.ico_subdiv == 4
     assert HIGH.ico_subdiv == 5
-    assert VERY_HIGH.ico_subdiv == 6
+    assert VERY_HIGH.ico_subdiv == 7
 
 
 def test_quality_preset_from_name_is_case_insensitive():

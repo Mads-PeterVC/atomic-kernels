@@ -218,7 +218,7 @@ def test_quality_preset_populates_render_config():
 
     assert low.render.ico_subdiv == 3
     assert high.render.ico_subdiv == 5
-    assert very_high.render.ico_subdiv == 6
+    assert very_high.render.ico_subdiv == 7
 
 
 def test_quality_short_aliases_populate_render_config():
@@ -231,7 +231,7 @@ def test_quality_short_aliases_populate_render_config():
         show_cell=True,
     )
 
-    assert config.render.ico_subdiv == 6
+    assert config.render.ico_subdiv == 7
 
 
 def test_dark_theme_and_quality_are_independent():
@@ -269,7 +269,7 @@ def test_ak_view_accepts_short_quality_alias(monkeypatch, tmp_path: Path):
     assert len(calls) == 1
     _, config = calls[0]
     assert config is not None
-    assert config.render.ico_subdiv == 6
+    assert config.render.ico_subdiv == 7
 
 
 def test_ak_view_passes_ui_and_cell_flags(monkeypatch, tmp_path: Path):
