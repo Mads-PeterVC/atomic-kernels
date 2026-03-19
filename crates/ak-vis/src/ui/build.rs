@@ -1,4 +1,6 @@
+#[path = "build_inspector.rs"]
 mod inspector;
+#[path = "build_playback_panel.rs"]
 mod playback_panel;
 
 use bevy::prelude::*;
