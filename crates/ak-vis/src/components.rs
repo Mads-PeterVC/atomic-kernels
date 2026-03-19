@@ -129,11 +129,10 @@ mod tests {
         InspectorPanelRoot, InspectorPanelSurface, InspectorSelectionBody,
         InspectorSelectionSection, MainSceneCamera, MarqueeSelectionOverlay,
         OrientationWidgetCamera, OrientationWidgetLetterStroke, OrientationWidgetRoot,
-        PlaybackPanelRoot, PlaybackPanelSurface, PlaybackPlayPauseButton,
-        PlaybackPlayPauseIcon, PlaybackScrubberButton, PlaybackScrubberFill,
-        PlaybackScrubberThumb, PlaybackScrubberTrack, PlaybackSpeedButton,
-        PlaybackStatusText, PlaybackStepBackButton, PlaybackStepForwardButton,
-        PlaybackTitleText, PlaybackFrameText, PlaybackSpeedText, ToggleableUI,
+        PlaybackFrameText, PlaybackPanelRoot, PlaybackPanelSurface, PlaybackPlayPauseButton,
+        PlaybackPlayPauseIcon, PlaybackScrubberButton, PlaybackScrubberFill, PlaybackScrubberThumb,
+        PlaybackScrubberTrack, PlaybackSpeedButton, PlaybackSpeedText, PlaybackStatusText,
+        PlaybackStepBackButton, PlaybackStepForwardButton, PlaybackTitleText, ToggleableUI,
     };
     use bevy::prelude::*;
 
@@ -226,10 +225,7 @@ mod tests {
         assert!(world.get::<PlaybackScrubberFill>(entity).is_some());
         assert!(world.get::<PlaybackScrubberTrack>(entity).is_some());
         assert!(world.get::<PlaybackScrubberThumb>(entity).is_some());
-        assert_eq!(
-            world.get::<PlaybackSpeedButton>(entity).unwrap().index,
-            1
-        );
+        assert_eq!(world.get::<PlaybackSpeedButton>(entity).unwrap().index, 1);
         assert_eq!(
             world.get::<DisplayAtomIdentity>(entity).unwrap(),
             &DisplayAtomIdentity {

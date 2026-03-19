@@ -4,9 +4,7 @@ use bevy::prelude::*;
 use crate::components::{InspectorHintsContainer, InspectorHintsToggle};
 
 use super::build::section_title_bundle;
-use super::{
-    HINT_LABEL_COLOR, KEYCAP_BACKGROUND, KEYCAP_BORDER, KEYCAP_TEXT, SECTION_BACKGROUND,
-};
+use super::{HINT_LABEL_COLOR, KEYCAP_BACKGROUND, KEYCAP_BORDER, KEYCAP_TEXT, SECTION_BACKGROUND};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum ShortcutToken {

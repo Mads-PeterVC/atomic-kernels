@@ -2,11 +2,11 @@ use bevy::ecs::system::SystemParam;
 use bevy::input::keyboard::Key;
 use bevy::prelude::*;
 
-use crate::ui::PlaybackState;
 use crate::components::{
     FrameAtom, FrameAxis, FrameBond, FrameCell, FrameFace, FrameMeasurementCue,
     FrameSelectionHighlight,
 };
+use crate::ui::PlaybackState;
 use crate::viewer::ViewerState;
 
 #[derive(SystemParam)]
@@ -253,8 +253,7 @@ mod tests {
             axes,
             bonds,
             faces,
-        ) =
-            system_state.get_mut(&mut world);
+        ) = system_state.get_mut(&mut world);
         despawn_current_frame(
             &mut commands,
             atoms,

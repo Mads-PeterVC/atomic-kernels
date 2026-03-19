@@ -1,3 +1,4 @@
+use crate::AtomMaterial;
 use bevy::color::Color;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -10,6 +11,7 @@ pub struct AtomVisual {
     pub atom_identity: AtomIdentity,
     pub position: [f32; 3],
     pub color: Color,
+    pub material: AtomMaterial,
     pub radius: f32,
 }
 
@@ -37,6 +39,7 @@ impl AtomVisual {
             atom_identity,
             position: position_f32,
             color,
+            material: AtomMaterial::default(),
             radius,
         }
     }

@@ -24,7 +24,7 @@ click.rich_click.OPTION_GROUPS = {
     "ak view": [
         {
             "name": "Display Options",
-            "options": ["--width", "--height", "--theme", "--quality"],
+            "options": ["--width", "--height", "--theme", "--quality", "--atom-palette"],
         },
         {
             "name": "Toggles",
@@ -70,6 +70,7 @@ def build_viewer_config(
     height: int | None,
     show_ui: bool,
     show_cell: bool,
+    atom_palette: str = "jmol",
 ) -> ViewerConfig:
     """Translate CLI display options into a ViewerConfig."""
     config = quality_preset_from_name(quality).apply_to_viewer(ViewerConfig())
@@ -87,6 +88,7 @@ def build_viewer_config(
         )
 
     render = config.render
+    render.atom_palette = atom_palette
     render.show_ui = show_ui
     render.show_cell = show_cell
     config.render = render
@@ -139,6 +141,13 @@ def quality_preset_from_name(name: str) -> QualityPreset:
     help="Viewer visual fidelity preset: low (l), medium (m), high (h), very_high (vh).",
 )
 @click.option(
+    "--atom-palette",
+    type=click.Choice(("jmol", "jmol-metallic"), case_sensitive=False),
+    default="jmol",
+    show_default=True,
+    help="Atom element palette preset, including atom material behavior.",
+)
+@click.option(
     "--ui/--no-ui",
     "show_ui",
     default=True,
@@ -158,6 +167,7 @@ def view_command(
     height: int | None,
     theme: str,
     quality: str,
+    atom_palette: str,
     show_ui: bool,
     show_cell: bool,
 ) -> None:
@@ -166,6 +176,7 @@ def view_command(
     config = build_viewer_config(
         theme=theme.lower(),
         quality=quality.lower(),
+        atom_palette=atom_palette.lower(),
         width=width,
         height=height,
         show_ui=show_ui,

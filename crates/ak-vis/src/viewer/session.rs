@@ -625,10 +625,7 @@ impl ViewerSessionHandle {
             .map_err(|_| ViewerSessionClosed)
     }
 
-    pub fn set_ghost_repeated_images(
-        &self,
-        enabled: bool,
-    ) -> Result<(), ViewerSessionClosed> {
+    pub fn set_ghost_repeated_images(&self, enabled: bool) -> Result<(), ViewerSessionClosed> {
         self.sender
             .send(ViewerCommand::SetGhostRepeatedImages { enabled })
             .map_err(|_| ViewerSessionClosed)
@@ -996,10 +993,8 @@ impl ViewerState {
                 let target_frame = frame_index.unwrap_or(self.current);
                 if target_frame < self.traj.len() {
                     let atom_count = self.traj.view(target_frame).positions.len();
-                    self.faces.remove(
-                        target_frame,
-                        &faces.validated_for_atom_count(atom_count),
-                    );
+                    self.faces
+                        .remove(target_frame, &faces.validated_for_atom_count(atom_count));
                     self.needs_render = self.current == target_frame;
                 }
                 CommandOutcome::default()
@@ -1047,8 +1042,10 @@ impl ViewerState {
                 let target_frame = frame_index.unwrap_or(self.current);
                 if self.validate_selection(target_frame, &selection) {
                     self.selection.replace(target_frame, selection);
-                    self.image_selection
-                        .replace(target_frame, self.selection.selected_main_images(target_frame));
+                    self.image_selection.replace(
+                        target_frame,
+                        self.selection.selected_main_images(target_frame),
+                    );
                     self.needs_render = self.current == target_frame;
                 }
                 CommandOutcome::default()
@@ -1060,8 +1057,10 @@ impl ViewerState {
                 let target_frame = frame_index.unwrap_or(self.current);
                 if self.validate_selection(target_frame, &selection) {
                     self.selection.add(target_frame, &selection);
-                    self.image_selection
-                        .replace(target_frame, self.selection.selected_main_images(target_frame));
+                    self.image_selection.replace(
+                        target_frame,
+                        self.selection.selected_main_images(target_frame),
+                    );
                     self.needs_render = self.current == target_frame;
                 }
                 CommandOutcome::default()
@@ -1073,8 +1072,10 @@ impl ViewerState {
                 let target_frame = frame_index.unwrap_or(self.current);
                 if self.validate_selection(target_frame, &selection) {
                     self.selection.remove(target_frame, &selection);
-                    self.image_selection
-                        .replace(target_frame, self.selection.selected_main_images(target_frame));
+                    self.image_selection.replace(
+                        target_frame,
+                        self.selection.selected_main_images(target_frame),
+                    );
                     self.needs_render = self.current == target_frame;
                 }
                 CommandOutcome::default()
@@ -1303,7 +1304,11 @@ impl ViewerState {
             && self.traj.view(frame_index).positions.len() == selection.len()
     }
 
-    fn validate_image_selection(&self, frame_index: usize, selection: &[SelectedImageAtom]) -> bool {
+    fn validate_image_selection(
+        &self,
+        frame_index: usize,
+        selection: &[SelectedImageAtom],
+    ) -> bool {
         if frame_index >= self.traj.len() {
             return false;
         }
@@ -1337,10 +1342,14 @@ impl ViewerState {
             return;
         };
         let atom_count = self.traj.view(frame_index).positions.len();
-        self.selection
-            .replace(frame_index, SelectionFrames::mask_from_images(atom_count, selected));
-        self.selection
-            .set_order(frame_index, SelectionFrames::ordered_atoms_from_images(selected));
+        self.selection.replace(
+            frame_index,
+            SelectionFrames::mask_from_images(atom_count, selected),
+        );
+        self.selection.set_order(
+            frame_index,
+            SelectionFrames::ordered_atoms_from_images(selected),
+        );
     }
 }
 
@@ -1376,11 +1385,7 @@ impl BondList {
 
     pub fn without(&self, other: &BondList) -> Self {
         let removals: BTreeSet<_> = other.iter().copied().collect();
-        Self::new(
-            self.iter()
-                .copied()
-                .filter(|edge| !removals.contains(edge)),
-        )
+        Self::new(self.iter().copied().filter(|edge| !removals.contains(edge)))
     }
 }
 

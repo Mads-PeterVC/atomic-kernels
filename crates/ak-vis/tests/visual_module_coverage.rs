@@ -1,7 +1,10 @@
 use ak_core::Structure;
 use ak_vis::viewer::{RenderConfig, ViewerConfig};
 use ak_vis::visuals::{BondVisual, FaceVisual};
-use ak_vis::{AtomVisual, AxisVisual, ColorScheme, JMOL, ScalarColorMap, render, render_atoms};
+use ak_vis::{
+    AtomMaterial, AtomVisual, AxisVisual, ColorScheme, JMOL, JMOL_METALLIC, ScalarColorMap,
+    named_palette, render, render_atoms,
+};
 use bevy::ecs::system::SystemState;
 use bevy::prelude::*;
 
@@ -68,9 +71,59 @@ fn viewer_config_defaults_are_accessible_from_public_surface() {
     let render = RenderConfig::default();
 
     assert_eq!(config.initial_frame, 0);
+    assert_eq!(config.render.atom_palette, "jmol");
     assert!(config.render.show_cell);
     assert!(render.show_orientation_widget);
     assert_eq!(render.ico_subdiv, 4);
+}
+
+#[test]
+fn named_palettes_expose_expected_atom_materials() {
+    let structure = example_structure();
+    let hydrogen = structure.view().numbers[0];
+
+    assert_eq!(
+        named_palette("jmol").material(hydrogen),
+        AtomMaterial::default()
+    );
+    assert_eq!(
+        named_palette("missing").material(hydrogen),
+        JMOL.material(hydrogen)
+    );
+    assert_eq!(
+        named_palette("jmol-metallic").material(hydrogen),
+        JMOL_METALLIC.material(hydrogen)
+    );
+}
+
+#[test]
+fn render_atoms_uses_atom_visual_material_for_standard_material() {
+    let mut world = World::new();
+    world.init_resource::<Assets<StandardMaterial>>();
+    world.init_resource::<Assets<Mesh>>();
+
+    let mut system_state: RenderSystemState<'_, '_> = SystemState::new(&mut world);
+
+    {
+        let (mut commands, mut materials, mut meshes) = system_state.get_mut(&mut world);
+        let mut metallic = AtomVisual::new(0, [0.0, 0.0, 0.0], Color::srgb(1.0, 0.8, 0.0), 0.5);
+        metallic.material = AtomMaterial::new(0.9, 0.15);
+        render_atoms(
+            vec![metallic],
+            &mut commands,
+            &mut materials,
+            &mut meshes,
+            2,
+        );
+    }
+    system_state.apply(&mut world);
+
+    let materials = world.resource::<Assets<StandardMaterial>>();
+    let created: Vec<&StandardMaterial> = materials.iter().map(|(_, material)| material).collect();
+
+    assert_eq!(created.len(), 1);
+    assert!((created[0].metallic - 0.9).abs() < 1e-6);
+    assert!((created[0].perceptual_roughness - 0.15).abs() < 1e-6);
 }
 
 #[test]

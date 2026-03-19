@@ -36,6 +36,7 @@ def test_ak_view_help_shows_grouped_flags():
     assert "--height" in result.output
     assert "--theme" in result.output
     assert "--quality" in result.output
+    assert "--atom-palette" in result.output
     assert "low (l)" in result.output
     assert "medium (m)" in result.output
     assert "high (h)" in result.output
@@ -74,6 +75,7 @@ def test_ak_view_reads_single_frame_and_launches_viewer(monkeypatch, tmp_path: P
     assert config.window_height == DEFAULT_WINDOW_HEIGHT
     assert config.render.show_ui is True
     assert config.render.show_cell is True
+    assert config.render.atom_palette == "jmol"
 
 
 def test_ak_view_reads_all_frames_for_trajectory(monkeypatch, tmp_path: Path):
@@ -106,6 +108,7 @@ def test_ak_view_reads_all_frames_for_trajectory(monkeypatch, tmp_path: Path):
     assert config.window_height == DEFAULT_WINDOW_HEIGHT
     assert config.render.show_ui is True
     assert config.render.show_cell is True
+    assert config.render.atom_palette == "jmol"
 
 
 def test_dark_theme_builds_expected_viewer_config():
@@ -188,6 +191,20 @@ def test_display_toggles_populate_render_config():
 
     assert config.render.show_ui is True
     assert config.render.show_cell is False
+
+
+def test_atom_palette_populates_render_config():
+    config = build_viewer_config(
+        theme="light",
+        quality="medium",
+        atom_palette="jmol-metallic",
+        width=None,
+        height=None,
+        show_ui=True,
+        show_cell=True,
+    )
+
+    assert config.render.atom_palette == "jmol-metallic"
 
 
 def test_quality_preset_populates_render_config():
@@ -297,6 +314,31 @@ def test_ak_view_passes_ui_and_cell_flags(monkeypatch, tmp_path: Path):
     assert config.render.ico_subdiv == 5
     assert config.render.show_ui is True
     assert config.render.show_cell is False
+
+
+def test_ak_view_passes_atom_palette(monkeypatch, tmp_path: Path):
+    runner = CliRunner()
+    structure_path = tmp_path / "single.xyz"
+    structure_path.write_text("placeholder\n", encoding="utf-8")
+    atoms = Atoms("H2")
+    calls: list[tuple[object, object]] = []
+
+    monkeypatch.setattr("atomic_kernels.cli.view.read", lambda path, index: [atoms])
+    monkeypatch.setattr(
+        "atomic_kernels.cli.view.bevy_viewer",
+        lambda loaded, config=None: calls.append((loaded, config)),
+    )
+
+    result = runner.invoke(
+        main,
+        ["view", str(structure_path), "--atom-palette", "jmol-metallic"],
+    )
+
+    assert result.exit_code == 0
+    assert len(calls) == 1
+    _, config = calls[0]
+    assert config is not None
+    assert config.render.atom_palette == "jmol-metallic"
 
 
 def test_ak_view_defaults_enable_ui_and_cell(monkeypatch, tmp_path: Path):

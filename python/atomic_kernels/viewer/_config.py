@@ -28,6 +28,7 @@ def serialize_config(config: Optional[ViewerConfig]) -> Optional[dict]:
             "enable_fog": config.lighting.enable_fog,
         },
         "render": {
+            "atom_palette": config.render.atom_palette,
             "show_cell": config.render.show_cell,
             "show_axes": config.render.show_axes,
             "show_ui": config.render.show_ui,

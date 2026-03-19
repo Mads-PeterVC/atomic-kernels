@@ -137,11 +137,7 @@ impl PyViewerSession {
     }
 
     #[pyo3(signature = (bonds, frame_index=None))]
-    fn remove_bonds(
-        &self,
-        bonds: Vec<(usize, usize)>,
-        frame_index: Option<usize>,
-    ) -> PyResult<()> {
+    fn remove_bonds(&self, bonds: Vec<(usize, usize)>, frame_index: Option<usize>) -> PyResult<()> {
         self.handle
             .remove_bonds(BondList::new(bonds), frame_index)
             .map_err(Self::send_error)
@@ -149,7 +145,9 @@ impl PyViewerSession {
 
     #[pyo3(signature = (frame_index=None))]
     fn clear_bonds(&self, frame_index: Option<usize>) -> PyResult<()> {
-        self.handle.clear_bonds(frame_index).map_err(Self::send_error)
+        self.handle
+            .clear_bonds(frame_index)
+            .map_err(Self::send_error)
     }
 
     #[pyo3(signature = (faces, color=(0.2, 0.6, 0.9, 0.35), face_colors=None, frame_index=None))]
@@ -217,7 +215,9 @@ impl PyViewerSession {
 
     #[pyo3(signature = (frame_index=None))]
     fn clear_faces(&self, frame_index: Option<usize>) -> PyResult<()> {
-        self.handle.clear_faces(frame_index).map_err(Self::send_error)
+        self.handle
+            .clear_faces(frame_index)
+            .map_err(Self::send_error)
     }
 
     #[allow(clippy::too_many_arguments)]

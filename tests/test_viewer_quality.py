@@ -33,12 +33,13 @@ def test_quality_preset_short_aliases_resolve_cleanly():
 
 
 def test_quality_preset_apply_to_render_preserves_unrelated_fields():
-    render = RenderConfig(show_cell=False, show_ui=True)
+    render = RenderConfig(atom_palette="jmol-metallic", show_cell=False, show_ui=True)
 
     updated = MEDIUM.apply_to_render(render)
 
     assert updated is render
     assert updated.ico_subdiv == 4
+    assert updated.atom_palette == "jmol-metallic"
     assert updated.show_cell is False
     assert updated.show_ui is True
 

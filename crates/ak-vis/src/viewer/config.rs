@@ -39,6 +39,7 @@ impl Default for ColorConfig {
 
 #[derive(Clone)]
 pub struct RenderConfig {
+    pub atom_palette: String,
     pub show_cell: bool,
     pub show_axes: bool,
     pub show_ui: bool,
@@ -58,6 +59,7 @@ pub struct RenderConfig {
 impl Default for RenderConfig {
     fn default() -> Self {
         Self {
+            atom_palette: "jmol".to_string(),
             show_cell: true,
             show_axes: true,
             show_ui: false,

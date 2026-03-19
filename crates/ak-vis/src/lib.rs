@@ -1,11 +1,14 @@
 pub mod visuals;
 pub use visuals::{
-    AtomIdentity, AtomVisual, AxisVisual, CellVisual, convert_axis, convert_cell, convert_structure,
-    structure_position_to_world, structure_vec3_to_world,
+    AtomIdentity, AtomVisual, AxisVisual, CellVisual, convert_axis, convert_cell,
+    convert_structure, structure_position_to_world, structure_vec3_to_world,
 };
 
 pub mod color_palette;
-pub use color_palette::{ColorPalette, ColorScheme, JMOL, ScalarColorMap};
+pub use color_palette::{
+    AtomMaterial, ColorPalette, ColorScheme, DEFAULT_ATOM_MATERIAL, JMOL, JMOL_METALLIC,
+    ScalarColorMap, named_palette,
+};
 
 pub mod render;
 pub use render::render_atoms;

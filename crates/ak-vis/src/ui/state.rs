@@ -117,7 +117,10 @@ pub fn derive_inspector_state(viewer: &ViewerState) -> InspectorState {
         .collect();
 
     InspectorState {
-        measurement: measurement_for_selection(&viewer.display_atoms(viewer.current), &selected_indices),
+        measurement: measurement_for_selection(
+            &viewer.display_atoms(viewer.current),
+            &selected_indices,
+        ),
         selected_atoms,
         hints_expanded: false,
     }
@@ -221,7 +224,10 @@ fn selection_text(inspector: &InspectorState) -> String {
                 } else {
                     format!(
                         "#{} [{}, {}, {}]",
-                        atom.index, atom.image_offset[0], atom.image_offset[1], atom.image_offset[2]
+                        atom.index,
+                        atom.image_offset[0],
+                        atom.image_offset[1],
+                        atom.image_offset[2]
                     )
                 }
             })

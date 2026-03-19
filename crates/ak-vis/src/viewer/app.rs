@@ -5,11 +5,9 @@ use std::sync::{Arc, Mutex, mpsc};
 use std::thread;
 
 use crate::ui::{
-    handle_playback_buttons, setup_ui, sync_inspector_camera, set_camera_input_enabled,
-    sync_inspector_state, sync_inspector_text, sync_playback_camera,
-    sync_playback_slider_value, sync_playback_state, sync_playback_text,
-    sync_playback_visibility,
-    toggle_hints_visibility,
+    handle_playback_buttons, set_camera_input_enabled, setup_ui, sync_inspector_camera,
+    sync_inspector_state, sync_inspector_text, sync_playback_camera, sync_playback_slider_value,
+    sync_playback_state, sync_playback_text, sync_playback_visibility, toggle_hints_visibility,
 };
 use crate::viewer::ViewerConfig;
 use crate::viewer::controls::{

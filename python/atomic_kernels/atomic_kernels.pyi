@@ -37,6 +37,7 @@ class ColorConfig:
 
 
 class RenderConfig:
+    atom_palette: str
     show_cell: bool
     show_axes: bool
     show_ui: bool
@@ -53,6 +54,7 @@ class RenderConfig:
     orientation_widget_camera_scale: float
     def __init__(
         self,
+        atom_palette: str = "jmol",
         show_cell: bool = True,
         show_axes: bool = True,
         show_ui: bool = False,
