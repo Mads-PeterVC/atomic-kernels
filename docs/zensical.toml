@@ -17,7 +17,7 @@ nav = [
     {"Configuration" = "viewer-configuration.md"},
     {"Scripts" = "viewer-scripts.md"},
   ]},
-  {"Agentic Development" = [
+  {"Development" = [
     {"Instructions" = "agent-development.md"},
     {"Notes" = "agent-development-notes.md"},
     {"Features" = "agent-development-features.md"},
