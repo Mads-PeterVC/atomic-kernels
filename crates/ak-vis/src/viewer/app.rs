@@ -45,7 +45,7 @@ fn build_app(
     snapshot: Arc<Mutex<crate::viewer::session::ViewerSnapshot>>,
 ) -> App {
     let mut app = App::new();
-    let mut plugins = DefaultPlugins.build().disable::<bevy::audio::AudioPlugin>();
+    let mut plugins = DefaultPlugins.build();
     plugins = plugins.set(AssetPlugin {
         file_path: asset_root(),
         ..default()

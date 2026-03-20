@@ -5,7 +5,18 @@ edition = "2024"
 license = "Apache-2.0"
 
 [dependencies]
-bevy = { version = "0.18", default-features = true, features = ["experimental_bevy_ui_widgets"] }
+bevy = { version = "0.18", default-features = false, features = [
+    "default_app",
+    "multi_threaded",
+    "default_font",
+    "bevy_winit",
+    "x11",
+    "3d_bevy_render",
+    "scene",
+    "picking",
+    "ui_bevy_render",
+    "experimental_bevy_ui_widgets",
+] }
 ak-core = { path = "../ak-core" }
 bevy_panorbit_camera = "0.34.0"
 smallvec = "1.15.1"
