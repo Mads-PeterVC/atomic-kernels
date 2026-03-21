@@ -79,6 +79,20 @@ impl From<std::io::Error> for HeadlessRenderError {
     }
 }
 
+fn enrich_headless_render_error(message: String) -> String {
+    if message.contains("Unable to find a GPU!") {
+        format!(
+            "{message}\n\
+\n\
+Headless rendering still needs a wgpu adapter. On CPU-only Linux nodes, this usually means a Mesa software renderer such as llvmpipe or lavapipe must be installed and the process must opt into fallback rendering.\n\
+\n\
+Try setting `WGPU_FORCE_FALLBACK_ADAPTER=1` before launching the render. If the node still fails after that, it likely does not have a usable software graphics stack installed."
+        )
+    } else {
+        message
+    }
+}
+
 #[derive(Resource, Clone)]
 struct CaptureSettings {
     path: PathBuf,
@@ -304,7 +318,9 @@ fn run_headless(
             } else {
                 "headless render panicked".to_string()
             };
-            Err(HeadlessRenderError::new(message))
+            Err(HeadlessRenderError::new(enrich_headless_render_error(
+                message,
+            )))
         }
     }
 }
