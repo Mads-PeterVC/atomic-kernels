@@ -7,6 +7,7 @@ mod state;
 mod tests;
 
 pub use build::setup_ui;
+pub(crate) use build::setup_viewer_ui;
 pub use playback::{
     PlaybackState, handle_playback_buttons, set_camera_input_enabled, sync_playback_camera,
     sync_playback_slider_value, sync_playback_state, sync_playback_text, sync_playback_visibility,

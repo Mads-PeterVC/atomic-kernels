@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex, mpsc};
 use std::thread;
 
 use crate::ui::{
-    handle_playback_buttons, set_camera_input_enabled, setup_ui, sync_inspector_camera,
+    handle_playback_buttons, set_camera_input_enabled, setup_viewer_ui, sync_inspector_camera,
     sync_inspector_state, sync_inspector_text, sync_playback_camera, sync_playback_slider_value,
     sync_playback_state, sync_playback_text, sync_playback_visibility, toggle_hints_visibility,
 };
@@ -18,7 +18,7 @@ use crate::viewer::orientation_widget::{
     setup_orientation_widget, sync_orientation_widget, sync_orientation_widget_letter_strokes,
     update_orientation_widget_viewport,
 };
-use crate::viewer::runtime::{asset_root, configure_shared_app};
+use crate::viewer::runtime::{configure_shared_app, register_viewer_fonts};
 use crate::viewer::session::{ViewerCommand, ViewerReadiness, ViewerSessionHandle};
 use crate::viewer::systems::{
     MarqueeSelectionState, handle_atom_clicks, handle_marquee_selection, setup_marquee_overlay,
@@ -46,10 +46,6 @@ fn build_app(
 ) -> App {
     let mut app = App::new();
     let mut plugins = DefaultPlugins.build().disable::<bevy::audio::AudioPlugin>();
-    plugins = plugins.set(AssetPlugin {
-        file_path: asset_root(),
-        ..default()
-    });
 
     if config.window_width.is_some() || config.window_height.is_some() {
         let width = config.window_width.unwrap_or(750);
@@ -70,6 +66,7 @@ fn build_app(
         UiWidgetsPlugins,
         InputDispatchPlugin,
     ));
+    register_viewer_fonts(&mut app);
     configure_shared_app(&mut app, trajectory, config, receiver, snapshot);
     app.insert_resource(MarqueeSelectionState::default());
     app.insert_resource(ViewerLifecycle {
@@ -99,7 +96,7 @@ fn build_app(
     );
 
     if app.world().resource::<ViewerConfig>().render.show_ui {
-        app.add_systems(Startup, setup_ui);
+        app.add_systems(Startup, setup_viewer_ui);
         app.add_systems(
             Update,
             (

@@ -23,6 +23,7 @@ pub use session::{
 mod orientation_widget;
 
 mod runtime;
+pub(crate) use runtime::ViewerFonts;
 
 mod systems;
 pub(crate) use systems::MarqueeSelectionState;

@@ -32,6 +32,25 @@ pub(crate) struct MainCameraRenderTarget(pub RenderTarget);
 #[derive(Resource, Clone)]
 pub(crate) struct SharedViewerSnapshot(pub Arc<Mutex<ViewerSnapshot>>);
 
+#[derive(Resource, Clone)]
+pub(crate) struct ViewerFonts {
+    pub(crate) mono: Handle<Font>,
+    pub(crate) symbols: Handle<Font>,
+}
+
+pub(crate) fn register_viewer_fonts(app: &mut App) {
+    let mut fonts = app.world_mut().resource_mut::<Assets<Font>>();
+    let mono = fonts.add(
+        Font::try_from_bytes(ROBOTO_MONO_FONT.to_vec())
+            .expect("bundled Roboto Mono font must be a valid font asset"),
+    );
+    let symbols = fonts.add(
+        Font::try_from_bytes(NOTO_SYMBOLS_FONT.to_vec())
+            .expect("bundled Noto Symbols font must be a valid font asset"),
+    );
+    app.insert_resource(ViewerFonts { mono, symbols });
+}
+
 pub(crate) fn asset_root() -> String {
     if let Some(path) = std::env::var_os("AK_VIS_ASSET_ROOT") {
         return path.to_string_lossy().into_owned();
