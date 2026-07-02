@@ -1,0 +1,13 @@
+[package]
+name = "ak-wasm"
+edition = "2024"
+version.workspace = true
+
+[dependencies]
+ak-core = { path = "../ak-core" }
+ak-vis = { path = "../ak-vis" }
+bevy = { version = "0.18", default-features = true, features = ["experimental_bevy_ui_widgets", "webgpu"] }
+wasm-bindgen = "0.2.126"
+
+[lib]
+crate-type = ["cdylib", "rlib"]

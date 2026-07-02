@@ -19,6 +19,13 @@ test:
 build: 
     maturin develop --release
 
+build-wasm:
+    wasm-pack build crates/ak-wasm --target web
+
+preview-wasm:
+    uvx python3 -m http.server -d crates/ak-wasm 8000
+
+
 viewer-test:
     ATOMIC_KERNELS_USE_REAL_EXTENSION=1 ATOMIC_KERNELS_RUN_VIEWER_TESTS=1 uv run --group test pytest tests -m viewer_integration
 
