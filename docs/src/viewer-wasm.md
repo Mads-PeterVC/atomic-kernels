@@ -1,28 +1,8 @@
 # WASM Example
 
+This is an example of the viewer running in WebAssembly
+
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <style>
-      body {
-        background: linear-gradient(
-          135deg,
-          white 0%,
-          white 49%,
-          black 49%,
-          black 51%,
-          white 51%,
-          white 100%
-        ) repeat;
-        background-size: 20px 20px;
-      }
-      canvas {
-        background-color: white;
-      }
-    </style>
-    <title>Wasm Example</title>
-  </head>
-  <h1>Wasm Example</h1>
   <script type="module">
     import init, { WasmViewer } from './pkg/ak_wasm.js'
     await init()
