@@ -1,0 +1,15 @@
+{
+  "name": "ak-wasm",
+  "type": "module",
+  "version": "0.3.0",
+  "files": [
+    "ak_wasm_bg.wasm",
+    "ak_wasm.js",
+    "ak_wasm.d.ts"
+  ],
+  "main": "ak_wasm.js",
+  "types": "ak_wasm.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}

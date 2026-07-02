@@ -37,7 +37,7 @@ impl Drop for ViewerLifecycle {
     }
 }
 
-fn build_app(
+pub fn build_app(
     trajectory: Trajectory,
     config: ViewerConfig,
     receiver: Option<mpsc::Receiver<ViewerCommand>>,

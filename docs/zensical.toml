@@ -16,6 +16,7 @@ nav = [
     {"Examples" = "viewer-examples.md"},
     {"Configuration" = "viewer-configuration.md"},
     {"Scripts" = "viewer-scripts.md"},
+    {"WASM" = "viewer-wasm.md"},
   ]},
   {"Development" = [
     {"Instructions" = "agent-development.md"},

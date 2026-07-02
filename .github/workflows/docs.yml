@@ -60,6 +60,9 @@ jobs:
       - name: Stage Rust API docs
         run: .venv/bin/python scripts/stage_rustdoc.py
 
+      - name: Copy WASM
+        run: cp -rf wasm-pkg docs/site/pkg
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
         with:
