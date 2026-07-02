@@ -92,3 +92,5 @@ scheme = "slate"
 primary = "deep purple"
 toggle.icon = "lucide/moon"
 toggle.name = "Switch to system preference"
+
+[project.markdown_extensions.pymdownx.superfences]
