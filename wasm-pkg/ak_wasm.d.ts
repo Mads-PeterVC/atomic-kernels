@@ -5,7 +5,8 @@ export class WasmViewer {
     free(): void;
     [Symbol.dispose](): void;
     append_frame(positions_xyz: Float64Array, numbers: Int32Array, cell_3x3: Float64Array): void;
-    constructor();
+    load_xyz(xyz: string): void;
+    constructor(canvas?: HTMLCanvasElement | null);
     run(): void;
 }
 
@@ -15,7 +16,8 @@ export interface InitOutput {
     readonly memory: WebAssembly.Memory;
     readonly __wbg_wasmviewer_free: (a: number, b: number) => void;
     readonly wasmviewer_append_frame: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => [number, number];
-    readonly wasmviewer_new: () => number;
+    readonly wasmviewer_load_xyz: (a: number, b: number, c: number) => [number, number];
+    readonly wasmviewer_new: (a: number) => number;
     readonly wasmviewer_run: (a: number) => [number, number];
     readonly wasm_bindgen__convert__closures_____invoke__hf497823071f04816: (a: number, b: number, c: any) => [number, number];
     readonly wasm_bindgen__convert__closures_____invoke__h8c599f349321c945: (a: number, b: number, c: any, d: any) => void;

@@ -3,7 +3,8 @@
 export const memory: WebAssembly.Memory;
 export const __wbg_wasmviewer_free: (a: number, b: number) => void;
 export const wasmviewer_append_frame: (a: number, b: number, c: number, d: number, e: number, f: number, g: number) => [number, number];
-export const wasmviewer_new: () => number;
+export const wasmviewer_load_xyz: (a: number, b: number, c: number) => [number, number];
+export const wasmviewer_new: (a: number) => number;
 export const wasmviewer_run: (a: number) => [number, number];
 export const wasm_bindgen__convert__closures_____invoke__hf497823071f04816: (a: number, b: number, c: any) => [number, number];
 export const wasm_bindgen__convert__closures_____invoke__h8c599f349321c945: (a: number, b: number, c: any, d: any) => void;
