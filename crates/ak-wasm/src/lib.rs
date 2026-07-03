@@ -1,25 +1,27 @@
-use ::bevy::prelude::*;
-use ak_core::{Structure, Trajectory};
-use ak_vis::viewer::app::build_app;
+use ak_core::{Structure, Trajectory, io::read_xyz};
+use ak_vis::viewer::app::build_app_with_options;
 use ak_vis::viewer::session::ViewerSnapshot;
-use ak_vis::viewer::session::{ViewerCommand, ViewerReadiness, ViewerSessionHandle};
-use ak_vis::viewer::{ColorConfig, RenderConfig, ViewerConfig, run_structure};
+use ak_vis::viewer::session::{ViewerCommand, ViewerReadiness};
+use ak_vis::viewer::{RenderConfig, ViewerAppOptions, ViewerConfig};
 use bevy::app::App;
-use bevy::color::Color;
+use std::io::{BufReader, Cursor};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, mpsc};
-
 use wasm_bindgen::prelude::*;
+use web_sys::HtmlCanvasElement;
+
+static NEXT_CANVAS_ID: AtomicUsize = AtomicUsize::new(0);
 
 #[wasm_bindgen]
 pub struct WasmViewer {
     app: App,
-    sender: std::sync::mpsc::Sender<ViewerCommand>,
+    sender: mpsc::Sender<ViewerCommand>,
 }
 
 #[wasm_bindgen]
 impl WasmViewer {
     #[wasm_bindgen(constructor)]
-    pub fn new() -> WasmViewer {
+    pub fn new(canvas: Option<HtmlCanvasElement>) -> WasmViewer {
         let config = ViewerConfig {
             render: RenderConfig {
                 show_ui: true,
@@ -30,19 +32,18 @@ impl WasmViewer {
 
         let trajectory = Trajectory::new(Vec::new());
         let (sender, receiver) = std::sync::mpsc::channel();
+        let options = app_options_for_canvas(canvas);
 
-        let app = build_app(
+        let app = build_app_with_options(
             trajectory,
             config,
             Some(receiver),
             Arc::new(ViewerReadiness::new()),
             Arc::new(Mutex::new(ViewerSnapshot::default())),
+            options,
         );
 
-        WasmViewer {
-            app: app,
-            sender: sender,
-        }
+        WasmViewer { app, sender }
     }
 
     pub fn run(&mut self) -> Result<(), JsValue> {
@@ -60,6 +61,19 @@ impl WasmViewer {
 
         self.sender
             .send(ViewerCommand::AppendFrame { frame: structure })
+            .map_err(|_| JsValue::from_str("viewer is closed"))?;
+
+        Ok(())
+    }
+
+    pub fn load_xyz(&self, xyz: String) -> Result<(), JsValue> {
+        let structure = structure_from_xyz_string(xyz)?;
+
+        self.sender
+            .send(ViewerCommand::LoadTrajectory {
+                frames: vec![structure],
+                initial_frame: 0,
+            })
             .map_err(|_| JsValue::from_str("viewer is closed"))?;
 
         Ok(())
@@ -92,6 +106,31 @@ fn structure_from_flat_arrays(
     let pbc = [false, false, false];
 
     Ok(Structure::new(positions, numbers, cell, pbc))
+}
+
+fn structure_from_xyz_string(xyz: String) -> Result<Structure, JsValue> {
+    let reader = BufReader::new(Cursor::new(xyz));
+    Ok(read_xyz(reader))
+}
+
+fn app_options_for_canvas(canvas: Option<HtmlCanvasElement>) -> ViewerAppOptions {
+    let Some(canvas) = canvas else {
+        return ViewerAppOptions::default();
+    };
+
+    let id = if canvas.id().is_empty() {
+        let next_id = NEXT_CANVAS_ID.fetch_add(1, Ordering::Relaxed);
+        let generated_id = format!("ak-wasm-canvas-{next_id}");
+        canvas.set_id(&generated_id);
+        generated_id
+    } else {
+        canvas.id()
+    };
+
+    ViewerAppOptions {
+        canvas_selector: Some(format!("#{id}")),
+        fit_canvas_to_parent: true,
+    }
 }
 
 // #[wasm_bindgen]

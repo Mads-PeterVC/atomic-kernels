@@ -14,13 +14,27 @@
         ) repeat;
         background-size: 20px 20px;
       }
+      #viewer-root {
+        width: 1000px;
+        height: 750px;
+      }
       canvas {
         background-color: white;
+        display: block;
+        width: 100%;
+        height: 100%;
       }
     </style>
     <title>Wasm Example</title>
   </head>
   <h1>Wasm Example</h1>
+  <div>
+    <input type="file" id="xyz" name="xyz"/>
+  </div>
+  <div id="viewer-root">
+    <canvas id="viewer-canvas"></canvas>
+  </div>
+
   <script type="module">
     import init, { WasmViewer } from './pkg/ak_wasm.js'
     await init()
@@ -29,7 +43,20 @@
     // const numbers = new Int32Array([1, 8])
     // const cell = new Float64Array([10.0, 0.0, 0.0, 0.0, 10.0, 0.0, 0.0, 0.0, 10.0])
 
-    const viewer = new WasmViewer();
+    const canvas = document.getElementById('viewer-canvas')
+    const viewer = new WasmViewer(canvas);
+    const xyzInput = document.getElementById('xyz')
+
+    xyzInput.addEventListener('change', async () => {
+      const file = xyzInput.files?.[0]
+      if (!file) return
+
+      try {
+        viewer.load_xyz(await file.text())
+      } catch (error) {
+        console.error('Failed to load XYZ file', error)
+      }
+    })
 
     viewer.run()
 
