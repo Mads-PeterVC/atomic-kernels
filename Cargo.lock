@@ -146,6 +146,7 @@ dependencies = [
  "ak-vis",
  "bevy",
  "wasm-bindgen",
+ "web-sys",
 ]
 
 [[package]]

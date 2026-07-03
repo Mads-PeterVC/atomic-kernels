@@ -22,7 +22,7 @@ build:
 build-wasm:
     wasm-pack build crates/ak-wasm --target web
 
-preview-wasm:
+preview-wasm: build-wasm
     uvx python3 -m http.server -d crates/ak-wasm 8000
 
 
