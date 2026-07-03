@@ -1,6 +1,7 @@
 pub mod app;
 pub use app::{
-    launch, run, run_default, run_prepared, run_structure, run_structure_default, run_with_session,
+    ViewerAppOptions, build_app_with_options, launch, run, run_default, run_prepared,
+    run_structure, run_structure_default, run_with_session,
 };
 
 pub mod headless;

@@ -25,6 +25,12 @@ use crate::viewer::systems::{
     sync_marquee_overlay,
 };
 
+#[derive(Clone, Debug, Default)]
+pub struct ViewerAppOptions {
+    pub canvas_selector: Option<String>,
+    pub fit_canvas_to_parent: bool,
+}
+
 #[derive(Resource, Clone)]
 struct ViewerLifecycle {
     readiness: Arc<ViewerReadiness>,
@@ -44,17 +50,30 @@ pub fn build_app(
     readiness: Arc<ViewerReadiness>,
     snapshot: Arc<Mutex<crate::viewer::session::ViewerSnapshot>>,
 ) -> App {
+    build_app_with_options(
+        trajectory,
+        config,
+        receiver,
+        readiness,
+        snapshot,
+        ViewerAppOptions::default(),
+    )
+}
+
+pub fn build_app_with_options(
+    trajectory: Trajectory,
+    config: ViewerConfig,
+    receiver: Option<mpsc::Receiver<ViewerCommand>>,
+    readiness: Arc<ViewerReadiness>,
+    snapshot: Arc<Mutex<crate::viewer::session::ViewerSnapshot>>,
+    options: ViewerAppOptions,
+) -> App {
     let mut app = App::new();
     let mut plugins = DefaultPlugins.build().disable::<bevy::audio::AudioPlugin>();
 
-    if config.window_width.is_some() || config.window_height.is_some() {
-        let width = config.window_width.unwrap_or(750);
-        let height = config.window_height.unwrap_or(750);
+    if let Some(primary_window) = primary_window_override(&config, &options) {
         plugins = plugins.set(WindowPlugin {
-            primary_window: Some(Window {
-                resolution: (width, height).into(),
-                ..default()
-            }),
+            primary_window: Some(primary_window),
             ..default()
         });
     }
@@ -126,6 +145,28 @@ pub fn build_app(
     }
 
     app
+}
+
+fn primary_window_override(config: &ViewerConfig, options: &ViewerAppOptions) -> Option<Window> {
+    let needs_size_override = config.window_width.is_some() || config.window_height.is_some();
+    let needs_canvas_override = options.canvas_selector.is_some() || options.fit_canvas_to_parent;
+
+    if !needs_size_override && !needs_canvas_override {
+        return None;
+    }
+
+    let mut window = Window::default();
+
+    if needs_size_override {
+        let width = config.window_width.unwrap_or(750);
+        let height = config.window_height.unwrap_or(750);
+        window.resolution = (width, height).into();
+    }
+
+    window.canvas.clone_from(&options.canvas_selector);
+    window.fit_canvas_to_parent = options.fit_canvas_to_parent;
+
+    Some(window)
 }
 
 fn run_app(
@@ -225,4 +266,49 @@ pub fn run_structure(structure: Structure, config: ViewerConfig) {
 pub fn run_structure_default(structure: Structure) {
     let trajectory = Trajectory::new(vec![structure]);
     run_default(trajectory);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{ViewerAppOptions, primary_window_override};
+    use crate::viewer::ViewerConfig;
+
+    #[test]
+    fn default_app_options_do_not_override_primary_window() {
+        let config = ViewerConfig::default();
+        let options = ViewerAppOptions::default();
+
+        assert!(primary_window_override(&config, &options).is_none());
+    }
+
+    #[test]
+    fn canvas_selector_overrides_primary_window_canvas() {
+        let config = ViewerConfig::default();
+        let options = ViewerAppOptions {
+            canvas_selector: Some("#viewer-canvas".to_string()),
+            fit_canvas_to_parent: true,
+        };
+
+        let window = primary_window_override(&config, &options).unwrap();
+
+        assert_eq!(window.canvas.as_deref(), Some("#viewer-canvas"));
+        assert!(window.fit_canvas_to_parent);
+    }
+
+    #[test]
+    fn width_and_height_config_still_override_primary_window_size() {
+        let config = ViewerConfig {
+            window_width: Some(640),
+            window_height: Some(480),
+            ..Default::default()
+        };
+        let options = ViewerAppOptions::default();
+
+        let window = primary_window_override(&config, &options).unwrap();
+
+        assert_eq!(window.resolution.width(), 640.0);
+        assert_eq!(window.resolution.height(), 480.0);
+        assert_eq!(window.canvas, None);
+        assert!(!window.fit_canvas_to_parent);
+    }
 }
