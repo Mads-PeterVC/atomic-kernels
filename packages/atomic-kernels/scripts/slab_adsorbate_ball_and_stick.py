@@ -5,7 +5,7 @@ from ase.build import add_adsorbate, fcc111, molecule
 from ase.neighborlist import natural_cutoffs, neighbor_list
 from time import sleep
 
-from atomic_kernels import viewer_session
+from atomic_kernels import viewer_session, ViewerConfig
 
 
 def adsorbate_bonds(atoms) -> np.ndarray:
@@ -48,7 +48,10 @@ if __name__ == "__main__":
     shifted_bonds = molecule_bonds + slab_atom_count
     shifted_bonds = np.vstack([shifted_bonds, adsorption_bonds(slab, slab_atom_count)])
 
-    session = viewer_session(slab)
+
+    config = ViewerConfig(window_width=800, window_height=600)
+
+    session = viewer_session(slab, config=config)
     camera = session.camera()
     render = session.render()
 
@@ -61,8 +64,8 @@ if __name__ == "__main__":
     )
 
     camera.frame_all()
-    camera.set_rotation(yaw=-1.57, pitch=0.0)
-    sleep(1.5)
-    camera.start_orbit(yaw_rate=0.6)
-    sleep(30.0)
-    camera.stop()
+    # camera.set_rotation(yaw=-1.57, pitch=0.0)
+    # sleep(1.5)
+    # camera.start_orbit(yaw_rate=0.6)
+    # sleep(30.0)
+    # camera.stop()

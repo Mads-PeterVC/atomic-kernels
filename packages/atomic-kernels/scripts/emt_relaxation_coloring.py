@@ -7,7 +7,7 @@ from ase.constraints import FixAtoms
 from ase.optimize import BFGS
 from time import sleep
 
-from atomic_kernels import viewer_session
+from atomic_kernels import viewer_session, ViewerConfig
 
 
 def build_deformed_slab():
@@ -39,7 +39,8 @@ def atomic_energies(atoms) -> np.ndarray:
 
 if __name__ == "__main__":
     slab, top_layer = build_deformed_slab()
-    session = viewer_session(slab)
+    config = ViewerConfig(window_width=800, window_height=500)
+    session = viewer_session(slab, config=config)
     camera = session.camera()
     materials = session.materials()
     session.follow_tail(True)

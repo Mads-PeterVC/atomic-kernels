@@ -16,6 +16,9 @@ fn main() {
             show_ui: true,
             ..Default::default()
         },
+
+        window_width: Some(800),
+        window_height: Some(500),
         ..Default::default()
     };
 
