@@ -77,12 +77,6 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-
-      - uses: astral-sh/setup-uv@v7
-
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: ubuntu-stable-workspace
@@ -91,17 +85,16 @@ jobs:
 
       - uses: ./.github/actions/install-linux-build-deps
 
-      - name: Install Python test dependencies
-        run: uv sync --group test --no-install-project
-
-      - name: Install maturin
-        run: uv tool install maturin
+      - uses: prefix-dev/setup-pixi@v0.10.0
+        with:
+          environments: api
+          cache: true
 
       - name: Build extension in-place
-        run: uv run --no-sync maturin develop
+        run: pixi run build-python
 
       - name: Run Python tests
-        run: .venv/bin/pytest tests
+        run: pixi run test
 
   viewer-integration:
     name: Viewer Integration
@@ -118,12 +111,6 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-
-      - uses: astral-sh/setup-uv@v7
-
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: ubuntu-stable-workspace
@@ -132,20 +119,19 @@ jobs:
 
       - uses: ./.github/actions/install-linux-build-deps
 
-      - name: Install Python test dependencies
-        run: uv sync --group test --no-install-project
-
-      - name: Install maturin
-        run: uv tool install maturin
+      - uses: prefix-dev/setup-pixi@v0.10.0
+        with:
+          environments: api
+          cache: true
 
       - name: Build extension in-place
-        run: uv run --no-sync maturin develop
+        run: pixi run build-python
 
       - name: Run Rust headless integration tests
         run: cargo test -p ak-vis viewer::headless::tests --locked
 
       - name: Run Python viewer integration tests
-        run: xvfb-run -a --server-args="-screen 0 1280x1024x24" .venv/bin/pytest tests/test_viewer_integration.py -m viewer_integration
+        run: xvfb-run -a --server-args="-screen 0 1280x1024x24" pixi run viewer-test-python
 
       - name: Run Python headless integration tests
-        run: .venv/bin/pytest tests/test_headless_render.py -m viewer_integration
+        run: pixi run headless-test-python

@@ -9,6 +9,7 @@ version = "0.1.0"
 python = ">=3.12"
 
 [feature.py.dependencies]
+python = "3.12.*"
 maturin = "*"
 pytest = "*"
 
@@ -34,8 +35,17 @@ cmd = "pytest packages/atomic-kernels/tests -m 'not viewer_integration'"
 default-environment = "api"
 
 [tasks.build-python]
-cmd = "maturin develop --release --manifest-path crates/ak-py/Cargo.toml"
+cmd = "maturin develop --release"
 cwd = "packages/atomic-kernels"
+default-environment = "api"
+
+[tasks.viewer-test-python]
+cmd = "pytest packages/atomic-kernels/tests/test_viewer_integration.py -m viewer_integration"
+default-environment = "api"
+
+[tasks.headless-test-python]
+cmd = "pytest packages/atomic-kernels/tests/test_headless_render.py -m viewer_integration"
+default-environment = "api"
 
 [tasks.rustdoc]
 cmd = "cargo doc --no-deps -p ak-core -p ak-vis"
