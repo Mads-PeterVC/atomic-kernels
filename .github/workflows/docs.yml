@@ -9,8 +9,10 @@ on:
       - "Cargo.lock"
       - "crates/**"
       - "docs/**"
-      - "pyproject.toml"
-      - "scripts/stage_rustdoc.py"
+      - "packages/atomic-kernels/**"
+      - "packages/atomic-kernels/scripts/stage_rustdoc.py"
+      - "pixi.toml"
+      - "pixi.lock"
       - ".github/workflows/docs.yml"
   workflow_dispatch:
 
@@ -30,10 +32,6 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.13"
-
       - uses: dtolnay/rust-toolchain@stable
 
       - uses: Swatinem/rust-cache@v2
@@ -41,24 +39,24 @@ jobs:
           shared-key: ubuntu-stable-workspace
           cache-workspace-crates: "true"
 
-      - uses: astral-sh/setup-uv@v7
+      - uses: prefix-dev/setup-pixi@v0.10.0
+        with:
+          environments: docs
+          cache: true
 
       - uses: ./.github/actions/install-linux-build-deps
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
 
-      - name: Install docs dependencies
-        run: uv sync --only-group docs --no-install-project
-
       - name: Build docs
-        run: .venv/bin/zensical build --config-file docs/zensical.toml
+        run: pixi run -e docs zensical build --config-file docs/zensical.toml
 
       - name: Build Rust API docs
         run: cargo doc --no-deps -p ak-core -p ak-vis
 
       - name: Stage Rust API docs
-        run: .venv/bin/python scripts/stage_rustdoc.py
+        run: pixi run -e docs python packages/atomic-kernels/scripts/stage_rustdoc.py
 
       - name: Copy WASM
         run: cp -rf wasm-pkg docs/site/pkg

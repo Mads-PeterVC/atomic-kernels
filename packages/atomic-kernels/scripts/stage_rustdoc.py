@@ -7,7 +7,14 @@ import shutil
 from pathlib import Path
 
 
-ROOT = Path(__file__).resolve().parent.parent
+def find_repo_root(start: Path) -> Path:
+    for candidate in (start, *start.parents):
+        if (candidate / "Cargo.toml").exists() and (candidate / "docs").is_dir():
+            return candidate
+    raise SystemExit("repository root not found")
+
+
+ROOT = find_repo_root(Path(__file__).resolve())
 RUSTDOC_SOURCE = ROOT / "target" / "doc"
 RUSTDOC_DESTINATION = ROOT / "docs" / "site" / "api" / "rustdoc"
 
