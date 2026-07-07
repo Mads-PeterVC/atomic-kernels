@@ -1,0 +1,55 @@
+[workspace]
+authors = ["Mads-Peter <machri@phys.au.dk>"]
+channels = ["conda-forge"]
+name = "atomic-kernels"
+platforms = ["osx-arm64"]
+version = "0.1.0"
+
+[dependencies]
+python = ">=3.12"
+
+[feature.py.dependencies]
+maturin = "*"
+pytest = "*"
+
+[feature.docs.dependencies]
+zensical = "*"
+mkdocstrings-python = "*"
+
+[feature.widget.pypi-dependencies]
+ak-widget = { path = "packages/ak-widget", editable = true }
+
+[feature.api.pypi-dependencies]
+atomic-kernels = { path = "packages/atomic-kernels", editable = true }
+
+[environments]
+default = ["py"]
+docs = ["docs"]
+widget = ["widget"]
+api = ["api", "py"]
+
+[tasks.test]
+cmd = "pytest packages/atomic-kernels/tests -m 'not viewer_integration'"
+default-environment = "api"
+
+[tasks.build-python]
+cmd = "maturin develop --release --manifest-path crates/ak-py/Cargo.toml"
+cwd = "packages/atomic-kernels"
+
+[tasks.rustdoc]
+cmd = "cargo doc --no-deps -p ak-core -p ak-vis"
+
+[tasks.docs-build]
+depends-on = ["rustdoc"]
+cmd = "zensical build --config-file docs/zensical.toml"
+default-environment = "docs"
+
+[tasks.docs-serve]
+depends-on = ["rustdoc"]
+cmd = "zensical serve --config-file docs/zensical.toml -o"
+default-environment = "docs"
+
+[tasks.build-wasm]
+cmd = "wasm-pack build crates/ak-wasm --target web"
+
+[tasks]
