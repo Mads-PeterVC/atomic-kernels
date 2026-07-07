@@ -6,13 +6,6 @@
 
 `atomic-kernels` (`ak`) is a Rust-powered viewer and tooling stack for turning ASE atomistic structures into interactive, configurable visualizations across Python scripts, notebooks, and the web.
 
-The current codebase combines:
-
-- Rust crates for core geometry, visualization, and Python bindings
-- A Python package built with `maturin`
-- A WebAssembly build of the visualization tool. 
-- ASE-oriented scripting workflows for customizing visualizations.
-
 ## Crates & Packages
 
 The project consists of the following Rust crates 
