@@ -1,72 +1,62 @@
 # atomic-kernels
 
-`atomic-kernels` (`ak`) is a mixed Rust/Python project for atomistic structure tooling.
+[![Documentation](https://img.shields.io/badge/docs-latest-blue)](https://atomic-kernels.mads-peter.com/)
+[![license](https://shields.io/badge/license-Apache--2.0-blue)](#license)
+[![CI](https://github.com/Mads-PeterVC/atomic-kernels/actions/workflows/CI.yml/badge.svg)](https://github.com/Mads-PeterVC/atomic-kernels/actions/workflows/CI.yml)
+
+`atomic-kernels` (`ak`) is a Rust-powered viewer and tooling stack for turning ASE atomistic structures into interactive, configurable visualizations across Python scripts, notebooks, and the web.
+
 The current codebase combines:
 
 - Rust crates for core geometry, visualization, and Python bindings
 - A Python package built with `maturin`
-- ASE-oriented scripting workflows for neighbor lists and interactive viewing
+- A WebAssembly build of the visualization tool. 
+- ASE-oriented scripting workflows for customizing visualizations.
+
+## Crates & Packages
+
+The project consists of the following Rust crates 
+
+- [`ak-core`](crates/ak-core/): Core structs used for atomic configurations/geometry. 
+- [`ak-vis`](crates/ak-vis/): Defines the [Bevy]()-backed viewer. 
+- [`ak-py`](crates/ak-py/): Python bindings for `ak-core` and `ak-vis`, which is used by the `atomic-kernels` Python package. 
+- [`ak-wasm`](crates/ak-wasm/): WebAssembly version of `ak-vis` to make the viewer embeddable on websites, slides and widgets.
+
+In addition the project has two Python packages
+
+- [`atomic-kernels`](packages/atomic-kernels/): Python side of `ak-py` with Python bindings to viewer and core functionality. 
+- [`ak-widget`](packages/ak-widget/): `AnyWidget`-wrapper for the `ak-wasm` build that is intended to be useable in notebooks (Marimo/Jupyter) and Pyodide (JupyterLite etc.).
 
 ## Documentation
 
-The project now uses a Markdown-first docs structure intended for `Zensical`.
+Find documentation here: [atomic-kernels.mads-peter.com/](https://atomic-kernels.mads-peter.com/)
 
-- Source docs live in [`docs/`](/Users/au616397/Repositories/atomic-kernels/docs)
-- Site configuration lives in [`docs/zensical.toml`](/Users/au616397/Repositories/atomic-kernels/docs/zensical.toml)
-- Source Markdown lives in [`docs/src/`](/Users/au616397/Repositories/atomic-kernels/docs/src)
-- Built site output is written to [`docs/site/`](/Users/au616397/Repositories/atomic-kernels/docs/site)
-- Agent documentation conventions live in [`docs/src/agent-development.md`](/Users/au616397/Repositories/atomic-kernels/docs/src/agent-development.md)
-- The running agent log lives in [`docs/src/agent-development-notes.md`](/Users/au616397/Repositories/atomic-kernels/docs/src/agent-development-notes.md)
+## Examples
 
-## Running the docs locally
+### Beautiful atoms
 
-Install a docs toolchain and serve the site:
+Everything rendered by the viewer is beautiful, no customization needed. 
 
-```bash
-uv sync --group docs
-just docs-serve
-```
+![](imgs/cluster_800x500.png)
 
-## Running Python tests locally
+### Configurable viewer
 
-If you have [`just`](https://github.com/casey/just) installed, use:
+The viewer can be configured, for example a "dark-mode" viewer can be created.
 
-```bash
-just test
-just viewer-test
-```
+![](imgs/dark_config_800x500.png)
 
-`just test` runs the default Python-side suite without GUI viewer integration tests.
-`just viewer-test` runs the real viewer smoke test with the required environment flags.
+### Property-based coloring
 
-## Installing prebuilt wheels
+Select atom coloring based on computed properties (such as MLIP local energies), see [emt_relaxation_coloring.py](packages/atomic-kernels/scripts/emt_relaxation_coloring.py)
 
-Prebuilt wheels are currently published for:
+![](imgs/coloring_800x500.png)
 
-- macOS Apple Silicon (`arm64`)
-- macOS Intel (`x86_64`)
-- Linux `x86_64`
-- Python 3.12 and 3.13
+### Ball & Stick 
 
-Install from a GitHub Release asset:
+Switch between ball-stick & space-filling on a per-atom basis, see [slab_adsorbate_ball_and_stick.py](packages/atomic-kernels/scripts/slab_adsorbate_ball_and_stick.py)
 
-```bash
-pip install "https://github.com/au616397/atomic-kernels/releases/download/vX.Y.Z/atomic_kernels-X.Y.Z-cp313-cp313-macosx_14_0_arm64.whl"
-```
-
-If your platform or Python version is not covered by that wheel, use the source-based
-development setup with `maturin`.
-
-## Current docs scope
-
-The initial docs focus on:
-
-- project overview
-- local development setup
-- repository architecture
-- agent-driven development conventions
+![](imgs/slab_ball_stick_800x500.png)
 
 ## License
 
-This project is licensed under the Apache License 2.0. See
-[`LICENSE`](/Users/au616397/Repositories/atomic-kernels/LICENSE).
+This project is licensed under the Apache License 2.0. See [`LICENSE`](LICENSE).
