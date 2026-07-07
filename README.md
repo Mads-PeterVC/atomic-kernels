@@ -18,7 +18,7 @@ The current codebase combines:
 The project consists of the following Rust crates 
 
 - [`ak-core`](crates/ak-core/): Core structs used for atomic configurations/geometry. 
-- [`ak-vis`](crates/ak-vis/): Defines the [Bevy]()-backed viewer. 
+- [`ak-vis`](crates/ak-vis/): Defines the [Bevy](https://github.com/bevyengine/bevy)-backed viewer. 
 - [`ak-py`](crates/ak-py/): Python bindings for `ak-core` and `ak-vis`, which is used by the `atomic-kernels` Python package. 
 - [`ak-wasm`](crates/ak-wasm/): WebAssembly version of `ak-vis` to make the viewer embeddable on websites, slides and widgets.
 
