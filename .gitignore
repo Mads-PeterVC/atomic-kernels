@@ -80,3 +80,6 @@ docs/site/
 
 # Personal
 plan.md
+# pixi environments
+.pixi/*
+!.pixi/config.toml

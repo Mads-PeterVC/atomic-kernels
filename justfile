@@ -17,6 +17,7 @@ test:
     uv run --group test pytest tests -m "not viewer_integration"
 
 build: 
+    cd packages/atomic-kernels
     maturin develop --release
 
 build-wasm:

@@ -34,8 +34,8 @@ test = [
 ]
 
 [tool.maturin]
-manifest-path = "crates/ak-py/Cargo.toml"
-python-source = "python"
+manifest-path = "../../crates/ak-py/Cargo.toml"
+python-source = "src/"
 module-name = "atomic_kernels._atomic_kernels"
 
 [tool.pytest.ini_options]
