@@ -42,15 +42,15 @@ default-environment = "viewer"
 [tasks.build-python]
 cmd = "maturin develop --release"
 cwd = "packages/ak-viewer"
-default-environment = "api"
+default-environment = "viewer"
 
 [tasks.viewer-test-python]
 cmd = "pytest packages/ak-viewer/tests/test_viewer_integration.py -m viewer_integration"
-default-environment = "api"
+default-environment = "viewer"
 
 [tasks.headless-test-python]
 cmd = "pytest packages/ak-viewer/tests/test_headless_render.py -m viewer_integration"
-default-environment = "api"
+default-environment = "viewer"
 
 [tasks.rustdoc]
 cmd = "cargo doc --no-deps -p ak-core -p ak-vis"

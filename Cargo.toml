@@ -1,7 +1,9 @@
 [workspace]
 members = ["crates/ak-cli",
   "crates/ak-core",
-  "crates/ak-py", "crates/ak-vis", "crates/ak-wasm",
+  "crates/ak-viewer-py", 
+  "crates/ak-vis", 
+  "crates/ak-wasm",
 ]
 resolver = "2"
 

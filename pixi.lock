@@ -548,7 +548,7 @@ packages:
 - pypi: ./packages/ak-viewer
   name: ak-viewer
   version: 0.3.0
-  sha256: 8fab15cb586a7e6d8de0ff961356a26cb4bd65d3ce0f2658b40d9960d0004350
+  sha256: 00da428b4677967c5c00cf8ca18a71dd415a9cec9bed9a239cb83bd4d16d6602
   requires_dist:
   - ase>=3.23.0
   - click>=8.1.0

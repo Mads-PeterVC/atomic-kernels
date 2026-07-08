@@ -116,7 +116,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "ak-py"
+name = "ak-viewer-py"
 version = "0.3.0"
 dependencies = [
  "ak-core",
