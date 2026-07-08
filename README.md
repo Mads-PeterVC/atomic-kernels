@@ -12,13 +12,14 @@ The project consists of the following Rust crates
 
 - [`ak-core`](crates/ak-core/): Core structs used for atomic configurations/geometry. 
 - [`ak-vis`](crates/ak-vis/): Defines the [Bevy](https://github.com/bevyengine/bevy)-backed viewer. 
-- [`ak-py`](crates/ak-py/): Python bindings for `ak-core` and `ak-vis`, which is used by the `atomic-kernels` Python package. 
+- [`ak-viewer-py`](crates/ak-viewer-py/): Python bindings for `ak-core` and `ak-vis`, which is used by the `ak-viewer` Python package. 
 - [`ak-wasm`](crates/ak-wasm/): WebAssembly version of `ak-vis` to make the viewer embeddable on websites, slides and widgets.
 
-In addition the project has two Python packages
+In addition, the project has several Python packages
 
-- [`atomic-kernels`](packages/atomic-kernels/): Python side of `ak-py` with Python bindings to viewer and core functionality. 
-- [`ak-widget`](packages/ak-widget/): `AnyWidget`-wrapper for the `ak-wasm` build that is intended to be useable in notebooks (Marimo/Jupyter) and Pyodide (JupyterLite etc.).
+- [`atomic-kernels`](packages/atomic-kernels/): Python umbrella Package, main entry point for usage. Functionality is controlled by which feature packages are installed. 
+- [`ak-viewer`](packages/ak-viewer/): Viewer Python API including scriptable sessions. Can either be installed standalone or with `atomic_kernels[viewer]`.
+- [`ak-widget`](packages/ak-widget/): `AnyWidget`-wrapper for the `ak-wasm` build that is intended to be useable in notebooks (Marimo/Jupyter) and Pyodide (JupyterLite etc.). Can either be installed standalone or with `atomic_kernels[widget]`.
 
 ## Documentation
 
