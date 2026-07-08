@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from atomic_kernels.viewer import RenderConfig, ViewerConfig
-from atomic_kernels.viewer._config import deserialize_config, serialize_config
+from ak_viewer.viewer import RenderConfig, ViewerConfig
+from ak_viewer.viewer._config import deserialize_config, serialize_config
 
 
 def test_render_atom_palette_round_trips_through_process_config_payload():

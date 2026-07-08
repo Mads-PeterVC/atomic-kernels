@@ -56,7 +56,7 @@ jobs:
         run: cargo doc --no-deps -p ak-core -p ak-vis
 
       - name: Stage Rust API docs
-        run: pixi run -e docs python packages/atomic-kernels/scripts/stage_rustdoc.py
+        run: pixi run -e docs python docs/scripts/stage_rustdoc.py
 
       - name: Copy WASM
         run: cp -rf wasm-pkg docs/site/pkg

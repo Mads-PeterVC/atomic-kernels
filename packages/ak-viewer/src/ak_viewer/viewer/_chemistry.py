@@ -9,6 +9,7 @@ from scipy.spatial import ConvexHull, QhullError
 
 
 from ._utils import bonds_from_neighbor_list, selection_mask
+from ak_viewer.neighbor_list import NeighborList
 
 
 def bonds_from_ase(
@@ -17,7 +18,6 @@ def bonds_from_ase(
     cutoff_multiplier: float = 1.2,
     selection=None,
 ) -> list[tuple[int, int]]:
-    from atomic_kernels.neighbor_list import NeighborList
     cutoffs = natural_cutoffs(atoms, mult=cutoff_multiplier)
     senders, receivers = ase_neighbor_list("ij", atoms, cutoffs)
     bonds = bonds_from_neighbor_list(NeighborList(i=senders, j=receivers, S=[]))
@@ -78,7 +78,6 @@ def faces_from_coordination(
     cutoff_multiplier: float = 1.2,
     selection=None,
 ) -> list[list[int]]:
-    from atomic_kernels.neighbor_list import NeighborList
     cutoffs = natural_cutoffs(atoms, mult=cutoff_multiplier)
     senders, receivers = ase_neighbor_list("ij", atoms, cutoffs)
     neighbors = NeighborList(i=senders, j=receivers, S=[])

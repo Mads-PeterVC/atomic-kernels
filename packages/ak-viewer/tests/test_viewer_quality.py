@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from atomic_kernels.viewer import (
+from ak_viewer.viewer import (
     HIGH,
     LOW,
     MEDIUM,

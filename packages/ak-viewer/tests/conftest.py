@@ -220,10 +220,10 @@ class _ViewerSession:
 def _install_extension_stub() -> None:
     if USE_REAL_EXTENSION:
         return
-    if "atomic_kernels._atomic_kernels" in sys.modules:
+    if "ak_viewer._ak_viewer" in sys.modules:
         return
 
-    module = types.ModuleType("atomic_kernels._atomic_kernels")
+    module = types.ModuleType("ak_viewer._ak_viewer")
     module.ColorConfig = _ColorConfig
     module.LightingConfig = _LightingConfig
     module.RenderConfig = _RenderConfig

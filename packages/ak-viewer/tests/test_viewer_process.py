@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 
-from atomic_kernels.viewer._process import ViewerSessionProxy
+from ak_viewer.viewer._process import ViewerSessionProxy
 
 
 class ConnectionSpy:

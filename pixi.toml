@@ -32,12 +32,12 @@ atomic-kernels = { path = "packages/atomic-kernels", editable = true }
 default = ["py"]
 docs = ["docs"]
 widget = ["widget"]
-viewer = ["viewer"]
+viewer = ["viewer", "py"]
 api = ["api", "py", "viewer"]
 
 [tasks.test]
-cmd = "pytest packages/atomic-kernels/tests -m 'not viewer_integration'"
-default-environment = "api"
+cmd = "pytest packages/ak-viewer/tests -m 'not viewer_integration'"
+default-environment = "viewer"
 
 [tasks.build-python]
 cmd = "maturin develop --release"
@@ -45,11 +45,11 @@ cwd = "packages/ak-viewer"
 default-environment = "api"
 
 [tasks.viewer-test-python]
-cmd = "pytest packages/atomic-kernels/tests/test_viewer_integration.py -m viewer_integration"
+cmd = "pytest packages/ak-viewer/tests/test_viewer_integration.py -m viewer_integration"
 default-environment = "api"
 
 [tasks.headless-test-python]
-cmd = "pytest packages/atomic-kernels/tests/test_headless_render.py -m viewer_integration"
+cmd = "pytest packages/ak-viewer/tests/test_headless_render.py -m viewer_integration"
 default-environment = "api"
 
 [tasks.rustdoc]

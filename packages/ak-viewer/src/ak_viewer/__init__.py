@@ -1,5 +1,7 @@
 from ._ak_viewer import *
 
+from .neighbor_list import neighbor_list
+
 from .viewer import (
     bevy_viewer,
     headless_viewer_session,
@@ -10,6 +12,7 @@ from .viewer import (
 )
 
 __all__ = [
+    "neighbor_list",
     "bevy_viewer",
     "headless_viewer_session",
     "launch_viewer",

@@ -4,9 +4,9 @@ import numpy as np
 import pytest
 from ase import Atoms
 
-from atomic_kernels.viewer import bonds_from_ase, faces_from_coordination
-from atomic_kernels.viewer._color import ScalarRangeTracker
-from atomic_kernels.viewer._session import ViewerSessionFacade
+from ak_viewer.viewer import bonds_from_ase, faces_from_coordination
+from ak_viewer.viewer._color import ScalarRangeTracker
+from ak_viewer.viewer._session import ViewerSessionFacade
 
 
 class BackendSpy:

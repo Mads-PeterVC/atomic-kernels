@@ -5,7 +5,7 @@ import os
 import pytest
 from ase import Atoms
 
-from atomic_kernels.viewer import headless_viewer_session
+from ak_viewer.viewer import headless_viewer_session
 
 
 def _asymmetric_atoms() -> Atoms:
