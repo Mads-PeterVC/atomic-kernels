@@ -73,7 +73,7 @@ def single_center_atom_scene() -> ViewerClickScene:
 
 
 def ui_viewer_config():
-    from atomic_kernels.viewer import RenderConfig, ViewerConfig
+    from ak_viewer.viewer import RenderConfig, ViewerConfig
 
     return ViewerConfig(
         render=RenderConfig(
@@ -84,7 +84,7 @@ def ui_viewer_config():
 
 
 def launch_ready_viewer_session(scene: ViewerClickScene, timeout: float):
-    from atomic_kernels.viewer import viewer_session
+    from ak_viewer.viewer import viewer_session
 
     session = viewer_session(scene.atoms, config=ui_viewer_config())
     if not session.wait_until_ready(timeout=timeout):
