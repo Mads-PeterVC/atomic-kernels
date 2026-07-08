@@ -1,44 +1,37 @@
 [build-system]
-requires = ["maturin>=1.11,<2.0"]
-build-backend = "maturin"
+requires = ["uv_build>=0.8.18,<0.9.0"]
+build-backend = "uv_build"
 
 [project]
 name = "atomic-kernels"
 requires-python = ">=3.12"
 license = "Apache-2.0"
+version = "0.1.0"
 classifiers = [
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Rust",
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Python :: Implementation :: PyPy",
 ]
-dynamic = ["version"]
 dependencies = [
-    "ase>=3.23.0",
     "click>=8.1.0",
-    "numpy>=1.24.4",
     "rich-click>=1.8.0",
-    "scipy>=1.10.1",
 ]
+
+[project.optional-dependencies]
+viewer = ["ak-viewer"]
+widget = ["ak-widget"]
+all = ["atomic-kernels[viewer,widget]"]
 
 [project.scripts]
 ak = "atomic_kernels.cli:main"
 
+[tool.uv.sources]
+ak-viewer = { path = "../ak-viewer", editable = true }
+ak-widget = { path = "../ak-widget", editable = true }
+
 [dependency-groups]
-docs = [
-    "mkdocstrings-python",
-    "zensical",
-]
-test = [
-    "pytest>=8.3.0",
+dev = [
+    "pytest>=9.1.1",
 ]
 
-[tool.maturin]
-manifest-path = "../../crates/ak-py/Cargo.toml"
-python-source = "src/"
-module-name = "atomic_kernels._atomic_kernels"
-
-[tool.pytest.ini_options]
-markers = [
-    "viewer_integration: launches the real Bevy viewer and waits for readiness",
-]

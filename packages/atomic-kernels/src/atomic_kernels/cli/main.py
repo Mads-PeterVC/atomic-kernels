@@ -5,6 +5,7 @@ from __future__ import annotations
 import rich_click as click
 
 from .view import view_command
+from .features import list_features_command
 
 click.rich_click.COMMAND_GROUPS = {
     "ak": [
@@ -22,7 +23,7 @@ def main() -> None:
 
 
 main.add_command(view_command, name="view")
-
+main.add_command(list_features_command, name="features")
 
 if __name__ == "__main__":
     main()
