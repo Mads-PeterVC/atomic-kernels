@@ -87,7 +87,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.10.0
         with:
-          environments: api
+          environments: viewer
           cache: true
 
       - name: Build extension in-place
@@ -121,7 +121,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.10.0
         with:
-          environments: api
+          environments: viewer
           cache: true
 
       - name: Build extension in-place

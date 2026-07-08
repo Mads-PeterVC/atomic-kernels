@@ -3,7 +3,7 @@
 These functions are the top-level entry points for launching or preparing
 viewer sessions from ASE `Atoms` objects or trajectories.
 
-::: atomic_kernels.viewer
+::: ak_viewer.viewer
     options:
       members:
         - bevy_viewer

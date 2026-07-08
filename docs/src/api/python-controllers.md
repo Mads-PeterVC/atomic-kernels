@@ -5,14 +5,14 @@ the session facade.
 
 ## Camera
 
-::: atomic_kernels.viewer._camera
+::: ak_viewer.viewer._camera
     options:
       members:
         - CameraController
 
 ## Colors and Selection
 
-::: atomic_kernels.viewer._color
+::: ak_viewer.viewer._color
     options:
       members:
         - ScalarRangeTracker
@@ -21,7 +21,7 @@ the session facade.
 
 ## Rendering
 
-::: atomic_kernels.viewer._render
+::: ak_viewer.viewer._render
     options:
       members:
         - RenderController

@@ -1,6 +1,6 @@
 # Python Neighbor Lists
 
-::: atomic_kernels.neighbor_list
+::: ak_viewer.neighbor_list
     options:
       members:
         - NeighborList
