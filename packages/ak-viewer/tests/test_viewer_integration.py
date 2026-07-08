@@ -59,7 +59,7 @@ def test_single_center_atom_scene_declares_expected_click_target():
     reason="viewer smoke tests require a windowing session",
 )
 def test_viewer_session_reports_ready_and_accepts_commands():
-    from atomic_kernels.viewer import RenderConfig, ViewerConfig, viewer_session
+    from ak_viewer.viewer import RenderConfig, ViewerConfig, viewer_session
 
     atoms = Atoms("H2", positions=[(0.0, 0.0, 0.0), (0.0, 0.0, 0.74)])
     config = ViewerConfig(render=RenderConfig(show_ui=False))
@@ -89,7 +89,7 @@ def test_viewer_session_reports_ready_and_accepts_commands():
     reason="viewer smoke tests require a windowing session",
 )
 def test_viewer_session_handles_live_trajectory_commands():
-    from atomic_kernels.viewer import RenderConfig, ViewerConfig, viewer_session
+    from ak_viewer.viewer import RenderConfig, ViewerConfig, viewer_session
 
     frames = [
         Atoms("H2", positions=[(0.0, 0.0, 0.0), (0.0, 0.0, 0.74)]),
