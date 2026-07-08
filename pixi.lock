@@ -609,14 +609,14 @@ packages:
   requires_python: '>=3.8'
 - pypi: ./packages/atomic-kernels
   name: atomic-kernels
-  version: 0.3.0
-  sha256: 1b92f23afb3dffde5dcb3d5b4b3fd23f56c46156fa2130dad5110dc82fcc2f4c
+  version: 0.1.0
+  sha256: 7ef72263d2dbd975927454a1857c7579d3c0f11f949f5eee01d28cff3243a5f6
   requires_dist:
-  - ase>=3.23.0
   - click>=8.1.0
-  - numpy>=1.24.4
   - rich-click>=1.8.0
-  - scipy>=1.10.1
+  - ak-viewer @ file:///Users/au616397/Repositories/atomic-kernels/packages/ak-viewer ; extra == 'viewer'
+  - ak-widget @ file:///Users/au616397/Repositories/atomic-kernels/packages/ak-widget ; extra == 'widget'
+  - atomic-kernels[viewer,widget] ; extra == 'all'
   requires_python: '>=3.12'
 - conda: https://conda.anaconda.org/conda-forge/linux-64/bzip2-1.0.8-hda65f42_9.conda
   sha256: 0b75d45f0bba3e95dc693336fa51f40ea28c980131fec438afb7ce6118ed05f6
