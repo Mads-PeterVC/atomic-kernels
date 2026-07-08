@@ -4,7 +4,7 @@ import time
 
 from ase.build import bulk
 
-from atomic_kernels import RenderConfig, ViewerConfig, viewer_session
+from ak_viewer import RenderConfig, ViewerConfig, viewer_session
 
 
 if __name__ == "__main__":

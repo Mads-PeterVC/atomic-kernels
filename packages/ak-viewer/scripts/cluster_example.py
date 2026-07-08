@@ -4,7 +4,7 @@ import numpy as np
 from ase import Atoms
 from ase.cluster import *
 
-from atomic_kernels import viewer_session, ViewerConfig, RenderConfig
+from ak_viewer import viewer_session, ViewerConfig, RenderConfig
 
 
 def large_cluster() -> Atoms:

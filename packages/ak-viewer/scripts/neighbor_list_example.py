@@ -1,5 +1,5 @@
 from ase import Atoms
-from atomic_kernels import neighbor_list as ak_neighbor_list
+from ak_viewer import neighbor_list as ak_neighbor_list
 import numpy as np
 from timeit import default_timer as dt
 

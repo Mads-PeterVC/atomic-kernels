@@ -5,7 +5,7 @@ from ase.build import add_adsorbate, fcc111, molecule
 from ase.neighborlist import natural_cutoffs, neighbor_list
 from time import sleep
 
-from atomic_kernels import viewer_session, ViewerConfig
+from ak_viewer import viewer_session, ViewerConfig
 
 
 def adsorbate_bonds(atoms) -> np.ndarray:

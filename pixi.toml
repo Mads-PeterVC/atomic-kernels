@@ -22,6 +22,9 @@ mkdocstrings-python = "*"
 [feature.widget.pypi-dependencies]
 ak-widget = { path = "packages/ak-widget", editable = true }
 
+[feature.viewer.pypi-dependencies]
+ak-viewer = { path = "packages/ak-viewer", editable = true }
+
 [feature.api.pypi-dependencies]
 atomic-kernels = { path = "packages/atomic-kernels", editable = true }
 
@@ -29,7 +32,8 @@ atomic-kernels = { path = "packages/atomic-kernels", editable = true }
 default = ["py"]
 docs = ["docs"]
 widget = ["widget"]
-api = ["api", "py"]
+viewer = ["viewer"]
+api = ["api", "py", "viewer"]
 
 [tasks.test]
 cmd = "pytest packages/atomic-kernels/tests -m 'not viewer_integration'"
@@ -37,7 +41,7 @@ default-environment = "api"
 
 [tasks.build-python]
 cmd = "maturin develop --release"
-cwd = "packages/atomic-kernels"
+cwd = "packages/ak-viewer"
 default-environment = "api"
 
 [tasks.viewer-test-python]

@@ -5,8 +5,8 @@ This shows how to customize the viewer appearance using the configuration classe
 """
 
 from ase.build import bulk
-from atomic_kernels import ViewerConfig, LightingConfig, ColorConfig, RenderConfig
-from atomic_kernels.viewer import bevy_viewer
+from ak_viewer import ViewerConfig, LightingConfig, ColorConfig, RenderConfig
+from ak_viewer.viewer import bevy_viewer
 
 # Build a simple structure
 atoms = bulk('Cu', 'fcc', a=3.615).repeat((3, 3, 3))

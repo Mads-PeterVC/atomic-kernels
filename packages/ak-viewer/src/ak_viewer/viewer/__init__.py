@@ -8,7 +8,7 @@ from typing import Optional
 
 from ase import Atoms
 
-from atomic_kernels._atomic_kernels import (
+from ak_viewer._ak_viewer import (
     ColorConfig,
     LightingConfig,
     PreparedHeadlessRender,

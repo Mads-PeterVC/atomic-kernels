@@ -4,7 +4,7 @@ import numpy as np
 from ase.build import molecule
 from ase.neighborlist import natural_cutoffs, neighbor_list
 
-from atomic_kernels import viewer_session
+from ak_viewer import viewer_session
 
 
 def explicit_bonds(atoms):

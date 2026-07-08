@@ -2,7 +2,7 @@ from pathlib import Path
 
 from ase import Atoms
 
-from atomic_kernels.viewer import (
+from ak_viewer import (
     RenderConfig,
     ViewerConfig,
     headless_viewer_session,

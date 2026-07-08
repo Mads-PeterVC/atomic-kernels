@@ -7,7 +7,7 @@ from ase.constraints import FixAtoms
 from ase.optimize import BFGS
 from time import sleep
 
-from atomic_kernels import viewer_session, ViewerConfig
+from ak_viewer import viewer_session, ViewerConfig
 
 
 def build_deformed_slab():

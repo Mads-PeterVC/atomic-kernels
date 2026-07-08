@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 from ase import Atoms
 
-from atomic_kernels import viewer_session
+from ak_viewer import viewer_session
 
 
 def tetrahedral_cluster() -> Atoms:

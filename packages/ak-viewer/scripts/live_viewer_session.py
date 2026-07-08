@@ -6,7 +6,7 @@ import numpy as np
 from ase import Atoms
 from ase.build import molecule
 
-from atomic_kernels import viewer_session
+from ak_viewer import viewer_session
 
 
 def displaced_frames(base: Atoms, count: int) -> list[Atoms]:

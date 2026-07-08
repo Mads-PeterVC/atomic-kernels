@@ -5,7 +5,7 @@ import time
 import numpy as np
 from ase.build import fcc111
 
-from atomic_kernels import viewer_session
+from ak_viewer import viewer_session
 
 
 if __name__ == "__main__":

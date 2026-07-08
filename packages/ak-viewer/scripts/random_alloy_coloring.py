@@ -5,7 +5,7 @@ from ase.build import bulk
 from ase.calculators.emt import EMT
 from ase.neighborlist import neighbor_list
 
-from atomic_kernels import viewer_session
+from ak_viewer import viewer_session
 
 
 def build_random_alloy():

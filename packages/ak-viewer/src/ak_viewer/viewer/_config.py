@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from atomic_kernels._atomic_kernels import (
+from ak_viewer._ak_viewer import (
     ColorConfig,
     LightingConfig,
     RenderConfig,

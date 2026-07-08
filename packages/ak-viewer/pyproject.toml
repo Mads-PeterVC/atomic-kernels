@@ -1,0 +1,38 @@
+[project]
+name = "ak-viewer"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Mads-Peter", email = "machri@phys.au.dk" }
+]
+license = "Apache-2.0"
+classifiers = [
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+]
+requires-python = ">=3.12"
+dynamic = ["version"]
+
+dependencies = [
+    "ase>=3.23.0",
+    "click>=8.1.0",
+    "numpy>=1.24.4",
+    "rich-click>=1.8.0",
+    "scipy>=1.10.1",
+]
+
+[build-system]
+requires = ["maturin>=1.11,<2.0"]
+build-backend = "maturin"
+
+[tool.maturin]
+manifest-path = "../../crates/ak-py/Cargo.toml"
+python-source = "src/"
+module-name = "ak_viewer._ak_viewer"
+
+[tool.pytest.ini_options]
+markers = [
+    "viewer_integration: launches the real Bevy viewer and waits for readiness",
+]

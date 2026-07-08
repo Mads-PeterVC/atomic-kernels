@@ -1,12 +1,14 @@
-from atomic_kernels.viewer import bevy_viewer
+from ak_viewer.viewer import bevy_viewer
+from ak_viewer import ViewerConfig, RenderConfig
 import numpy as np
 
 from ase.build import molecule, bulk
 from ase import Atoms
 from ase.collections import g2
 
+
 def build() -> Atoms:
-    base = bulk('Cu', 'fcc', a=3.615).repeat((21, 21, 21))
+    base = bulk("Cu", "fcc", a=3.615).repeat((21, 21, 21))
     base.center(vacuum=0.0)
 
     base_positions = base.get_positions()
@@ -21,11 +23,7 @@ def build() -> Atoms:
     distances = np.linalg.norm(np_positions - base_center, axis=1)
     r_core = radius * 0.6
     r_mid = radius * 0.85
-    symbols = np.where(
-        distances < r_core,
-        'Cu',
-        np.where(distances < r_mid, 'Ag', 'Au')
-    )
+    symbols = np.where(distances < r_core, "Cu", np.where(distances < r_mid, "Ag", "Au"))
     nanoparticle.set_chemical_symbols(symbols.tolist())
 
     nanoparticle.center(vacuum=8.0)
@@ -74,6 +72,7 @@ def build() -> Atoms:
 
     return atoms
 
+
 atoms = build()
 
 trajectory = [atoms]
@@ -85,5 +84,8 @@ for mol_name in g2.names:
     trajectory.append(mol)
 
 
+config = ViewerConfig(
+    render=RenderConfig(ico_subdiv=4),
+)
 
-bevy_viewer(trajectory)
+bevy_viewer(trajectory, config=config)

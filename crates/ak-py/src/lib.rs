@@ -19,7 +19,7 @@ use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
 
 #[pymodule]
-fn _atomic_kernels(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
+fn _ak_viewer(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(distance_matrix, m)?)?;
     m.add_function(wrap_pyfunction!(neighborlist, m)?)?;
     m.add_function(wrap_pyfunction!(trajectory_viewer, m)?)?;

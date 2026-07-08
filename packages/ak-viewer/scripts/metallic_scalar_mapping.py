@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 from ase.build import bulk
 
-from atomic_kernels import viewer_session
+from ak_viewer import viewer_session
 
 
 def build_structure():

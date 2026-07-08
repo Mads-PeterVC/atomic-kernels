@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from atomic_kernels._atomic_kernels import RenderConfig, ViewerConfig
+from ak_viewer._ak_viewer import RenderConfig, ViewerConfig
 
 
 QUALITY_PRESET_ICO_SUBDIV = {
