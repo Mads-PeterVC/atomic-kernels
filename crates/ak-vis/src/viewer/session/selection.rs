@@ -1,6 +1,21 @@
 use ak_core::Trajectory;
 
-use super::{ImageSelectionFrames, SelectedImageAtom, SelectionFrames};
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SelectionFrames {
+    pub(super) frames: Vec<Vec<bool>>,
+    pub(super) ordered: Vec<Vec<usize>>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct SelectedImageAtom {
+    pub atom_index: usize,
+    pub image_offset: [i32; 3],
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ImageSelectionFrames {
+    pub(super) frames: Vec<Vec<SelectedImageAtom>>,
+}
 
 impl SelectionFrames {
     pub fn new(traj: &Trajectory) -> Self {
