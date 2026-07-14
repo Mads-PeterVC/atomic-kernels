@@ -245,7 +245,6 @@ def _install_extension_stub() -> None:
     )
     module.trajectory_viewer = lambda atoms, config=None: None
     module.viewer = lambda atoms, config=None: None
-    module.neighborlist = lambda atoms, cutoff: ([], [], [])
     sys.modules[module.__name__] = module
 
 

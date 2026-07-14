@@ -4,12 +4,12 @@ from collections import defaultdict
 
 from ase import Atoms
 from ase.neighborlist import natural_cutoffs, neighbor_list as ase_neighbor_list
+from ak_neighborlist import NeighborList
 import numpy as np
 from scipy.spatial import ConvexHull, QhullError
 
 
 from ._utils import bonds_from_neighbor_list, selection_mask
-from ak_viewer.neighbor_list import NeighborList
 
 
 def bonds_from_ase(

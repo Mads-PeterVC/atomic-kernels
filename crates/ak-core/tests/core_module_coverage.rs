@@ -1,10 +1,6 @@
 use std::io::{BufReader, Cursor};
 
-use ak_core::calculator::{Calculator, LennardJones, PairPotential};
-use ak_core::{
-    AtomicNumber, Cell, PERIODIC_TABLE, Pbc, Structure, Trajectory, distance_matrix,
-    naive_neighbor_list, naive_neighbor_list_pbc,
-};
+use ak_core::{AtomicNumber, Cell, PERIODIC_TABLE, Pbc, Structure, Trajectory, distance_matrix};
 use nalgebra::Vector3;
 
 fn example_structure() -> Structure {
@@ -75,34 +71,14 @@ fn trajectory_append_and_view_work() {
 }
 
 #[test]
-fn distance_matrix_and_neighbor_list_cover_geometry_helpers() {
+fn distance_matrix_covers_geometry_helpers() {
     let structure = example_structure();
     let view = structure.view();
 
     let distances = distance_matrix(&view);
-    let neighbors = naive_neighbor_list(&view, 1.1);
 
     assert_eq!(distances.len(), 9);
     assert_eq!(distances[1], 1.0);
-    assert_eq!(neighbors.i, vec![0, 0]);
-    assert_eq!(neighbors.j, vec![1, 2]);
-    assert_eq!(neighbors.distance.unwrap(), vec![1.0, 1.0]);
-}
-
-#[test]
-fn periodic_neighbor_list_finds_wrapped_neighbor() {
-    let periodic = Structure::new(
-        vec![[0.0, 0.0, 0.0], [2.7, 0.0, 0.0]],
-        vec![1, 1],
-        [[3.0, 0.0, 0.0], [0.0, 3.0, 0.0], [0.0, 0.0, 3.0]],
-        [true, false, false],
-    );
-
-    let neighbors = naive_neighbor_list_pbc(&periodic.view(), 0.5);
-
-    assert_eq!(neighbors.i, vec![0, 1]);
-    assert_eq!(neighbors.j, vec![1, 0]);
-    assert_eq!(neighbors.shifts, vec![[-1, 0, 0], [1, 0, 0]]);
 }
 
 #[test]
@@ -113,32 +89,4 @@ fn periodic_table_exposes_consistent_element_data() {
     assert_eq!(hydrogen.symbol, "H");
     assert_eq!(oxygen.number.get(), 8);
     assert!(oxygen.covalent_radius > 0.0);
-}
-
-#[test]
-fn lennard_jones_implements_pair_potential_and_calculator_contracts() {
-    let sigma = 1.0;
-    let epsilon = 2.0;
-    let rmin = 2.0_f64.powf(1.0 / 6.0) * sigma;
-    let structure = Structure::new(
-        vec![[0.0, 0.0, 0.0], [rmin, 0.0, 0.0]],
-        vec![1, 1],
-        [[10.0, 0.0, 0.0], [0.0, 10.0, 0.0], [0.0, 0.0, 10.0]],
-        [false, false, false],
-    );
-    let potential = LennardJones::new(epsilon, sigma, 5.0);
-    let result = potential.calculate(&structure.view()).unwrap();
-
-    assert_eq!(potential.name(), "Lennard Jones");
-    assert_eq!(potential.cutoff(), 5.0);
-    assert_eq!(potential.pair_energy(rmin), -epsilon);
-    assert_eq!(result.energy, Some(-epsilon));
-    assert!(
-        result
-            .forces
-            .unwrap()
-            .into_iter()
-            .flatten()
-            .all(|component: f64| component.abs() < 1e-10)
-    );
 }

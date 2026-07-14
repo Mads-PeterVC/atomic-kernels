@@ -19,14 +19,16 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+neighborlist = ["ak-neighborlist"]
 viewer = ["ak-viewer"]
 widget = ["ak-widget"]
-all = ["atomic-kernels[viewer,widget]"]
+all = ["atomic-kernels[neighborlist,viewer,widget]"]
 
 [project.scripts]
 ak = "atomic_kernels.cli:main"
 
 [tool.uv.sources]
+ak-neighborlist = { path = "../ak-neighborlist", editable = true }
 ak-viewer = { path = "../ak-viewer", editable = true }
 ak-widget = { path = "../ak-widget", editable = true }
 
@@ -34,4 +36,3 @@ ak-widget = { path = "../ak-widget", editable = true }
 dev = [
     "pytest>=9.1.1",
 ]
-

@@ -1,6 +1,9 @@
 [workspace]
-members = ["crates/ak-cli",
+members = ["crates/ak-calculators",
+  "crates/ak-cli",
   "crates/ak-core",
+  "crates/ak-neighborlist",
+  "crates/ak-neighborlist-py",
   "crates/ak-viewer-py", 
   "crates/ak-vis", 
   "crates/ak-wasm",

@@ -14,7 +14,6 @@ from ak_viewer.viewer._utils import (
     normalize_rgba,
     selection_mask,
 )
-# from atomic_kernels.neighbor_list import NeighborList
 
 
 def test_normalize_colormap_adds_alpha_channel():

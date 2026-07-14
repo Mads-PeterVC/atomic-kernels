@@ -104,6 +104,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ak-calculators"
+version = "0.3.0"
+dependencies = [
+ "ak-core",
+ "ak-neighborlist",
+]
+
+[[package]]
 name = "ak-cli"
 version = "0.3.0"
 
@@ -113,6 +121,24 @@ version = "0.3.0"
 dependencies = [
  "nalgebra",
  "once_cell",
+]
+
+[[package]]
+name = "ak-neighborlist"
+version = "0.3.0"
+dependencies = [
+ "ak-core",
+ "nalgebra",
+]
+
+[[package]]
+name = "ak-neighborlist-py"
+version = "0.3.0"
+dependencies = [
+ "ak-core",
+ "ak-neighborlist",
+ "numpy",
+ "pyo3",
 ]
 
 [[package]]

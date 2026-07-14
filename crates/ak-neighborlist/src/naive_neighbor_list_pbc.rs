@@ -1,5 +1,7 @@
-use crate::{NeighborList, StructureView};
+use ak_core::StructureView;
 use nalgebra::Vector3;
+
+use crate::NeighborList;
 
 pub fn naive_neighbor_list_pbc(view: &StructureView, cutoff: f64) -> NeighborList {
     let n_atoms = view.len();
@@ -60,25 +62,5 @@ pub fn naive_neighbor_list_pbc(view: &StructureView, cutoff: f64) -> NeighborLis
         j: j_indices,
         shifts: shift,
         distance: Some(distances),
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use crate::Structure;
-    use crate::geometry::neighbor_list::naive_neighbor_list_pbc;
-
-    fn test_structure() -> Structure {
-        let positions = vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]];
-        let numbers = vec![1, 1];
-        let cell = [[3.0, 0.0, 0.0], [0.0, 3.0, 0.0], [0.0, 0.0, 3.0]];
-        let pbc = [true, false, false];
-        Structure::new(positions, numbers, cell, pbc)
-    }
-    #[test]
-    fn test() {
-        let structure = test_structure();
-        let nl = naive_neighbor_list_pbc(&structure.view(), 1.5);
-        assert_eq!(nl.i.len(), 2)
     }
 }

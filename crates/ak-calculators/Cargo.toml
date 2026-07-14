@@ -1,0 +1,9 @@
+[package]
+name = "ak-calculators"
+version.workspace = true
+edition = "2024"
+license = "Apache-2.0"
+
+[dependencies]
+ak-core = { path = "../ak-core" }
+ak-neighborlist = { path = "../ak-neighborlist" }

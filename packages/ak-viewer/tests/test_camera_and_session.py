@@ -3,7 +3,6 @@ from __future__ import annotations
 import pytest
 from ase import Atoms
 
-# from ak_viewer.neighbor_list import NeighborList
 from ak_viewer.viewer._camera import CameraController, _structure_to_world
 from ak_viewer.viewer._session import ViewerSessionFacade
 
