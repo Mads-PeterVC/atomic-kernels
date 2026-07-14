@@ -26,7 +26,7 @@ jobs:
     env:
       CARGO_INCREMENTAL: "0"
       CARGO_TERM_COLOR: always
-      RUSTFLAGS: "-C link-arg=-fuse-ld=bfd"
+      RUSTFLAGS: "-C link-arg=-fuse-ld=lld -C link-arg=-Wl,--no-threads"
     steps:
       - uses: actions/checkout@v6
 
@@ -48,7 +48,7 @@ jobs:
     env:
       CARGO_INCREMENTAL: "0"
       CARGO_TERM_COLOR: always
-      RUSTFLAGS: "-C link-arg=-fuse-ld=bfd"
+      RUSTFLAGS: "-C link-arg=-fuse-ld=lld -C link-arg=-Wl,--no-threads"
       WGPU_BACKEND: vulkan
     steps:
       - uses: actions/checkout@v6
@@ -73,7 +73,7 @@ jobs:
       CARGO_INCREMENTAL: "0"
       CARGO_TERM_COLOR: always
       ATOMIC_KERNELS_USE_REAL_EXTENSION: "1"
-      RUSTFLAGS: "-C link-arg=-fuse-ld=bfd"
+      RUSTFLAGS: "-C link-arg=-fuse-ld=lld -C link-arg=-Wl,--no-threads"
       WGPU_BACKEND: vulkan
     steps:
       - uses: actions/checkout@v6
@@ -108,7 +108,7 @@ jobs:
       ATOMIC_KERNELS_USE_REAL_EXTENSION: "1"
       ATOMIC_KERNELS_RUN_VIEWER_TESTS: "1"
       ATOMIC_KERNELS_RUN_RUST_HEADLESS_TESTS: "1"
-      RUSTFLAGS: "-C link-arg=-fuse-ld=bfd"
+      RUSTFLAGS: "-C link-arg=-fuse-ld=lld -C link-arg=-Wl,--no-threads"
       WGPU_BACKEND: vulkan
     steps:
       - uses: actions/checkout@v6
