@@ -8,6 +8,41 @@ and format defined in
 
 Entries are listed newest first.
 
+## 2026-07-14 - ak-vis module refactor and developer README
+
+- Commits: `0f2a203`, `27f44fe`
+- Agent: `Codex (GPT-5, OpenAI)`
+- Context: `ak-vis` had reached a point where core viewer files mixed several
+  responsibilities and were hard to navigate, especially around session state, ECS
+  systems, headless rendering, and session tests. After the split, the crate also
+  needed a developer-focused README that explains the new layout and gives future
+  contributors a fast route to the relevant subsystem.
+- Implementation: Refactored the large `crates/ak-vis/src/viewer/{session,systems,headless}.rs`
+  modules into facade entrypoints backed by focused child modules. Session state now
+  separates commands, handles/readiness, appearance, topology, selection, snapshots,
+  state, and command application under `crates/ak-vis/src/viewer/session/`. Viewer ECS
+  behavior now separates rendering, selection, measurement cues, camera, lighting,
+  command handling, and snapshot sync under `crates/ak-vis/src/viewer/systems/`.
+  Headless export internals moved into `crates/ak-vis/src/viewer/headless/`, and the
+  large session test module was split by behavior under
+  `crates/ak-vis/src/viewer/session/tests/`. Added
+  `crates/ak-vis/README.md` as a developer orientation guide covering the crate map,
+  viewer runtime flow, task-based pointers, module boundaries, examples, and
+  recommended checks.
+- Difficulty: The main friction was keeping a pure reorganization from becoming a
+  behavior change. Moving code across sibling modules exposed Rust privacy boundaries
+  that had been implicit in the previous single-file layout, especially for
+  `ViewerState` helpers, headless capture resources, and measurement-cue test access.
+  The safest path was to keep facade modules stable and use narrow `pub(super)`
+  visibility where split modules still needed to cooperate.
+- Constraints: The refactor intentionally did not change viewer behavior, public API,
+  command semantics, render output, or example behavior. The README is a developer
+  navigation document rather than a user tutorial or rustdoc replacement, and should
+  stay aligned with the facade-module structure if the crate layout changes again.
+- Follow-up: Keep future `ak-vis` additions in the focused modules instead of growing
+  the facades back into implementation files. If public APIs are added, update
+  `crates/ak-vis/README.md` when the change affects where developers should look.
+
 ## 2026-03-19 - Python-side viewer quality presets and CLI fidelity aliases
 
 - Commits: `79f72f4`, `92386c8`
