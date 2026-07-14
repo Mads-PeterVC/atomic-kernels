@@ -8,6 +8,40 @@ and format defined in
 
 Entries are listed newest first.
 
+## 2026-07-14 - Neighbor-list crate split and Rust CI example isolation
+
+- Commits: `9472b71`, `6a6ad23`, `9c25438`, `cdff3b1`, `ba75f6c`
+- Agent: `Codex (GPT-5, OpenAI)`
+- Context: Neighbor-list development needed its own Rust and Python package boundary so
+  algorithm work could continue without coupling to viewer or calculator code. The
+  split also forced the project to clarify that `ak-core` is the shared structure and
+  geometry model crate, not the owner of every algorithm built on those types.
+- Implementation: Added `crates/ak-neighborlist` for the Rust neighbor-list result type
+  and naive/PBC builders, `crates/ak-neighborlist-py` for the PyO3 extension, and
+  `packages/ak-neighborlist` exposing the `ak_neighborlist` Python API. Moved the
+  Lennard-Jones and pair-potential calculator code into `crates/ak-calculators`, then
+  removed the old calculator and neighbor-list exports from `ak-core`. `ak-viewer`
+  now depends on `ak-neighborlist`, imports `NeighborList` from `ak_neighborlist`, and
+  no longer exports `ak_viewer.neighbor_list`. The Rust test workflow now runs
+  `cargo test --workspace --locked --lib --tests` and builds `ak-vis` examples in a
+  separate step so library/integration tests and example-link coverage fail
+  independently.
+- Difficulty: The code move itself was mostly mechanical, but CI exposed an important
+  workflow trap. Plain `cargo test --workspace --locked` compiles example binaries, and
+  the Ubuntu runner hit a `rust-lld` bus error while linking an `ak-vis` example. A
+  GNU `bfd` linker workaround avoided that crash but was slow enough to be terminated
+  with exit code 143, and a follow-up `rust-lld --no-threads` attempt failed because
+  the bundled linker did not support that flag. The durable fix was to split the CI
+  commands rather than hide examples or rely on brittle global linker flags.
+- Constraints: This refactor intentionally changes public import paths:
+  Rust callers should use `ak_neighborlist::{...}` and `ak_calculators::{...}` instead
+  of the removed `ak_core` re-exports, and Python callers should import
+  `ak_neighborlist.neighbor_list` rather than `ak_viewer.neighbor_list`. The neighbor
+  list algorithms are unchanged; the work only moves ownership and package boundaries.
+- Follow-up: Update public docs that still describe calculators or neighbor-list helpers
+  as `ak-core`/`ak-viewer` APIs, especially `docs/src/api/rust.md` and any user-facing
+  examples that import from the old Python path.
+
 ## 2026-03-19 - Python-side viewer quality presets and CLI fidelity aliases
 
 - Commits: `79f72f4`, `92386c8`
