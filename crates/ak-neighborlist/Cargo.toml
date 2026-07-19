@@ -1,0 +1,9 @@
+[package]
+name = "ak-neighborlist"
+version.workspace = true
+edition = "2024"
+license = "Apache-2.0"
+
+[dependencies]
+ak-core = { path = "../ak-core" }
+nalgebra = "0.34.1"

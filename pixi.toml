@@ -44,6 +44,12 @@ cmd = "maturin develop --release"
 cwd = "packages/ak-viewer"
 default-environment = "viewer"
 
+[tasks.build-python-nl]
+cmd = "maturin develop --release"
+cwd = "packages/ak-neighborlist"
+default-environment = "viewer"
+
+
 [tasks.viewer-test-python]
 cmd = "pytest packages/ak-viewer/tests/test_viewer_integration.py -m viewer_integration"
 default-environment = "viewer"

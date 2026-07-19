@@ -62,7 +62,10 @@ jobs:
       - uses: ./.github/actions/install-linux-build-deps
 
       - name: Run Rust tests
-        run: cargo test --workspace --locked
+        run: cargo test --workspace --locked --lib --tests
+
+      - name: Build ak-vis examples
+        run: cargo build -p ak-vis --examples --locked
 
   python-tests:
     name: Python Tests

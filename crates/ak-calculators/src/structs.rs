@@ -1,4 +1,4 @@
-use crate::StructureView;
+use ak_core::StructureView;
 
 #[derive(Debug)]
 pub enum CalculatorError {

@@ -1,4 +1,6 @@
-use crate::{NeighborList, StructureView};
+use ak_core::StructureView;
+
+use crate::NeighborList;
 
 fn squared_distance(positions: &[[f64; 3]], i: usize, j: usize) -> f64 {
     let dx = positions[i][0] - positions[j][0];

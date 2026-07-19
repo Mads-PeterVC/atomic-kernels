@@ -1,5 +1,5 @@
 from ase import Atoms
-from ak_viewer import neighbor_list as ak_neighbor_list
+from ak_neighborlist import neighbor_list as ak_neighbor_list
 import numpy as np
 from timeit import default_timer as dt
 
@@ -45,7 +45,6 @@ for idx in range(len(ase_S)):
     dist = np.linalg.norm(d)
 
     print(f'{ase_i[idx]} {ase_j[idx]} {ase_S[idx]} {dist}')
-
 
 
 

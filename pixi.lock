@@ -54,6 +54,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/typing_extensions-4.16.0-pyhcf101f3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/tzdata-2025c-hc9c84f9_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/wheel-0.47.0-pyhd8ed1ab_0.conda
+      - pypi: ./packages/ak-neighborlist
       - pypi: ./packages/ak-viewer
       - pypi: ./packages/atomic-kernels
       - pypi: https://files.pythonhosted.org/packages/10/bd/c038d7cc38edc1aa5bf91ab8068b63d4308c66c4c8bb3cbba7dfbc049f9c/pyparsing-3.3.2-py3-none-any.whl
@@ -100,6 +101,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/python-3.12.13-h8561d8f_0_cpython.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/readline-8.3-h46df422_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/tk-8.6.13-h010d191_3.conda
+      - pypi: ./packages/ak-neighborlist
       - pypi: ./packages/ak-viewer
       - pypi: ./packages/atomic-kernels
       - pypi: https://files.pythonhosted.org/packages/08/ef/b3c6b9b5be2f82416d73fe2ed2e96e2793cd80e7510bd6a17ca79cdd88ec/fonttools-4.63.0-cp312-cp312-macosx_10_13_universal2.whl
@@ -338,6 +340,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/typing_extensions-4.16.0-pyhcf101f3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/tzdata-2025c-hc9c84f9_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/wheel-0.47.0-pyhd8ed1ab_0.conda
+      - pypi: ./packages/ak-neighborlist
       - pypi: ./packages/ak-viewer
       - pypi: https://files.pythonhosted.org/packages/10/bd/c038d7cc38edc1aa5bf91ab8068b63d4308c66c4c8bb3cbba7dfbc049f9c/pyparsing-3.3.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/66/a6/a3d29378618d3d9ba0962473f8bbf09a5ad15eb8b210c5153fb88d0b8aad/ase-3.29.0-py3-none-any.whl
@@ -383,6 +386,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/python-3.12.13-h8561d8f_0_cpython.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/readline-8.3-h46df422_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/tk-8.6.13-h010d191_3.conda
+      - pypi: ./packages/ak-neighborlist
       - pypi: ./packages/ak-viewer
       - pypi: https://files.pythonhosted.org/packages/08/ef/b3c6b9b5be2f82416d73fe2ed2e96e2793cd80e7510bd6a17ca79cdd88ec/fonttools-4.63.0-cp312-cp312-macosx_10_13_universal2.whl
       - pypi: https://files.pythonhosted.org/packages/10/bd/c038d7cc38edc1aa5bf91ab8068b63d4308c66c4c8bb3cbba7dfbc049f9c/pyparsing-3.3.2-py3-none-any.whl
@@ -1668,9 +1672,16 @@ packages:
   purls: []
   size: 433413
   timestamp: 1764777166076
+- pypi: ./packages/ak-neighborlist
+  name: ak-neighborlist
+  requires_dist:
+  - ase>=3.23.0
+  - numpy>=1.24.4
+  requires_python: '>=3.12'
 - pypi: ./packages/ak-viewer
   name: ak-viewer
   requires_dist:
+  - ak-neighborlist @ ./packages/ak-neighborlist
   - ase>=3.23.0
   - click>=8.1.0
   - numpy>=1.24.4
@@ -1688,9 +1699,10 @@ packages:
   requires_dist:
   - click>=8.1.0
   - rich-click>=1.8.0
+  - ak-neighborlist @ ./packages/ak-neighborlist ; extra == 'neighborlist'
   - ak-viewer @ ./packages/ak-viewer ; extra == 'viewer'
   - ak-widget @ ./packages/ak-widget ; extra == 'widget'
-  - atomic-kernels[viewer,widget] ; extra == 'all'
+  - atomic-kernels[neighborlist,viewer,widget] ; extra == 'all'
   requires_python: '>=3.12'
 - pypi: https://files.pythonhosted.org/packages/04/5f/9ff93450ba96b09c7c2b3f81c94de31c89f92292f1380261bd7195bea4ea/contourpy-1.3.3-cp314-cp314-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
   name: contourpy

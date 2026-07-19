@@ -1,7 +1,9 @@
 use std::iter::zip;
 
-use crate::calculator::{Calculator, CalculatorError};
-use crate::geometry::naive_neighbor_list as build_neighborlist;
+use ak_core::StructureView;
+use ak_neighborlist::naive_neighbor_list as build_neighborlist;
+
+use crate::{Calculator, CalculatorError};
 
 pub trait PairPotential {
     fn cutoff(&self) -> f64;
@@ -11,17 +13,14 @@ pub trait PairPotential {
 }
 
 impl<T: PairPotential> Calculator for T {
-    fn calculate_energy(&self, view: &crate::StructureView) -> Result<f64, CalculatorError> {
+    fn calculate_energy(&self, view: &StructureView) -> Result<f64, CalculatorError> {
         let nl = build_neighborlist(view, self.cutoff());
         let distances = nl.distance.ok_or(CalculatorError::CalculationFailed)?;
         let energy = distances.iter().map(|r| self.pair_energy(*r)).sum();
         Ok(energy)
     }
 
-    fn calculate_forces(
-        &self,
-        view: &crate::StructureView,
-    ) -> Result<Vec<[f64; 3]>, CalculatorError> {
+    fn calculate_forces(&self, view: &StructureView) -> Result<Vec<[f64; 3]>, CalculatorError> {
         let nl = build_neighborlist(view, self.cutoff());
         let distances = nl.distance.ok_or(CalculatorError::CalculationFailed)?;
 
@@ -36,7 +35,7 @@ impl<T: PairPotential> Calculator for T {
                 pos_j[2] - pos_i[2],
             ];
             let f_mag = self.pair_force_magnitude(r);
-            let r_hat = [r_vec[0] / r, r_vec[1] / r, r_vec[2] / r]; // unit vector
+            let r_hat = [r_vec[0] / r, r_vec[1] / r, r_vec[2] / r];
 
             forces[i] = [
                 forces[i][0] + f_mag * r_hat[0],

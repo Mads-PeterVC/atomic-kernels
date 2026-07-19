@@ -1,31 +1,25 @@
-use crate::PyStructure;
-use ak_core::{naive_neighbor_list, naive_neighbor_list_pbc};
+mod convert;
+
+pub use convert::PyStructure;
+
+use ak_neighborlist::{naive_neighbor_list, naive_neighbor_list_pbc};
 use numpy::ndarray::{Array1, Array2};
 use numpy::{IntoPyArray, PyArray1, PyArray2};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
+use pyo3::wrap_pyfunction;
 
 type NeighborListResult = PyResult<(Py<PyArray1<usize>>, Py<PyArray1<usize>>, Py<PyArray2<i32>>)>;
 
 #[pyfunction]
 pub fn neighborlist(py: Python<'_>, structure: PyStructure, cutoff: f64) -> NeighborListResult {
-    // Thanks to Deref, we can call .view() directly instead of structure.0.view()
     let view = structure.view();
 
-    // Call ak-core implementation
     let nl = if view.pbc.any() {
-        println!("Using periodic code");
         naive_neighbor_list_pbc(&view, cutoff)
     } else {
-        println!("Using non-periodic code");
         naive_neighbor_list(&view, cutoff)
     };
-
-    // if view.pbc.any() {
-    //     let nl = build_neighborlist(&view, cutoff);
-    // else {
-
-    // }
 
     let size = nl.i.len();
 
@@ -42,4 +36,10 @@ pub fn neighborlist(py: Python<'_>, structure: PyStructure, cutoff: f64) -> Neig
         index_j_arr.into_pyarray(py).unbind(),
         shifts_arr.into_pyarray(py).unbind(),
     ))
+}
+
+#[pymodule]
+fn _ak_neighborlist(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
+    m.add_function(wrap_pyfunction!(neighborlist, m)?)?;
+    Ok(())
 }
