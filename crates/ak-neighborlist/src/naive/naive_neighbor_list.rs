@@ -10,7 +10,7 @@ fn squared_distance(positions: &[[f64; 3]], i: usize, j: usize) -> f64 {
     dx * dx + dy * dy + dz * dz
 }
 
-pub fn naive_neighbor_list(view: &StructureView, cutoff: f64) -> NeighborList {
+pub(super) fn naive_neighbor_list_non_pbc(view: &StructureView, cutoff: f64) -> NeighborList {
     let n_atoms = view.positions.len();
 
     let mut i_indices: Vec<usize> = Vec::with_capacity(4 * n_atoms);

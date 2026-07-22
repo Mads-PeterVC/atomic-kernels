@@ -3,7 +3,7 @@ use nalgebra::Vector3;
 
 use crate::NeighborList;
 
-pub fn naive_neighbor_list_pbc(view: &StructureView, cutoff: f64) -> NeighborList {
+pub(super) fn naive_neighbor_list_pbc(view: &StructureView, cutoff: f64) -> NeighborList {
     let n_atoms = view.len();
 
     let mut i_indices: Vec<usize> = Vec::with_capacity(4 * n_atoms);

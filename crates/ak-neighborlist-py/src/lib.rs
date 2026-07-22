@@ -2,7 +2,7 @@ mod convert;
 
 pub use convert::PyStructure;
 
-use ak_neighborlist::{naive_neighbor_list, naive_neighbor_list_pbc};
+use ak_neighborlist::{NeighborListMethod, calculate_neighborlist};
 use numpy::ndarray::{Array1, Array2};
 use numpy::{IntoPyArray, PyArray1, PyArray2};
 use pyo3::exceptions::PyValueError;
@@ -15,11 +15,9 @@ type NeighborListResult = PyResult<(Py<PyArray1<usize>>, Py<PyArray1<usize>>, Py
 pub fn neighborlist(py: Python<'_>, structure: PyStructure, cutoff: f64) -> NeighborListResult {
     let view = structure.view();
 
-    let nl = if view.pbc.any() {
-        naive_neighbor_list_pbc(&view, cutoff)
-    } else {
-        naive_neighbor_list(&view, cutoff)
-    };
+    let method = NeighborListMethod::Naive;
+    let nl = calculate_neighborlist(&view, cutoff, method)
+        .map_err(|_e| PyValueError::new_err("Neighborlist construction failed"))?;
 
     let size = nl.i.len();
 

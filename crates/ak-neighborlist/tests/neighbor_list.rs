@@ -1,5 +1,5 @@
 use ak_core::Structure;
-use ak_neighborlist::{naive_neighbor_list, naive_neighbor_list_pbc};
+use ak_neighborlist::{NeighborListMethod, calculate_neighborlist};
 
 fn example_structure() -> Structure {
     Structure::new(
@@ -13,7 +13,8 @@ fn example_structure() -> Structure {
 #[test]
 fn non_periodic_neighbor_list_finds_pairs_with_distances() {
     let structure = example_structure();
-    let neighbors = naive_neighbor_list(&structure.view(), 1.1);
+    let neighbors =
+        calculate_neighborlist(&structure.view(), 1.1, NeighborListMethod::Naive).unwrap();
 
     assert_eq!(neighbors.i, vec![0, 0]);
     assert_eq!(neighbors.j, vec![1, 2]);
@@ -30,7 +31,8 @@ fn periodic_neighbor_list_finds_wrapped_neighbor() {
         [true, false, false],
     );
 
-    let neighbors = naive_neighbor_list_pbc(&periodic.view(), 0.5);
+    let neighbors =
+        calculate_neighborlist(&periodic.view(), 0.5, NeighborListMethod::Naive).unwrap();
 
     assert_eq!(neighbors.i, vec![0, 1]);
     assert_eq!(neighbors.j, vec![1, 0]);
