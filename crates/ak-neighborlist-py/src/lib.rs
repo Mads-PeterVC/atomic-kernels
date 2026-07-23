@@ -1,5 +1,7 @@
 mod convert;
 
+use std::str::FromStr;
+
 pub use convert::PyStructure;
 
 use ak_neighborlist::{NeighborListMethod, calculate_neighborlist};
@@ -12,20 +14,24 @@ use pyo3::wrap_pyfunction;
 type NeighborListResult = PyResult<(Py<PyArray1<usize>>, Py<PyArray1<usize>>, Py<PyArray2<i32>>)>;
 
 #[pyfunction]
-pub fn neighborlist(py: Python<'_>, structure: PyStructure, cutoff: f64) -> NeighborListResult {
+pub fn neighborlist(
+    py: Python<'_>,
+    structure: PyStructure,
+    cutoff: f64,
+    method: String,
+) -> NeighborListResult {
     let view = structure.view();
 
-    let method = NeighborListMethod::Naive;
+    let method = NeighborListMethod::from_str(&method)
+        .map_err(|_e| PyValueError::new_err("Invalid method selection"))?;
+
     let nl = calculate_neighborlist(&view, cutoff, method)
         .map_err(|_e| PyValueError::new_err("Neighborlist construction failed"))?;
 
     let size = nl.i.len();
-
     let index_i_arr = Array1::from_vec(nl.i);
     let index_j_arr = Array1::from_vec(nl.j);
-
     let shifts_flat: Vec<i32> = nl.shifts.into_iter().flat_map(|v| v.into_iter()).collect();
-
     let shifts_arr = Array2::from_shape_vec((size, 3), shifts_flat)
         .map_err(|e| PyValueError::new_err(e.to_string()))?;
 

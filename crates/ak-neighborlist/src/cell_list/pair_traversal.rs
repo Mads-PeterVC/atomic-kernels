@@ -18,6 +18,7 @@ pub fn cell_list_neighborlist(
 
     let mut index_i: Vec<usize> = Vec::new();
     let mut index_j: Vec<usize> = Vec::new();
+    let mut shifts = Vec::new();
     let cutoff2 = cutoff.powf(2.0);
 
     for cell_index in 0..grid.total_cells() {
@@ -31,6 +32,7 @@ pub fn cell_list_neighborlist(
                 if d2 < cutoff2 {
                     index_i.push(*i);
                     index_j.push(*j);
+                    shifts.push([0, 0, 0]);
                 }
             }
         }
@@ -45,6 +47,7 @@ pub fn cell_list_neighborlist(
                     if distance_square(&view.positions[*i], &view.positions[*j]) <= cutoff2 {
                         index_i.push(*i);
                         index_j.push(*j);
+                        shifts.push(neighbor.shift);
                     }
                 }
             }
@@ -54,7 +57,7 @@ pub fn cell_list_neighborlist(
     let nl = NeighborList {
         i: index_i,
         j: index_j,
-        shifts: Vec::new(),
+        shifts: shifts,
         distance: None,
     };
     Ok(nl)

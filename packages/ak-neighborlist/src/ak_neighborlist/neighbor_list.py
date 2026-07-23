@@ -1,6 +1,7 @@
 """Neighbor-list helpers exposed by the Python package."""
 
 from dataclasses import dataclass
+from typing import Literal
 
 import numpy as np
 from ase import Atoms
@@ -28,10 +29,29 @@ class NeighborList:
 
 
 def neighbor_list(
-    atoms: Atoms, cutoff: float, symmetrize: bool = True, sort: bool = False
+    atoms: Atoms,
+    cutoff: float,
+    symmetrize: bool = True,
+    sort: bool = False,
+    method: Literal["naive", "cell_list"] = "cell_list",
 ) -> NeighborList:
-    """Compute a neighbor list for an ASE structure."""
-    i, j, S = rust_neighborlist(atoms, cutoff)
+    """
+    Compute a neighbor list for an ASE structure.
+
+    Parameters
+    ----------
+    atoms : ase.Atoms
+        The ASE structure for which to compute the neighbor list.
+    cutoff : float
+        The cutoff distance for neighbors.
+    symmetrize : bool, optional
+        Whether to symmetrize the neighbor list. Default is True.
+    sort : bool, optional
+        Whether to sort the neighbor list by sender and then receiver. Default is False.
+    method : {'naive', 'cell_list'}, optional
+        The method to use for neighbor list computation. Default is 'cell_list'.
+    """
+    i, j, S = rust_neighborlist(atoms, cutoff, method)
 
     if symmetrize:
         i_sym = np.concatenate([i, j])
