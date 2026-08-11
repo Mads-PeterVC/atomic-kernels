@@ -49,6 +49,24 @@ cmd = "maturin develop --release"
 cwd = "packages/ak-neighborlist"
 default-environment = "viewer"
 
+[tasks.neighborlist-benchmark-correctness]
+depends-on = ["build-python-nl"]
+cmd = "python -m benchmarks --mode correctness --profile quick"
+cwd = "packages/ak-neighborlist"
+default-environment = "viewer"
+
+[tasks.neighborlist-benchmark]
+depends-on = ["build-python-nl"]
+cmd = "python -m benchmarks --mode timing --profile quick"
+cwd = "packages/ak-neighborlist"
+default-environment = "viewer"
+
+[tasks.neighborlist-benchmark-full]
+depends-on = ["build-python-nl"]
+cmd = "python -m benchmarks --mode timing --profile full"
+cwd = "packages/ak-neighborlist"
+default-environment = "viewer"
+
 
 [tasks.viewer-test-python]
 cmd = "pytest packages/ak-viewer/tests/test_viewer_integration.py -m viewer_integration"

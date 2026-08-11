@@ -33,3 +33,6 @@ build-backend = "maturin"
 manifest-path = "../../crates/ak-neighborlist-py/Cargo.toml"
 python-source = "src/"
 module-name = "ak_neighborlist._ak_neighborlist"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]

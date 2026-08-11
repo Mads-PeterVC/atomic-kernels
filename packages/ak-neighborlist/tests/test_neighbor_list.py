@@ -28,7 +28,7 @@ def test_neighbor_list_periodic_shifts():
         pbc=[True, False, False],
     )
 
-    neighbors = neighbor_list(atoms, cutoff=0.5, symmetrize=False)
+    neighbors = neighbor_list(atoms, cutoff=0.5, symmetrize=False, method="naive")
 
     np.testing.assert_array_equal(neighbors.i, [0, 1])
     np.testing.assert_array_equal(neighbors.j, [1, 0])
