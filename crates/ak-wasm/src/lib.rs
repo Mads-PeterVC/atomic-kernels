@@ -67,11 +67,11 @@ impl WasmViewer {
     }
 
     pub fn load_xyz(&self, xyz: String) -> Result<(), JsValue> {
-        let structure = structure_from_xyz_string(xyz)?;
+        let structures = structure_from_xyz_string(xyz)?;
 
         self.sender
             .send(ViewerCommand::LoadTrajectory {
-                frames: vec![structure],
+                frames: structures,
                 initial_frame: 0,
             })
             .map_err(|_| JsValue::from_str("viewer is closed"))?;
@@ -108,9 +108,13 @@ fn structure_from_flat_arrays(
     Ok(Structure::new(positions, numbers, cell, pbc))
 }
 
-fn structure_from_xyz_string(xyz: String) -> Result<Structure, JsValue> {
+fn structure_from_xyz_string(xyz: String) -> Result<Vec<Structure>, JsValue> {
     let reader = BufReader::new(Cursor::new(xyz));
-    Ok(read_xyz(reader))
+    let structures = read_xyz(reader);
+    match structures {
+        Ok(result) => Ok(result),
+        _ => Err("Could not read XYZ file".into()),
+    }
 }
 
 fn app_options_for_canvas(canvas: Option<HtmlCanvasElement>) -> ViewerAppOptions {

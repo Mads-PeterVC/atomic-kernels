@@ -22,7 +22,7 @@ export interface InitOutput {
     readonly wasm_bindgen__convert__closures_____invoke__hf497823071f04816: (a: number, b: number, c: any) => [number, number];
     readonly wasm_bindgen__convert__closures_____invoke__h8c599f349321c945: (a: number, b: number, c: any, d: any) => void;
     readonly wasm_bindgen__convert__closures_____invoke__h0cb13890a2a1a30e: (a: number, b: number, c: any) => void;
-    readonly wasm_bindgen__convert__closures_____invoke__h6ac5d248f9928d5b: (a: number, b: number, c: any) => void;
+    readonly wasm_bindgen__convert__closures_____invoke__h6c028a06bee46edd: (a: number, b: number, c: any) => void;
     readonly wasm_bindgen__convert__closures_____invoke__h0cb13890a2a1a30e_4: (a: number, b: number, c: any) => void;
     readonly wasm_bindgen__convert__closures_____invoke__h0cb13890a2a1a30e_5: (a: number, b: number, c: any) => void;
     readonly wasm_bindgen__convert__closures_____invoke__h0cb13890a2a1a30e_6: (a: number, b: number, c: any) => void;
