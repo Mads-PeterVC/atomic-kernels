@@ -1,10 +1,12 @@
 use crate::{
-    PERIODIC_TABLE, Structure,
-    io::xyz::errors::{CellError, XYZReaderError},
-    io::xyz::parse_atoms::parse_atoms,
-    io::xyz::parse_cell::parse_cell,
-    io::xyz::parse_pbc::parse_pbc,
-    io::xyz::xyz_main::XYZReaderState::{FindNumberOfAtoms, FindPositionLines, FindProperties},
+    Structure,
+    io::xyz::{
+        errors::{CellError, PBCError, XYZReaderError},
+        parse_atoms::parse_atoms,
+        parse_cell::parse_cell,
+        parse_pbc::parse_pbc,
+        xyz_main::XYZReaderState::{FindNumberOfAtoms, FindPositionLines, FindProperties},
+    },
 };
 
 #[derive(Debug)]
@@ -45,7 +47,7 @@ impl StructureBuffer {
         self.positions.push(position)
     }
 
-    fn positions(&self) -> &Vec<String> {
+    fn positions(&self) -> &[String] {
         &self.positions
     }
 
@@ -64,7 +66,7 @@ pub fn read_xyz<R: std::io::BufRead>(r: R) -> Result<Vec<Structure>, XYZReaderEr
 
         match state {
             FindNumberOfAtoms => {
-                let n_atoms: usize = line.parse().map_err(|_| XYZReaderError::IntParse)?;
+                let n_atoms: usize = line.trim().parse().map_err(|_| XYZReaderError::IntParse)?;
                 structure_buffer.set_n_atoms(n_atoms);
                 state = FindProperties;
             }
@@ -98,8 +100,8 @@ fn buffer_to_structure(buffer: StructureBuffer) -> Result<Structure, XYZReaderEr
         return Err(XYZReaderError::IncorrectNumberOfAtoms);
     }
 
-    let (positions, numbers) = parse_atoms(&buffer.positions(), buffer.get_n_atoms())?;
-    let cell = parse_cell(&buffer.properties());
+    let (positions, numbers) = parse_atoms(buffer.positions(), buffer.get_n_atoms())?;
+    let cell = parse_cell(buffer.properties());
 
     let cell = match cell {
         Ok(cell_result) => cell_result,
@@ -109,8 +111,21 @@ fn buffer_to_structure(buffer: StructureBuffer) -> Result<Structure, XYZReaderEr
         },
     };
 
-    let pbc = parse_pbc(&buffer.properties())?;
+    let pbc_result = parse_pbc(buffer.properties());
+    let pbc = match pbc_result {
+        Ok(pbc) => pbc,
+        Err(pbc_error) => match pbc_error {
+            PBCError::NoPBCSpecified => [false, false, false],
+            _ => return Err(XYZReaderError::PBCError(pbc_error)),
+        },
+    };
+
     Ok(Structure::new(positions, numbers, cell, pbc))
+}
+
+pub fn read_xyz_single<R: std::io::BufRead>(r: R) -> Result<Structure, XYZReaderError> {
+    let structures = read_xyz(r)?;
+    Ok(structures.get(0).ok_or(XYZReaderError::EmptyFile)?.clone())
 }
 
 #[cfg(test)]

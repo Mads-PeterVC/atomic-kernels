@@ -7,9 +7,13 @@ pub(super) fn parse_cell(comment_line: &str) -> Result<[[f64; 3]; 3], CellError>
         .map(|(idx, _)| idx)
         .ok_or(CellError::NoCellSpecified)?;
 
-    let tail = &comment_line[lattice_start..];
-    let quotes: Vec<usize> = tail.match_indices('"').map(|(i, _)| i).collect();
-    let part = &tail[(quotes[0] + 1)..quotes[1]];
+    let value = &comment_line[(lattice_start + "Lattice=".len())..];
+    let value = value
+        .strip_prefix('"')
+        .ok_or(CellError::IncorrectFormatting)?;
+
+    let closing_quote = value.find('"').ok_or(CellError::IncorrectFormatting)?;
+    let part = &value[..closing_quote];
     let parts: Vec<f64> = part
         .split_whitespace()
         .map(|c| c.parse::<f64>().map_err(|_| CellError::ParseError))
@@ -48,6 +52,14 @@ mod test {
 "#;
         let cell_result = parse_cell(line);
         assert!(matches!(cell_result, Err(CellError::Expected9Floats)));
+    }
+
+    #[test]
+    fn invalid_formatting() {
+        let line = r#"Lattice=10.0 0.0 A.0 0.0 10.0 0.0 0.0 0.0 10.0" Properties=species:S:1:pos:R:3 pbc="F F F"
+"#;
+        let cell_result = parse_cell(line);
+        assert!(matches!(cell_result, Err(CellError::IncorrectFormatting)));
     }
 
     #[test]
