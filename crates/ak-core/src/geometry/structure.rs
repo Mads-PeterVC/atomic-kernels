@@ -40,7 +40,7 @@ impl Structure {
     }
 
     pub fn from_xyz_reader<R: std::io::BufRead>(r: R) -> Self {
-        crate::io::read_xyz(r)
+        crate::io::xyz::read_xyz_single(r).expect("XYZ file was not readable")
     }
 
     pub fn from_xyz_file<P: AsRef<std::path::Path>>(path: P) -> Self {

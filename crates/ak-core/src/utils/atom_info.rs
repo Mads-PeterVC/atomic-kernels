@@ -67,6 +67,10 @@ impl PeriodicTable {
             .find(|f| f.symbol == symbol)
             .expect("Unknown element symbol")
     }
+
+    pub fn get_by_symbol_opt(&self, symbol: &str) -> Option<&AtomInfo> {
+        self.info_arr.iter().find(|f| f.symbol == symbol)
+    }
 }
 
 pub static PERIODIC_TABLE: Lazy<PeriodicTable> =
