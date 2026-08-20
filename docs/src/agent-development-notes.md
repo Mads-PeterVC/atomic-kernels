@@ -2,7 +2,7 @@
 
 This page is the running log for agent-driven development updates. Follow the workflow
 and format defined in
-[`docs/src/agent-development.md`](/Users/au616397/Repositories/atomic-kernels/docs/src/agent-development.md).
+[`docs/src/agent-development.md`](agent-development.md).
 
 ## Existing notes
 

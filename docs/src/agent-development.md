@@ -39,7 +39,7 @@ guessed.
 
 ## Entry format
 
-Add notes to [`docs/src/agent-development-notes.md`](/Users/au616397/Repositories/atomic-kernels/docs/src/agent-development-notes.md)
+Add notes to [`docs/src/agent-development-notes.md`](agent-development-notes.md)
 using this structure:
 
 ```md

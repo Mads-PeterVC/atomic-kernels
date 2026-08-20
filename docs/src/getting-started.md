@@ -57,8 +57,8 @@ uv run python scripts/slab_adsorbate_ball_and_stick.py
 
 Browse the reusable viewer examples:
 
-- [Viewer Examples](/Users/au616397/Repositories/atomic-kernels/docs/src/viewer-examples.md)
-- [Viewer Scripts](/Users/au616397/Repositories/atomic-kernels/docs/src/viewer-scripts.md)
+- [Viewer Examples](viewer-examples.md)
+- [Viewer Scripts](viewer-scripts.md)
 
 Launch the CLI viewer with a fidelity preset:
 

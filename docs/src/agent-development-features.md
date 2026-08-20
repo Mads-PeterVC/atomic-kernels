@@ -2,7 +2,7 @@
 
 This page tracks notable feature ideas for future agent-driven work together with a
 small record of features that have already been completed. It remains distinct from
-[`docs/src/agent-development-notes.md`](/Users/au616397/Repositories/atomic-kernels/docs/src/agent-development-notes.md),
+[`docs/src/agent-development-notes.md`](agent-development-notes.md),
 which captures the implementation details and constraints behind completed work.
 
 ## Candidate features
